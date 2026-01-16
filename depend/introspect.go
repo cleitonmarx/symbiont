@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/cleitonmarx/symbiont/internal/reflectx"
+	"github.com/cleitonmarx/symbiont/introspection"
 )
 
 // Event tracking provides observability into dependency registration and resolution.
@@ -13,61 +14,48 @@ import (
 
 var (
 	eventMu sync.Mutex
-	events  []Event
+	events  []introspection.DepEvent
+	order   int
 )
-
-// EventAction identifies the type of dependency event.
-type EventAction string
-
-const (
-	// ActionRegister indicates a dependency registration event
-	ActionRegister EventAction = "register"
-	// ActionResolve indicates a dependency resolution event
-	ActionResolve EventAction = "resolve"
-)
-
-// Event represents a single dependency registration or resolution event.
-// It includes type information, names, implementation details, and source location for debugging.
-type Event struct {
-	Action         EventAction
-	DepTypeName    string
-	DepName        string
-	Implementation string
-	Caller         string
-	ComponentType  reflect.Type
-	File           string
-	Line           int
-}
 
 // logEvent records a dependency event with caller information for observability.
-func logEvent(action EventAction, depTypeName, depName, implName string, componentType reflect.Type, level int) {
+func logEvent(action introspection.DepEventKind, depTypeName, depName, implName string, componentType reflect.Type, level int) {
 	callerFunc, file, line := reflectx.GetCallerName(level + 1)
 	caller := reflectx.FormatFunctionName(callerFunc)
 	if strings.Contains(caller, "symbiont.(*App).") {
 		caller = ""
 	}
 
+	componentName := ""
+	if componentType != nil {
+		componentName = reflectx.GetTypeName(componentType)
+	}
+
 	eventMu.Lock()
 	defer eventMu.Unlock()
+	order++
 
-	events = append(events, Event{
-		Action:         action,
-		DepTypeName:    depTypeName,
-		DepName:        depName,
-		Implementation: implName,
-		Caller:         caller,
-		ComponentType:  componentType,
-		File:           reflectx.FormatFileName(file),
-		Line:           line,
+	events = append(events, introspection.DepEvent{
+		Kind: action,
+		Type: depTypeName,
+		Name: depName,
+		Impl: implName,
+		Caller: introspection.Caller{
+			Func: caller,
+			File: reflectx.FormatFileName(file),
+			Line: line,
+		},
+		Component: componentName,
+		Order:     order,
 	})
 }
 
 // GetEvents returns a copy of all recorded dependency events.
 // Useful for testing and verifying dependency registration/resolution behavior.
-func GetEvents() []Event {
+func GetEvents() []introspection.DepEvent {
 	eventMu.Lock()
 	defer eventMu.Unlock()
-	cpy := make([]Event, len(events))
+	cpy := make([]introspection.DepEvent, len(events))
 	copy(cpy, events)
 	return cpy
 }

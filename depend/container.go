@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/cleitonmarx/symbiont/internal/reflectx"
+	"github.com/cleitonmarx/symbiont/introspection"
 )
 
 const tagName = "resolve"
@@ -32,7 +33,7 @@ func RegisterNamed[T any](dependency T, name string) {
 
 	if name != "" {
 		logEvent(
-			ActionRegister,
+			introspection.DepRegistered,
 			reflectx.GetTypeName(typeOfT),
 			name,
 			reflectx.TypeNameOf(dependency),
@@ -47,7 +48,7 @@ func RegisterNamed[T any](dependency T, name string) {
 func Register[T any](dependency T) {
 	RegisterNamed(dependency, "")
 	logEvent(
-		ActionRegister,
+		introspection.DepRegistered,
 		reflectx.GetTypeName(reflect.TypeFor[T]()),
 		"",
 		reflectx.TypeNameOf(dependency),
@@ -73,7 +74,7 @@ func RegisterNamedOnce[T any](dependency T, name string) error {
 	container[typeOfT][name] = dependency
 	if name != "" {
 		logEvent(
-			ActionRegister,
+			introspection.DepRegistered,
 			reflectx.GetTypeName(typeOfT),
 			name,
 			reflectx.TypeNameOf(dependency),
@@ -87,7 +88,7 @@ func RegisterNamedOnce[T any](dependency T, name string) error {
 // RegisterOnce registers an unnamed dependency, returning an error if already registered.
 func RegisterOnce[T any](dependency T) error {
 	logEvent(
-		ActionRegister,
+		introspection.DepRegistered,
 		reflectx.GetTypeName(reflect.TypeFor[T]()),
 		"",
 		reflectx.TypeNameOf(dependency),
@@ -108,7 +109,7 @@ func ResolveNamed[T any](name string) (T, error) {
 		if dependency, exist := dependenciesByName[name]; exist {
 			if name != "" {
 				logEvent(
-					ActionResolve,
+					introspection.DepResolved,
 					reflectx.GetTypeName(typeOfT),
 					name,
 					reflectx.TypeNameOf(dependency),
@@ -127,7 +128,7 @@ func ResolveNamed[T any](name string) (T, error) {
 func Resolve[T any]() (T, error) {
 	dep, err := ResolveNamed[T]("")
 	logEvent(
-		ActionResolve,
+		introspection.DepResolved,
 		reflectx.GetTypeName(reflect.TypeFor[T]()),
 		"",
 		reflectx.TypeNameOf(dep),
@@ -165,7 +166,7 @@ func ResolveStructFieldValue(fieldValue reflect.Value, structField reflect.Struc
 	}
 
 	logEvent(
-		ActionResolve,
+		introspection.DepResolved,
 		reflectx.GetTypeName(fieldValue.Type()),
 		dependencyName,
 		reflectx.TypeNameOf(dependency),
@@ -184,5 +185,5 @@ func ClearContainer() {
 	defer eventMu.Unlock()
 
 	container = make(map[reflect.Type]map[string]any)
-	events = make([]Event, 0)
+	events = make([]introspection.DepEvent, 0)
 }

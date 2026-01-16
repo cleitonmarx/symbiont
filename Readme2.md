@@ -510,7 +510,7 @@ func (myIntrospector) Introspect(_ context.Context, ai symbiont.AppIntrospection
     }
     for _, event := range ai.Events {
         fmt.Printf("dep: %s action: %s caller: %s\n",
-            event.DepTypeName, event.Action, event.Caller)
+            event.Type, event.Kind, event.Caller.Func)
     }
     return nil
 }

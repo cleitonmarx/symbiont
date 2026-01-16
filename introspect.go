@@ -16,7 +16,7 @@ import (
 // during the application's lifecycle.
 type AppIntrospection struct {
 	Keys    []introspection.ConfigAccess
-	Events  []depend.Event
+	Events  []introspection.DepEvent
 	Runners []reflect.Type
 }
 
@@ -137,20 +137,20 @@ func buildDependencyGraph(nodeMap map[string]mermaid.Node, depHasCaller map[stri
 	edges := []mermaid.Edge{}
 	registeredOrder := []string{}
 	for _, ev := range depend.GetEvents() {
-		dependency := ev.Implementation + ev.DepName
-		if ev.Action == depend.ActionRegister {
+		dependency := ev.Impl + ev.Name
+		if ev.Kind == introspection.DepRegistered {
 			var sublines []string
-			if ev.DepName != "" {
-				sublines = append(sublines, mermaid.Subline(styleName, "name: %s", ev.DepName))
+			if ev.Name != "" {
+				sublines = append(sublines, mermaid.Subline(styleName, "name: %s", ev.Name))
 			}
-			if ev.DepTypeName != ev.Implementation {
-				sublines = append(sublines, mermaid.Subline(styleDepImpl, "%s %s", emojiDep, ev.Implementation))
+			if ev.Type != ev.Impl {
+				sublines = append(sublines, mermaid.Subline(styleDepImpl, "%s %s", emojiDep, ev.Impl))
 			}
-			sublines = append(sublines, mermaid.Subline(styleDepWiring, "%s %s", emojiCaller, ev.Caller))
-			sublines = append(sublines, mermaid.Subline(styleCodeLoc, "%s(%s:%d)", emojiCodeLocation, ev.File, ev.Line))
+			sublines = append(sublines, mermaid.Subline(styleDepWiring, "%s %s", emojiCaller, ev.Caller.Func))
+			sublines = append(sublines, mermaid.Subline(styleCodeLoc, "%s(%s:%d)", emojiCodeLocation, ev.Caller.File, ev.Caller.Line))
 
 			label := mermaid.LabelBuilder{
-				Label:    ev.DepTypeName,
+				Label:    ev.Type,
 				FontSize: 16,
 				Bold:     true,
 				SubLines: sublines,
@@ -163,11 +163,10 @@ func buildDependencyGraph(nodeMap map[string]mermaid.Node, depHasCaller map[stri
 			}
 			registeredOrder = append(registeredOrder, dependency)
 		}
-		if ev.Action == depend.ActionResolve {
-			toCaller := ev.Caller
+		if ev.Kind == introspection.DepResolved {
+			toCaller := ev.Caller.Func
 			if toCaller == "" {
-				//toCaller = ev.DepTypeName
-				toCaller = reflectx.GetTypeName(ev.ComponentType)
+				toCaller = ev.Component
 			}
 			edges = append(edges, mermaid.Edge{From: dependency, To: toCaller})
 			depHasCaller[dependency] = true
@@ -177,7 +176,7 @@ func buildDependencyGraph(nodeMap map[string]mermaid.Node, depHasCaller map[stri
 				FontSize: 15,
 				Bold:     true,
 				SubLines: []string{
-					mermaid.Subline(styleCodeLoc, "%s(%s:%d)", emojiCodeLocation, ev.File, ev.Line),
+					mermaid.Subline(styleCodeLoc, "%s(%s:%d)", emojiCodeLocation, ev.Caller.File, ev.Caller.Line),
 				},
 			}.ToHTML()
 
@@ -191,13 +190,13 @@ func buildDependencyGraph(nodeMap map[string]mermaid.Node, depHasCaller map[stri
 			// this can happen if the dependency is registered but not resolved
 			if _, exists := nodeMap[dependency]; !exists {
 				var sublines []string
-				if ev.DepName != "" {
-					sublines = append(sublines, mermaid.Subline(styleName, "name: %s", ev.DepName))
+				if ev.Name != "" {
+					sublines = append(sublines, mermaid.Subline(styleName, "name: %s", ev.Name))
 				}
-				if ev.DepTypeName != ev.Implementation {
-					sublines = append(sublines, mermaid.Subline(styleDepImpl, "impl: %s", ev.Implementation))
+				if ev.Type != ev.Impl {
+					sublines = append(sublines, mermaid.Subline(styleDepImpl, "impl: %s", ev.Impl))
 				}
-				label := mermaid.LabelBuilder{Label: ev.DepTypeName, FontSize: 16, Bold: true,
+				label := mermaid.LabelBuilder{Label: ev.Type, FontSize: 16, Bold: true,
 					SubLines: sublines,
 				}.ToHTML()
 
