@@ -2,28 +2,33 @@ package mermaid
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cleitonmarx/symbiont/introspection"
 )
 
 const (
-	emojiCodeLocation = "📍"
-	emojiDep          = "🧩"
-	emojiApp          = "🕷️"
-	emojiCaller       = "🏗️"
-	emojiConfig       = "🗝️"
-	emojiService      = "📦"
+	emojiCodeLocation   = "📍"
+	emojiInterface      = "🧩"
+	emojiDep            = "💉"
+	emojiCaller         = "🏗️"
+	emojiConfig         = "🔑"
+	emojiConfigProvider = "🫴🏽"
+	emojiRunnable       = "⚙️"
+	emojiInitializer    = "📦"
+	emojiApp            = "🚀"
 )
 
 var (
 	// node styles
-	styleDepUsed     = Style{Fill: "#e0f7fa", Stroke: "#00838f", StrokeWidth: "2px", Color: "#222222"}
-	styleDepUnused   = Style{Fill: "#fce1e1", Stroke: "#a60202", StrokeWidth: "2px", Color: "#b26a00"}
-	styleConfig      = Style{Fill: "#e8f5e9", Stroke: "#388e3c", StrokeWidth: "2px", Color: "#222222"}
-	styleCaller      = Style{Fill: "#fff3e0", Stroke: "#f57c00", StrokeWidth: "2px", Color: "#222222"}
-	styleRunnable    = Style{Fill: "#e3e0fc", Stroke: "#6c47a6", StrokeWidth: "2px", Color: "#222222"}
-	styleApp         = Style{Fill: "#0525f5", Stroke: "black", StrokeWidth: "3px", Color: "#ffffff", FontWeight: "bold"}
-	styleInitializer = Style{Fill: "#f0f0f0", Stroke: "#888888", StrokeWidth: "1px", Color: "#222222", FontWeight: "bold"}
+	styleDepUsed   = Style{Fill: "#d6fff9", Stroke: "#2ec4b6", StrokeWidth: "2px", Color: "#222222"}
+	styleDepUnused = Style{Fill: "#fce1e1", Stroke: "#a60202", StrokeWidth: "2px", Color: "#b26a00"}
+	styleConfig    = Style{Fill: "#f1f7d2", Stroke: "#a7c957", StrokeWidth: "2px", Color: "#222222"}
+	styleCaller    = Style{Fill: "#fff3e0", Stroke: "#f57c00", StrokeWidth: "2px", Color: "#222222"}
+	styleRunnable  = Style{Fill: "#f1e8ff", Stroke: "#7b2cbf", StrokeWidth: "2px", Color: "#222222"}
+	// fill:#0f56c4,stroke:#68a4eb,stroke-width:6px
+	styleApp         = Style{Fill: "#0f56c4", Stroke: "#68a4eb", StrokeWidth: "6px", Color: "#ffffff", FontWeight: "bold"}
+	styleInitializer = Style{Fill: "#f0f0f0", Stroke: "#373636", StrokeWidth: "1px", Color: "#222222", FontWeight: "bold"}
 
 	// sublines styles
 	styleName           = Style{Color: "#b26a00", FontSize: "12px", IsHtml: true}
@@ -32,6 +37,7 @@ var (
 	styleCodeLoc        = Style{Color: "gray", FontSize: "11px", IsHtml: true}
 	styleConfigProvider = Style{FontSize: "11px", Color: "green", IsHtml: true}
 	styleConfigDefault  = Style{Color: "green", FontSize: "11px", IsHtml: true}
+	styleTypeName       = Style{Color: "green", FontSize: "11px", IsHtml: true}
 )
 
 // GenerateIntrospectionGraph generates a Mermaid graph representation of the introspection report.
@@ -39,32 +45,34 @@ func GenerateIntrospectionGraph(r introspection.Report) string {
 	var edges []Edge
 	nodeMap := make(map[string]Node)
 	depHasCaller := make(map[string]bool)
-
-	// --- Dependencies ---
-	depEdges, _ := buildDependencyGraph(nodeMap, depHasCaller, r.Deps)
-	edges = append(edges, depEdges...)
-	// --- Configs ---
-	configEdges, _ := buildConfigGraph(nodeMap, r.Configs)
-	edges = append(edges, configEdges...)
-	// --- App node ---
-	appNodeID := "Symbiont"
-	if _, exists := nodeMap[appNodeID]; !exists {
-		appLabel := LabelBuilder{
-			Label:     fmt.Sprintf("Symbiont %s", emojiApp),
-			FontSize:  20,
-			FontColor: "white",
-			Bold:      true,
-		}.ToHTML()
-		nodeMap[appNodeID] = Node{
-			ID:    appNodeID,
-			Label: appLabel,
-			Type:  NodeApp,
-			Style: styleApp,
-		}
+	initializerTypes := make(map[string]struct{}, len(r.Initializers))
+	for _, init := range r.Initializers {
+		initializerTypes[init.Type] = struct{}{}
 	}
 
+	// --- App node ---
+	appNodeID := "SymbiontApp"
+	appLabel := LabelBuilder{
+		Label:     fmt.Sprintf("%s Symbiont App", emojiApp),
+		FontSize:  20,
+		FontColor: "white",
+		Bold:      true,
+	}.ToHTML()
+	nodeMap[appNodeID] = Node{
+		ID:    appNodeID,
+		Label: appLabel,
+		Type:  NodeApp,
+		Style: styleApp,
+	}
+
+	// --- Dependencies ---
+	buildDependencyGraph(nodeMap, depHasCaller, initializerTypes, r.Deps, &edges)
+	// --- Configs ---
+	buildConfigGraph(nodeMap, initializerTypes, r.Configs, &edges)
 	// --- Runnable ---
 	buildRunnerGraph(r.Runners, nodeMap, &edges, appNodeID)
+	// --- Initializers ---
+	buildInitializerGraph(r.Initializers, nodeMap, &edges, appNodeID)
 	// Remove duplicates and preserve order
 	order := buildOrderedNodeIDs(nodeMap)
 	// --- Set styles using declarative Style struct ---
@@ -83,9 +91,7 @@ func GenerateIntrospectionGraph(r introspection.Report) string {
 }
 
 // buildDependencyGraph constructs the dependency graph from introspection data.
-func buildDependencyGraph(nodeMap map[string]Node, depHasCaller map[string]bool, deps []introspection.DepEvent) ([]Edge, []string) {
-	edges := []Edge{}
-	registeredOrder := []string{}
+func buildDependencyGraph(nodeMap map[string]Node, depHasCaller map[string]bool, initializerTypes map[string]struct{}, deps []introspection.DepEvent, edges *[]Edge) {
 	for _, ev := range deps {
 		dependency := ev.Impl + ev.Name
 		if ev.Kind == introspection.DepRegistered {
@@ -94,10 +100,11 @@ func buildDependencyGraph(nodeMap map[string]Node, depHasCaller map[string]bool,
 				sublines = append(sublines, Subline(styleName, "name: %s", ev.Name))
 			}
 			if ev.Type != ev.Impl {
-				sublines = append(sublines, Subline(styleDepImpl, "%s %s", emojiDep, ev.Impl))
+				sublines = append(sublines, Subline(styleDepImpl, "%s %s", emojiInterface, ev.Impl))
 			}
 			sublines = append(sublines, Subline(styleDepWiring, "%s %s", emojiCaller, ev.Caller.Func))
 			sublines = append(sublines, Subline(styleCodeLoc, "%s(%s:%d)", emojiCodeLocation, ev.Caller.File, ev.Caller.Line))
+			sublines = append(sublines, Subline(styleTypeName, "%s <b>Dependency</b>", emojiDep))
 
 			label := LabelBuilder{
 				Label:    ev.Type,
@@ -111,17 +118,31 @@ func buildDependencyGraph(nodeMap map[string]Node, depHasCaller map[string]bool,
 				Label: label,
 				Type:  NodeDependency,
 			}
-			registeredOrder = append(registeredOrder, dependency)
+
+			if ev.Caller.Func != "" {
+				callerID, callerType := canonicalCaller(ev.Caller.Func, initializerTypes)
+				style := styleCaller
+				if callerType == NodeInitializer {
+					style = styleInitializer
+				}
+				nodeMap[callerID] = Node{
+					ID:    callerID,
+					Label: LabelBuilder{Label: callerID, FontSize: 15, Bold: true}.ToHTML(),
+					Type:  callerType,
+					Style: style,
+				}
+				*edges = append(*edges, Edge{From: callerID, To: dependency, Arrow: "--o"})
+			}
 		}
 		if ev.Kind == introspection.DepResolved {
-			toCaller := ev.Caller.Func
+			toCaller, callerType := canonicalCaller(ev.Caller.Func, initializerTypes)
 			if toCaller == "" {
 				toCaller = ev.Component
 			}
 			if toCaller == "" {
 				toCaller = ev.Type
 			}
-			edges = append(edges, Edge{From: dependency, To: toCaller})
+			*edges = append(*edges, Edge{From: dependency, To: toCaller, Arrow: "-.->"})
 			depHasCaller[dependency] = true
 
 			label := LabelBuilder{
@@ -133,10 +154,15 @@ func buildDependencyGraph(nodeMap map[string]Node, depHasCaller map[string]bool,
 				},
 			}.ToHTML()
 
+			style := styleCaller
+			if callerType == NodeInitializer {
+				style = styleInitializer
+			}
 			nodeMap[toCaller] = Node{
 				ID:    toCaller,
 				Label: label,
-				Type:  NodeCaller,
+				Type:  callerType,
+				Style: style,
 			}
 
 			if _, exists := nodeMap[dependency]; !exists {
@@ -159,25 +185,20 @@ func buildDependencyGraph(nodeMap map[string]Node, depHasCaller map[string]bool,
 			}
 		}
 	}
-	return edges, registeredOrder
 }
 
 // buildConfigGraph constructs the configuration graph from introspection data.
-func buildConfigGraph(nodeMap map[string]Node, configs []introspection.ConfigAccess) ([]Edge, []string) {
-	edges := []Edge{}
-	configOrder := []string{}
+func buildConfigGraph(nodeMap map[string]Node, initializerTypes map[string]struct{}, configs []introspection.ConfigAccess, edges *[]Edge) {
 	for _, k := range configs {
 		configKey := k.Key
-		if _, exists := nodeMap[configKey]; !exists {
-			configOrder = append(configOrder, configKey)
-		}
 		var sublines []string
 		if k.Provider != "" {
-			sublines = append(sublines, Subline(styleConfigProvider, "%s %s", emojiConfig, k.Provider))
+			sublines = append(sublines, Subline(styleConfigProvider, "%s %s", emojiConfigProvider, k.Provider))
 		}
 		if k.UsedDefault {
 			sublines = append(sublines, Subline(styleConfigDefault, "default"))
 		}
+		sublines = append(sublines, Subline(styleTypeName, "%s <b>Config</b>", emojiConfig))
 		label := LabelBuilder{
 			Label:    k.Key,
 			FontSize: 16,
@@ -190,14 +211,16 @@ func buildConfigGraph(nodeMap map[string]Node, configs []introspection.ConfigAcc
 			Type:  NodeConfig,
 		}
 
-		caller := k.Caller.Func
+		caller, callerType := canonicalCaller(k.Caller.Func, initializerTypes)
 		if caller == "" && k.Component != "" {
 			caller = k.Component
+			callerType = NodeCaller
 		}
 		if caller == "" {
 			caller = "unknown caller"
+			callerType = NodeCaller
 		}
-		edges = append(edges, Edge{From: configKey, To: caller})
+		*edges = append(*edges, Edge{From: configKey, To: caller, Arrow: "-.->"})
 		labelCaller := LabelBuilder{
 			Label:    caller,
 			FontSize: 15,
@@ -206,13 +229,17 @@ func buildConfigGraph(nodeMap map[string]Node, configs []introspection.ConfigAcc
 				Subline(styleCodeLoc, "%s(%s:%d)", emojiCodeLocation, k.Caller.File, k.Caller.Line),
 			},
 		}.ToHTML()
+		style := styleCaller
+		if callerType == NodeInitializer {
+			style = styleInitializer
+		}
 		nodeMap[caller] = Node{
 			ID:    caller,
 			Label: labelCaller,
-			Type:  NodeCaller,
+			Type:  callerType,
+			Style: style,
 		}
 	}
-	return edges, configOrder
 }
 
 // buildRunnerGraph builds runnable nodes and returns their IDs in order.
@@ -224,7 +251,7 @@ func buildRunnerGraph(runnerInfos []introspection.RunnerInfo, nodeMap map[string
 			FontSize: 16,
 			Bold:     true,
 			SubLines: []string{
-				Subline(styleConfigDefault, "%s Runnable", emojiService),
+				Subline(styleTypeName, "%s <b>Runnable</b>", emojiRunnable),
 			},
 		}.ToHTML()
 		nodeMap[runnableID] = Node{
@@ -233,8 +260,47 @@ func buildRunnerGraph(runnerInfos []introspection.RunnerInfo, nodeMap map[string
 			Type:  NodeRunnable,
 			Style: styleCaller,
 		}
-		*edges = append(*edges, Edge{From: runnableID, To: appNodeId})
+		*edges = append(*edges, Edge{From: runnableID, To: appNodeId, Arrow: "---"})
 	}
+}
+
+func buildInitializerGraph(initializers []introspection.InitializerInfo, nodeMap map[string]Node, edges *[]Edge, appNodeId string) {
+	for _, init := range initializers {
+		initID := init.Type
+		label := LabelBuilder{
+			Label:    initID,
+			FontSize: 16,
+			Bold:     true,
+			SubLines: []string{
+				Subline(styleTypeName, "%s <b>Initializer</b>", emojiInitializer),
+			},
+		}.ToHTML()
+		nodeMap[initID] = Node{
+			ID:    initID,
+			Label: label,
+			Type:  NodeInitializer,
+			Style: styleInitializer,
+		}
+		*edges = append(*edges, Edge{From: initID, To: appNodeId, Arrow: "---"})
+	}
+}
+
+// canonicalCaller resolves a caller function string to either a caller ID or an initializer ID.
+func canonicalCaller(caller string, initializerTypes map[string]struct{}) (string, NodeType) {
+	for initType := range initializerTypes {
+		base := strings.TrimPrefix(initType, "*")
+		short := base
+		if idx := strings.LastIndex(base, "."); idx != -1 {
+			short = base[idx+1:]
+		}
+		if strings.Contains(caller, initType) || strings.Contains(caller, base) || strings.Contains(caller, short) {
+			return initType, NodeInitializer
+		}
+	}
+	if caller == "" {
+		return "", NodeCaller
+	}
+	return caller, NodeCaller
 }
 
 // applyNodeStyles applies styles to nodes based on their type and whether they have callers.
@@ -263,7 +329,7 @@ func applyNodeStyles(nodeMap map[string]Node, depHasCaller map[string]bool) {
 }
 
 // buildOrderedNodeIDs returns a deduplicated, ordered list of node IDs for rendering.
-// The order is: deps/configs -> callers -> runnables -> app.
+// The order is: deps/configs -> callers/initializers -> runnables -> app.
 func buildOrderedNodeIDs(nodeMap map[string]Node) []string {
 	var depConfigOrder, callerOrder, runnableOrderOrdered []string
 	var appNode string

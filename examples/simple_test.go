@@ -12,24 +12,12 @@ import (
 
 	"github.com/cleitonmarx/symbiont"
 	"github.com/cleitonmarx/symbiont/depend"
-	"github.com/cleitonmarx/symbiont/introspection"
-	"github.com/cleitonmarx/symbiont/introspection/mermaid"
-	"github.com/davecgh/go-spew/spew"
 )
-
-type introspector struct{}
-
-func (i introspector) Introspect(_ context.Context, r introspection.Report) error {
-	spew.Dump(r)
-	fmt.Println(mermaid.GenerateIntrospectionGraph(r))
-	return nil
-}
 
 func Example_httpFileServer() {
 	cancelCtx, cancel := context.WithCancel(context.Background())
 	addr, err := getAvailableAddress()
 	if err != nil {
-		fmt.Println("skipping example:", err)
 		cancel()
 		return
 	}
@@ -37,10 +25,10 @@ func Example_httpFileServer() {
 	app := symbiont.NewApp().
 		Initialize(&initLogger{}).
 		Host(&httpFileServer{Addr: addr})
-		//Instrospect(&introspector{})
+
 	shutdownCh := app.RunAsync(cancelCtx)
 
-	err = app.WaitForReadiness(cancelCtx, 10000*time.Second)
+	err = app.WaitForReadiness(cancelCtx, 4*time.Second)
 	if err != nil {
 		log.Fatalf("Application failed to start: %v", err)
 	}
@@ -62,12 +50,26 @@ func Example_httpFileServer() {
 		fmt.Printf("Application shutdown timed out")
 	}
 
+	// Output:
+	// 	httpFileServer: starting
+	// Received response with status code: 200
+	// Response body: <!DOCTYPE html>
+	// <html>
+	// <body>
+	//     <h1>Hello, World!</h1>
+	// </body>
+	// </html>
+	// httpFileServer: stopping
+	// Application shutdown complete
+
 }
 
-type initLogger struct{}
+type initLogger struct {
+	Prefix string `config:"prefix" default:"httpFileServer: "`
+}
 
 func (i *initLogger) Initialize(ctx context.Context) (context.Context, error) {
-	depend.Register(log.New(os.Stdout, "httpFileServer: ", log.Lmsgprefix))
+	depend.Register(log.New(os.Stdout, i.Prefix, log.Lmsgprefix))
 	return ctx, nil
 }
 

@@ -155,9 +155,10 @@ func (a *App) runWithContext(ctx context.Context) error {
 			return err
 		}
 		report := introspection.Report{
-			Configs: config.IntrospectConfigAccesses(),
-			Deps:    depend.GetEvents(),
-			Runners: a.runnerInfos(),
+			Configs:      config.IntrospectConfigAccesses(),
+			Deps:         depend.GetEvents(),
+			Runners:      a.runnerInfos(),
+			Initializers: a.initializerInfos(),
 		}
 		err := introspectSafe(ctx, a.introspector, report)
 		if err != nil {
@@ -201,6 +202,18 @@ func (a *App) runnerInfos() []introspection.RunnerInfo {
 		})
 	}
 	return rInfos
+}
+
+func (a *App) initializerInfos() []introspection.InitializerInfo {
+	inits := make([]introspection.InitializerInfo, 0, len(a.initializers))
+	for _, init := range a.initializers {
+		t := reflect.TypeOf(init)
+		inits = append(inits, introspection.InitializerInfo{
+			Type:      reflectx.GetTypeName(t),
+			Component: t,
+		})
+	}
+	return inits
 }
 
 // initializeSafe calls an initializer's Initialize method with panic recovery.

@@ -36,8 +36,9 @@ type Node struct {
 // Edge represents a directed edge in the Mermaid graph.
 // It connects two nodes by their IDs.
 type Edge struct {
-	From string
-	To   string
+	From  string
+	To    string
+	Arrow string // Optional arrow style (e.g., "---|>", "---o>")
 }
 
 // Graph represents a Mermaid graph with nodes and edges.
@@ -199,7 +200,11 @@ func (g *Graph) RenderTD() string {
 	for _, e := range edges {
 		from := sanitizeID(e.From)
 		to := sanitizeID(e.To)
-		b.WriteString(fmt.Sprintf("    %s --> %s\n", from, to))
+		if e.Arrow != "" {
+			b.WriteString(fmt.Sprintf("    %s %s %s\n", from, e.Arrow, to))
+		} else {
+			b.WriteString(fmt.Sprintf("    %s --> %s\n", from, to))
+		}
 	}
 
 	// Render styles

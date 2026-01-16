@@ -7,9 +7,10 @@ import (
 
 // Report aggregates introspection data for configs, dependencies, and runners.
 type Report struct {
-	Configs []ConfigAccess
-	Deps    []DepEvent
-	Runners []RunnerInfo
+	Configs      []ConfigAccess
+	Deps         []DepEvent
+	Runners      []RunnerInfo
+	Initializers []InitializerInfo
 }
 
 // ConfigAccess captures a single configuration key access.
@@ -47,6 +48,12 @@ type RunnerInfo struct {
 	Component reflect.Type // raw type if needed for reflection
 }
 
+// InitializerInfo describes an initializer registered with the app.
+type InitializerInfo struct {
+	Type      string       // type name
+	Component reflect.Type // raw type if needed for reflection
+}
+
 // Caller identifies the code location that produced an event.
 type Caller struct {
 	Func string
@@ -57,13 +64,19 @@ type Caller struct {
 // SerializableReport is a JSON-friendly representation of Report.
 // It omits reflection-heavy fields that do not marshal cleanly.
 type SerializableReport struct {
-	Configs []ConfigAccess           `json:"configs"`
-	Deps    []DepEvent               `json:"deps"`
-	Runners []SerializableRunnerInfo `json:"runners"`
+	Configs      []ConfigAccess                `json:"configs"`
+	Deps         []DepEvent                    `json:"deps"`
+	Runners      []SerializableRunnerInfo      `json:"runners"`
+	Initializers []SerializableInitializerInfo `json:"initializers"`
 }
 
 // SerializableRunnerInfo is a JSON-friendly representation of RunnerInfo.
 type SerializableRunnerInfo struct {
+	Type string `json:"type"`
+}
+
+// SerializableInitializerInfo is a JSON-friendly representation of InitializerInfo.
+type SerializableInitializerInfo struct {
 	Type string `json:"type"`
 }
 
@@ -73,10 +86,15 @@ func (r Report) ToSerializable() SerializableReport {
 	for _, rn := range r.Runners {
 		runners = append(runners, SerializableRunnerInfo{Type: rn.Type})
 	}
+	initializers := make([]SerializableInitializerInfo, 0, len(r.Initializers))
+	for _, init := range r.Initializers {
+		initializers = append(initializers, SerializableInitializerInfo{Type: init.Type})
+	}
 	return SerializableReport{
-		Configs: r.Configs,
-		Deps:    r.Deps,
-		Runners: runners,
+		Configs:      r.Configs,
+		Deps:         r.Deps,
+		Runners:      runners,
+		Initializers: initializers,
 	}
 }
 
