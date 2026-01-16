@@ -51,10 +51,11 @@ type Style struct {
 	Fill        string
 	Stroke      string
 	StrokeWidth string
-	Color       string
-	FontWeight  string
-	FontSize    string
-	IsHtml      bool
+	// Color applies to text color.
+	Color      string
+	FontWeight string
+	FontSize   string
+	IsHtml     bool
 }
 
 func (s Style) ToCSS() string {
@@ -77,17 +78,13 @@ func (s Style) ToCSS() string {
 	if s.FontSize != "" {
 		parts = append(parts, "font-size:"+s.FontSize)
 	}
-	var result = ""
 	if len(parts) == 0 {
-		return result
+		return ""
 	}
-
 	if s.IsHtml {
-		result = strings.Join(parts, ";") + ";"
-	} else {
-		result = strings.Join(parts, ",")
+		return strings.Join(parts, ";") + ";"
 	}
-	return result
+	return strings.Join(parts, ",")
 }
 
 // LabelBuilder helps build HTML labels for nodes in a declarative way.

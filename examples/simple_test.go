@@ -12,14 +12,16 @@ import (
 
 	"github.com/cleitonmarx/symbiont"
 	"github.com/cleitonmarx/symbiont/depend"
+	"github.com/cleitonmarx/symbiont/introspection"
+	"github.com/cleitonmarx/symbiont/introspection/mermaid"
 	"github.com/davecgh/go-spew/spew"
 )
 
 type introspector struct{}
 
-func (i introspector) Introspect(_ context.Context, ai symbiont.AppIntrospection) error {
-	spew.Dump(ai)
-	fmt.Println(ai.GenerateIntrospectionGraph())
+func (i introspector) Introspect(_ context.Context, r introspection.Report) error {
+	spew.Dump(r)
+	fmt.Println(mermaid.GenerateIntrospectionGraph(r))
 	return nil
 }
 

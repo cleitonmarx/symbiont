@@ -1,6 +1,9 @@
 package introspection
 
-import "reflect"
+import (
+	"encoding/json"
+	"reflect"
+)
 
 // Report aggregates introspection data for configs, dependencies, and runners.
 type Report struct {
@@ -49,4 +52,35 @@ type Caller struct {
 	Func string
 	File string
 	Line int
+}
+
+// SerializableReport is a JSON-friendly representation of Report.
+// It omits reflection-heavy fields that do not marshal cleanly.
+type SerializableReport struct {
+	Configs []ConfigAccess           `json:"configs"`
+	Deps    []DepEvent               `json:"deps"`
+	Runners []SerializableRunnerInfo `json:"runners"`
+}
+
+// SerializableRunnerInfo is a JSON-friendly representation of RunnerInfo.
+type SerializableRunnerInfo struct {
+	Type string `json:"type"`
+}
+
+// ToSerializable converts Report into a JSON-friendly representation.
+func (r Report) ToSerializable() SerializableReport {
+	runners := make([]SerializableRunnerInfo, 0, len(r.Runners))
+	for _, rn := range r.Runners {
+		runners = append(runners, SerializableRunnerInfo{Type: rn.Type})
+	}
+	return SerializableReport{
+		Configs: r.Configs,
+		Deps:    r.Deps,
+		Runners: runners,
+	}
+}
+
+// ToJSON marshals the report into JSON using a serializable view.
+func (r Report) ToJSON() ([]byte, error) {
+	return json.Marshal(r.ToSerializable())
 }

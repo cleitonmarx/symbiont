@@ -12,6 +12,7 @@ import (
 	"github.com/cleitonmarx/symbiont/config"
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/internal/reflectx"
+	"github.com/cleitonmarx/symbiont/introspection"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -153,14 +154,12 @@ func (a *App) runWithContext(ctx context.Context) error {
 		if err := wireStructFields(ctx, a.introspector); err != nil {
 			return err
 		}
-		ai := AppIntrospection{
-			Keys:   config.IntrospectConfigAccesses(),
-			Events: depend.GetEvents(),
+		report := introspection.Report{
+			Configs: config.IntrospectConfigAccesses(),
+			Deps:    depend.GetEvents(),
+			Runners: a.runnerInfos(),
 		}
-		for _, rs := range a.runnableSpecsList {
-			ai.Runners = append(ai.Runners, reflect.TypeOf(rs.original))
-		}
-		err := introspectSafe(ctx, a.introspector, ai)
+		err := introspectSafe(ctx, a.introspector, report)
 		if err != nil {
 			return err
 		}
@@ -190,6 +189,18 @@ func combineClosers(closers []closerFunc) closerFunc {
 			closers[i]()
 		}
 	}
+}
+
+func (a *App) runnerInfos() []introspection.RunnerInfo {
+	rInfos := make([]introspection.RunnerInfo, 0, len(a.runnableSpecsList))
+	for _, rs := range a.runnableSpecsList {
+		t := reflect.TypeOf(rs.original)
+		rInfos = append(rInfos, introspection.RunnerInfo{
+			Type:      reflectx.GetTypeName(t),
+			Component: t,
+		})
+	}
+	return rInfos
 }
 
 // initializeSafe calls an initializer's Initialize method with panic recovery.

@@ -503,12 +503,12 @@ Implement the `Introspector` interface and register it with `App.Instrospect`:
 ```go
 type myIntrospector struct{}
 
-func (myIntrospector) Introspect(_ context.Context, ai symbiont.AppIntrospection) error {
-    for _, key := range ai.Keys {
+func (myIntrospector) Introspect(_ context.Context, r introspection.Report) error {
+    for _, key := range r.Configs {
         fmt.Printf("key: %s provider: %s default: %v caller: %s\n",
             key.Key, key.Provider, key.UsedDefault, key.Caller.Func)
     }
-    for _, event := range ai.Events {
+    for _, event := range r.Deps {
         fmt.Printf("dep: %s action: %s caller: %s\n",
             event.Type, event.Kind, event.Caller.Func)
     }
