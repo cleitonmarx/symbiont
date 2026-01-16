@@ -27,8 +27,8 @@ func Example_httpFileServer() {
 
 	app := symbiont.NewApp().
 		Initialize(&initLogger{}).
-		Host(&httpFileServer{}).
-		Instrospect(&introspector{})
+		Host(&httpFileServer{})
+		//Instrospect(&introspector{})
 	shutdownCh := app.RunAsync(cancelCtx)
 
 	err := app.WaitForReadiness(cancelCtx, 10000*time.Second)

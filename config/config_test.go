@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cleitonmarx/symbiont/introspection"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -386,7 +387,7 @@ func loadStructAndAssert[T any](t *testing.T, ctx context.Context, target *T, ex
 	assert.Equal(t, expected, target)
 }
 
-func TestIntrospectUsedKeys(t *testing.T) {
+func TestIntrospectConfigAccesses(t *testing.T) {
 	RegisterParser(func(name string) ([]string, error) {
 		return strings.Split(name, ","), nil
 	})
@@ -431,8 +432,8 @@ func TestIntrospectUsedKeys(t *testing.T) {
 
 			_ = tt.getFunc(ctx, tt.key)
 
-			keys := IntrospectUsedKeys()
-			var found *KeyAccessInfo
+			keys := IntrospectConfigAccesses()
+			var found *introspection.ConfigAccess
 			for i := range keys {
 				if keys[i].Key == tt.key {
 					found = &keys[i]
@@ -441,7 +442,7 @@ func TestIntrospectUsedKeys(t *testing.T) {
 			}
 			assert.NotNil(t, found, "Expected key %s to be introspected", tt.key)
 			if found != nil {
-				assert.Equal(t, tt.expectDefault, found.Default)
+				assert.Equal(t, tt.expectDefault, found.UsedDefault)
 			}
 			mock.AssertExpectationsForObjects(t, mockProvider)
 		})

@@ -496,20 +496,27 @@ Symbiont exposes an `Instrospect` hook to capture which config keys and dependen
 
 ### Usage
 
-Register a callback with `App.Instrospect`:
+Implement the `Introspector` interface and register it with `App.Instrospect`:
 
 #### Example: Capture config keys and dependency events
 
 ```go
+type myIntrospector struct{}
+
+func (myIntrospector) Introspect(_ context.Context, ai symbiont.AppIntrospection) error {
+    for _, key := range ai.Keys {
+        fmt.Printf("key: %s provider: %s default: %v caller: %s\n",
+            key.Key, key.Provider, key.UsedDefault, key.Caller.Func)
+    }
+    for _, event := range ai.Events {
+        fmt.Printf("dep: %s action: %s caller: %s\n",
+            event.DepTypeName, event.Action, event.Caller)
+    }
+    return nil
+}
+
 app := symbiont.NewApp().
-    Instrospect(func(keys []config.KeyAccessInfo, events []depend.Event) {
-        for _, key := range keys {
-            fmt.Printf("key: %s provider: %s\n", key.Key, key.Provider)
-        }
-        for _, event := range events {
-            fmt.Printf("dep: %s action: %s\n", event.Name, event.Action)
-        }
-    })
+    Instrospect(&myIntrospector{})
 ```
 
 ### When to Use

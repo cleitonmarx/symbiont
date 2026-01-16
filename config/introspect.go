@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/cleitonmarx/symbiont/internal/reflectx"
+	"github.com/cleitonmarx/symbiont/introspection"
 )
 
 // ProviderWithSource is an optional interface that providers can implement to report their source.
@@ -17,32 +18,21 @@ type ProviderWithSource interface {
 	GetWithSource(ctx context.Context, key string) (string, string, error)
 }
 
-// KeyAccessInfo records metadata about a configuration key access for debugging.
-// It includes the key, provider, whether a default was used, and the call site.
-type KeyAccessInfo struct {
-	Default       bool
-	Key           string
-	Provider      string
-	Caller        string
-	ComponentType reflect.Type
-	File          string
-	Line          int
-}
-
 // providerInspector wraps a Provider and tracks all accessed keys and their sources for introspection.
 type providerInspector struct {
 	provider     Provider
 	providerName string
 	cache        map[string]string
 	mu           sync.Mutex
-	usedKeys     map[string][]KeyAccessInfo
+	usedKeys     map[string][]introspection.ConfigAccess
+	order        int
 }
 
 // newProviderInspector creates a new inspector wrapper for introspection and caching.
 func newProviderInspector(p Provider) *providerInspector {
 	return &providerInspector{
 		provider:     p,
-		usedKeys:     make(map[string][]KeyAccessInfo),
+		usedKeys:     make(map[string][]introspection.ConfigAccess),
 		cache:        make(map[string]string),
 		providerName: reflectx.TypeNameOf(p),
 	}
@@ -55,21 +45,31 @@ func (i *providerInspector) recordKeyAccess(key, provider string, isDefaultConfi
 	if strings.Contains(caller, "symbiont.(*App).") {
 		caller = ""
 	}
-	i.mu.Lock()
-	defer i.mu.Unlock()
+
+	componentName := ""
+	if componentType != nil {
+		componentName = reflectx.GetTypeName(componentType)
+	}
 
 	if isDefaultConfigured {
 		provider = ""
 	}
 
-	info := KeyAccessInfo{
-		Key:           key,
-		Provider:      provider,
-		Default:       isDefaultConfigured,
-		Caller:        caller,
-		ComponentType: componentType,
-		File:          reflectx.FormatFileName(file),
-		Line:          line,
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	i.order++
+
+	info := introspection.ConfigAccess{
+		Key:         key,
+		Provider:    provider,
+		UsedDefault: isDefaultConfigured,
+		Caller: introspection.Caller{
+			Func: caller,
+			File: reflectx.FormatFileName(file),
+			Line: line,
+		},
+		Component: componentName,
+		Order:     i.order,
 	}
 	i.usedKeys[key] = append(i.usedKeys[key], info)
 }
@@ -119,32 +119,38 @@ func (i *providerInspector) getFromCache(key string) (string, string, bool) {
 		return "", "", false
 	}
 
-	return val, i.usedKeys[key][0].Provider, true
+	providerName := ""
+	if keys, ok := i.usedKeys[key]; ok && len(keys) > 0 {
+		providerName = keys[0].Provider
+	}
+
+	return val, providerName, true
 }
 
 // getKeysAccessInfo returns all accessed keys sorted by key name, file, and line number.
-func (i *providerInspector) getKeysAccessInfo() []KeyAccessInfo {
+func (i *providerInspector) getKeysAccessInfo() []introspection.ConfigAccess {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	out := make([]KeyAccessInfo, 0)
+	out := make([]introspection.ConfigAccess, 0)
 	for _, arr := range i.usedKeys {
 		out = append(out, arr...)
 	}
-	sort.Sort(byKey(out))
+	sortConfigAccesses(out)
 	return out
 }
 
-// byKey implements sorting for KeyAccessInfo by key name, then file, then line number.
-type byKey []KeyAccessInfo
-
-func (k byKey) Len() int { return len(k) }
-func (k byKey) Less(i, j int) bool {
-	if k[i].Key == k[j].Key {
-		if k[i].File == k[j].File {
-			return k[i].Line < k[j].Line
+// sortConfigAccesses orders config accesses by key, then file, then line, then order.
+func sortConfigAccesses(accesses []introspection.ConfigAccess) {
+	sort.Slice(accesses, func(a, b int) bool {
+		if accesses[a].Key == accesses[b].Key {
+			if accesses[a].Caller.File == accesses[b].Caller.File {
+				if accesses[a].Caller.Line == accesses[b].Caller.Line {
+					return accesses[a].Order < accesses[b].Order
+				}
+				return accesses[a].Caller.Line < accesses[b].Caller.Line
+			}
+			return accesses[a].Caller.File < accesses[b].Caller.File
 		}
-		return k[i].File < k[j].File
-	}
-	return k[i].Key < k[j].Key
+		return accesses[a].Key < accesses[b].Key
+	})
 }
-func (k byKey) Swap(i, j int) { k[i], k[j] = k[j], k[i] }

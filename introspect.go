@@ -9,12 +9,13 @@ import (
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/internal/mermaid"
 	"github.com/cleitonmarx/symbiont/internal/reflectx"
+	"github.com/cleitonmarx/symbiont/introspection"
 )
 
 // AppIntrospection contains data about configuration keys accessed and dependency events
 // during the application's lifecycle.
 type AppIntrospection struct {
-	Keys    []config.KeyAccessInfo
+	Keys    []introspection.ConfigAccess
 	Events  []depend.Event
 	Runners []reflect.Type
 }
@@ -215,7 +216,7 @@ func buildDependencyGraph(nodeMap map[string]mermaid.Node, depHasCaller map[stri
 func buildConfigGraph(nodeMap map[string]mermaid.Node) ([]mermaid.Edge, []string) {
 	edges := []mermaid.Edge{}
 	configOrder := []string{}
-	configKeys := config.IntrospectUsedKeys()
+	configKeys := config.IntrospectConfigAccesses()
 	for _, k := range configKeys {
 		configKey := k.Key
 		if _, exists := nodeMap[configKey]; !exists {
@@ -225,7 +226,7 @@ func buildConfigGraph(nodeMap map[string]mermaid.Node) ([]mermaid.Edge, []string
 		if k.Provider != "" {
 			sublines = append(sublines, mermaid.Subline(styleConfigProvider, "%s %s", emojiConfig, k.Provider))
 		}
-		if k.Default {
+		if k.UsedDefault {
 			sublines = append(sublines, mermaid.Subline(styleConfigDefault, "default"))
 		}
 		label := mermaid.LabelBuilder{
@@ -240,14 +241,20 @@ func buildConfigGraph(nodeMap map[string]mermaid.Node) ([]mermaid.Edge, []string
 			Type:  mermaid.NodeConfig,
 		}
 
-		caller := k.Caller
+		caller := k.Caller.Func
+		if caller == "" && k.Component != "" {
+			caller = k.Component
+		}
+		if caller == "" {
+			caller = "unknown caller"
+		}
 		edges = append(edges, mermaid.Edge{From: configKey, To: caller})
 		labelCaller := mermaid.LabelBuilder{
-			Label:    k.Caller,
+			Label:    caller,
 			FontSize: 15,
 			Bold:     true,
 			SubLines: []string{
-				mermaid.Subline(styleCodeLoc, "%s(%s:%d)", emojiCodeLocation, k.File, k.Line),
+				mermaid.Subline(styleCodeLoc, "%s(%s:%d)", emojiCodeLocation, k.Caller.File, k.Caller.Line),
 			},
 		}.ToHTML()
 		nodeMap[caller] = mermaid.Node{

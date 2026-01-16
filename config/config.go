@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cleitonmarx/symbiont/internal/reflectx"
+	"github.com/cleitonmarx/symbiont/introspection"
 )
 
 const (
@@ -144,9 +145,9 @@ func loadStructFieldValue(ctx context.Context) reflectx.StructFieldIteratorFunc 
 	}
 }
 
-// IntrospectUsedKeys returns information about all configuration keys that have been accessed.
+// IntrospectConfigAccesses returns detailed information about all configuration keys that have been accessed.
 // Useful for debugging and verifying which configurations are actually being used.
-func IntrospectUsedKeys() []KeyAccessInfo {
+func IntrospectConfigAccesses() []introspection.ConfigAccess {
 	return globalProvider.getKeysAccessInfo()
 }
 

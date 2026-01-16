@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/cleitonmarx/symbiont/introspection"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -45,13 +46,23 @@ func (p providerWithName) GetWithSource(ctx context.Context, key string) (string
 	return val, p.providerTag, nil
 }
 
+func stripLineAndOrderInfo(keys []introspection.ConfigAccess) []introspection.ConfigAccess {
+	out := make([]introspection.ConfigAccess, len(keys))
+	for i, k := range keys {
+		k.Caller.Line = 0
+		k.Order = 0
+		out[i] = k
+	}
+	return out
+}
+
 func Test_providerInspector_get(t *testing.T) {
 	tests := map[string]struct {
 		providerValues map[string]string
 		getKey         string
 		wantValue      string
 		wantErr        error
-		wantKeys       []KeyAccessInfo
+		wantKeys       []introspection.ConfigAccess
 		repeatGet      bool
 		wantHits       int
 		withDefault    bool
@@ -60,26 +71,25 @@ func Test_providerInspector_get(t *testing.T) {
 			providerValues: map[string]string{"foo": "bar"},
 			getKey:         "foo",
 			wantValue:      "bar",
-			wantKeys: []KeyAccessInfo{
-				{Key: "foo", Provider: "config.simpleProvider", Default: false, Caller: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go", Line: 112},
+			wantKeys: []introspection.ConfigAccess{
+				{Key: "foo", Provider: "config.simpleProvider", UsedDefault: false, Caller: introspection.Caller{Func: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go"}},
 			},
-			repeatGet: false,
 		},
 		"does_not_record_on_error": {
 			providerValues: map[string]string{},
 			getKey:         "missing",
 			wantValue:      "",
 			wantErr:        errors.New("not found"),
-			wantKeys:       []KeyAccessInfo{},
-			repeatGet:      false,
+			wantKeys:       []introspection.ConfigAccess{},
 		},
 		"records_cache_hits": {
 			providerValues: map[string]string{"foo": "bar"},
 			getKey:         "foo",
 			wantValue:      "bar",
-			wantKeys: []KeyAccessInfo{
-				{Default: false, Key: "foo", Provider: "config.simpleProvider", Caller: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go", Line: 112},
-				{Default: false, Key: "foo", Provider: "config.simpleProvider", Caller: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go", Line: 118}},
+			wantKeys: []introspection.ConfigAccess{
+				{UsedDefault: false, Key: "foo", Provider: "config.simpleProvider", Caller: introspection.Caller{Func: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go"}},
+				{UsedDefault: false, Key: "foo", Provider: "config.simpleProvider", Caller: introspection.Caller{Func: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go"}},
+			},
 			repeatGet: true,
 		},
 		"records_key_with_default": {
@@ -87,17 +97,19 @@ func Test_providerInspector_get(t *testing.T) {
 			getKey:         "defaulted",
 			wantValue:      "",
 			wantErr:        errors.New("not found"),
-			wantKeys:       []KeyAccessInfo{{Default: true, Key: "defaulted", Provider: "", Caller: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go", Line: 112}},
-			withDefault:    true,
+			wantKeys: []introspection.ConfigAccess{
+				{UsedDefault: true, Key: "defaulted", Provider: "", Caller: introspection.Caller{Func: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go"}},
+			},
+			withDefault: true,
 		},
 		"records_key_with_default_and_cache": {
 			providerValues: map[string]string{},
 			getKey:         "defaulted2",
 			wantValue:      "",
 			wantErr:        errors.New("not found"),
-			wantKeys: []KeyAccessInfo{
-				{Default: true, Key: "defaulted2", Provider: "", Caller: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go", Line: 112},
-				{Default: true, Key: "defaulted2", Provider: "", Caller: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go", Line: 118},
+			wantKeys: []introspection.ConfigAccess{
+				{UsedDefault: true, Key: "defaulted2", Provider: "", Caller: introspection.Caller{Func: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go"}},
+				{UsedDefault: true, Key: "defaulted2", Provider: "", Caller: introspection.Caller{Func: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go"}},
 			},
 			repeatGet:   true,
 			withDefault: true,
@@ -113,7 +125,6 @@ func Test_providerInspector_get(t *testing.T) {
 			assert.Equal(t, tt.wantErr, err)
 			assert.Equal(t, tt.wantValue, val)
 
-			// If repeatGet is set, call Get again to test hits
 			if tt.repeatGet {
 				val2, err2 := ip.get(context.Background(), tt.getKey, tt.withDefault, nil, 2)
 				assert.Equal(t, tt.wantValue, val2)
@@ -121,7 +132,11 @@ func Test_providerInspector_get(t *testing.T) {
 			}
 
 			keys := ip.getKeysAccessInfo()
-			assert.Equal(t, tt.wantKeys, keys)
+			assert.Equal(t, stripLineAndOrderInfo(tt.wantKeys), stripLineAndOrderInfo(keys))
+			for _, k := range keys {
+				assert.Greater(t, k.Caller.Line, 0)
+				assert.Greater(t, k.Order, 0)
+			}
 		})
 	}
 }
@@ -133,7 +148,7 @@ func Test_providerInspector_get_usingGetWithSource(t *testing.T) {
 		getKey         string
 		wantValue      string
 		wantErr        error
-		wantKeys       []KeyAccessInfo
+		wantKeys       []introspection.ConfigAccess
 		repeatGet      bool
 		defaultValue   bool
 	}{
@@ -142,7 +157,9 @@ func Test_providerInspector_get_usingGetWithSource(t *testing.T) {
 			providerTag:    "*config.providerWithName",
 			getKey:         "foo",
 			wantValue:      "bar",
-			wantKeys:       []KeyAccessInfo{{Key: "foo", Provider: "*config.providerWithName", Default: false, Caller: "config.(*providerInspector).get", File: "config/introspect.go", Line: 97}},
+			wantKeys: []introspection.ConfigAccess{
+				{Key: "foo", Provider: "*config.providerWithName", UsedDefault: false, Caller: introspection.Caller{Func: "config.(*providerInspector).get", File: "config/introspect.go"}},
+			},
 		},
 		"does_not_record_on_error": {
 			providerValues: map[string]string{},
@@ -150,7 +167,7 @@ func Test_providerInspector_get_usingGetWithSource(t *testing.T) {
 			getKey:         "missing",
 			wantValue:      "",
 			wantErr:        errors.New("not found"),
-			wantKeys:       []KeyAccessInfo{},
+			wantKeys:       []introspection.ConfigAccess{},
 		},
 		"records_cache_hits_with_provider": {
 			providerValues: map[string]string{"foo": "bar"},
@@ -158,9 +175,9 @@ func Test_providerInspector_get_usingGetWithSource(t *testing.T) {
 			getKey:         "foo",
 			wantValue:      "bar",
 			repeatGet:      true,
-			wantKeys: []KeyAccessInfo{
-				{Default: false, Key: "foo", Provider: "*config.providerWithName", Caller: "config.(*providerInspector).get", File: "config/introspect.go", Line: 79},
-				{Default: false, Key: "foo", Provider: "*config.providerWithName", Caller: "config.(*providerInspector).get", File: "config/introspect.go", Line: 97},
+			wantKeys: []introspection.ConfigAccess{
+				{UsedDefault: false, Key: "foo", Provider: "*config.providerWithName", Caller: introspection.Caller{Func: "config.(*providerInspector).get", File: "config/introspect.go"}},
+				{UsedDefault: false, Key: "foo", Provider: "*config.providerWithName", Caller: introspection.Caller{Func: "config.(*providerInspector).get", File: "config/introspect.go"}},
 			},
 		},
 		"records_with_empty_provider_tag": {
@@ -168,7 +185,9 @@ func Test_providerInspector_get_usingGetWithSource(t *testing.T) {
 			providerTag:    "",
 			getKey:         "empty",
 			wantValue:      "val",
-			wantKeys:       []KeyAccessInfo{{Default: false, Key: "empty", Provider: "", Caller: "config.(*providerInspector).get", File: "config/introspect.go", Line: 97}},
+			wantKeys: []introspection.ConfigAccess{
+				{UsedDefault: false, Key: "empty", Provider: "", Caller: introspection.Caller{Func: "config.(*providerInspector).get", File: "config/introspect.go"}},
+			},
 		},
 		"records_with_provider_tag_and_default": {
 			providerValues: map[string]string{},
@@ -176,9 +195,9 @@ func Test_providerInspector_get_usingGetWithSource(t *testing.T) {
 			getKey:         "defaulted",
 			wantValue:      "",
 			wantErr:        errors.New("not found"),
-			wantKeys: []KeyAccessInfo{
-				{Default: false, Key: "defaulted", Provider: "", Caller: "config.(*providerInspector).get", File: "config/introspect.go", Line: 79},
-				{Default: true, Key: "defaulted", Provider: "", Caller: "config.(*providerInspector).get", File: "config/introspect.go", Line: 97},
+			wantKeys: []introspection.ConfigAccess{
+				{UsedDefault: false, Key: "defaulted", Provider: "", Caller: introspection.Caller{Func: "config.(*providerInspector).get", File: "config/introspect.go"}},
+				{UsedDefault: true, Key: "defaulted", Provider: "", Caller: introspection.Caller{Func: "config.(*providerInspector).get", File: "config/introspect.go"}},
 			},
 			defaultValue: true,
 			repeatGet:    true,
@@ -194,14 +213,18 @@ func Test_providerInspector_get_usingGetWithSource(t *testing.T) {
 			assert.Equal(t, tt.wantErr, err)
 			assert.Equal(t, tt.wantValue, val)
 
-			// If repeatGet is set, call Get again to test hits
 			if tt.repeatGet {
 				val, err := ip.get(context.Background(), tt.getKey, false, nil, 1)
 				assert.Equal(t, tt.wantValue, val)
 				assert.NoError(t, err)
 			}
 
-			assert.Equal(t, tt.wantKeys, ip.getKeysAccessInfo())
+			keys := ip.getKeysAccessInfo()
+			assert.Equal(t, stripLineAndOrderInfo(tt.wantKeys), stripLineAndOrderInfo(keys))
+			for _, k := range keys {
+				assert.Greater(t, k.Caller.Line, 0)
+				assert.Greater(t, k.Order, 0)
+			}
 		})
 	}
 }

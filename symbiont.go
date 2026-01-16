@@ -154,7 +154,7 @@ func (a *App) runWithContext(ctx context.Context) error {
 			return err
 		}
 		ai := AppIntrospection{
-			Keys:   config.IntrospectUsedKeys(),
+			Keys:   config.IntrospectConfigAccesses(),
 			Events: depend.GetEvents(),
 		}
 		for _, rs := range a.runnableSpecsList {
