@@ -1,4 +1,4 @@
-![Alt text](assets/logo.png)
+<img src="assets/logo.png" style="width: 50%;">
 
 # Symbiont
 
