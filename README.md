@@ -1,5 +1,6 @@
-<img src="assets/logo.png" style="width: 50%;">
-
+<div align="center">
+	<img src="assets/logo.png" style="width: 50%;">
+</div>
 # Symbiont
 
 Symbiont is a lightweight **application host** for Go.
