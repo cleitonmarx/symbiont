@@ -132,8 +132,6 @@ func Subline(style Style, format string, args ...any) string {
 	return fmt.Sprintf("<span>%s</span>", content)
 }
 
-var subgraphStyle = Style{Fill: "white", StrokeWidth: "0px"}
-
 // RenderTD renders the graph in Mermaid TD (top-down) format.
 func (g *Graph) RenderTD() string {
 	var b strings.Builder
@@ -156,36 +154,28 @@ func (g *Graph) RenderTD() string {
 
 	// Render subgraphs for each layer (without names and without subgraph style)
 	if len(depsConfigs) > 0 {
-		b.WriteString(`    subgraph DEPSUB[" "]` + "\n")
 		for _, n := range depsConfigs {
 			id := sanitizeID(n.ID)
-			b.WriteString(fmt.Sprintf("        %s[\"%s\"]\n", id, n.Label))
+			fmt.Fprintf(&b, "	%s[\"%s\"]\n", id, n.Label)
 		}
-		b.WriteString("    end\n")
 	}
 	if len(callers) > 0 {
-		b.WriteString(`    subgraph CALLERSUB[" "]` + "\n")
 		for _, n := range callers {
 			id := sanitizeID(n.ID)
-			b.WriteString(fmt.Sprintf("        %s[\"%s\"]\n", id, n.Label))
+			fmt.Fprintf(&b, "	%s[\"%s\"]\n", id, n.Label)
 		}
-		b.WriteString("    end\n")
 	}
 	if len(runnables) > 0 {
-		b.WriteString(`    subgraph RUNABLESUB[" "]` + "\n")
 		for _, n := range runnables {
 			id := sanitizeID(n.ID)
-			b.WriteString(fmt.Sprintf("        %s[\"%s\"]\n", id, n.Label))
+			fmt.Fprintf(&b, "	%s[\"%s\"]\n", id, n.Label)
 		}
-		b.WriteString("    end\n")
 	}
 	if len(apps) > 0 {
-		b.WriteString(`    subgraph APPSUB[" "]` + "\n")
 		for _, n := range apps {
 			id := sanitizeID(n.ID)
-			b.WriteString(fmt.Sprintf("        %s[\"%s\"]\n", id, n.Label))
+			fmt.Fprintf(&b, "	%s[\"%s\"]\n", id, n.Label)
 		}
-		b.WriteString("    end\n")
 	}
 
 	// Render edges (sorted for determinism)
@@ -201,9 +191,9 @@ func (g *Graph) RenderTD() string {
 		from := sanitizeID(e.From)
 		to := sanitizeID(e.To)
 		if e.Arrow != "" {
-			b.WriteString(fmt.Sprintf("    %s %s %s\n", from, e.Arrow, to))
+			fmt.Fprintf(&b, "    %s %s %s\n", from, e.Arrow, to)
 		} else {
-			b.WriteString(fmt.Sprintf("    %s --> %s\n", from, to))
+			fmt.Fprintf(&b, "    %s --> %s\n", from, to)
 		}
 	}
 
@@ -211,25 +201,11 @@ func (g *Graph) RenderTD() string {
 	for _, n := range g.Nodes {
 		id := sanitizeID(n.ID)
 		if n.Style.ToCSS() != "" {
-			b.WriteString(fmt.Sprintf("    style %s %s\n", id, n.Style.ToCSS()))
+			fmt.Fprintf(&b, "    style %s %s\n", id, n.Style.ToCSS())
 		}
 		if n.Class != "" {
-			b.WriteString(fmt.Sprintf("    class %s %s;\n", id, n.Class))
+			fmt.Fprintf(&b, "    class %s %s;\n", id, n.Class)
 		}
-	}
-
-	// Render subgraph styles using the shared variable
-	if len(depsConfigs) > 0 {
-		b.WriteString(fmt.Sprintf("    style DEPSUB %s\n", subgraphStyle.ToCSS()))
-	}
-	if len(callers) > 0 {
-		b.WriteString(fmt.Sprintf("    style CALLERSUB %s\n", subgraphStyle.ToCSS()))
-	}
-	if len(runnables) > 0 {
-		b.WriteString(fmt.Sprintf("    style RUNABLESUB %s\n", subgraphStyle.ToCSS()))
-	}
-	if len(apps) > 0 {
-		b.WriteString(fmt.Sprintf("    style APPSUB %s\n", subgraphStyle.ToCSS()))
 	}
 
 	return b.String()

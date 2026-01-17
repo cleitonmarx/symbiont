@@ -65,14 +65,15 @@ func GenerateIntrospectionGraph(r introspection.Report) string {
 		Style: styleApp,
 	}
 
-	// --- Dependencies ---
-	buildDependencyGraph(nodeMap, depHasCaller, initializerTypes, r.Deps, &edges)
 	// --- Configs ---
 	buildConfigGraph(nodeMap, initializerTypes, r.Configs, &edges)
+	// --- Initializers ---
+	buildInitializerGraph(r.Initializers, nodeMap)
+	// --- Dependencies ---
+	buildDependencyGraph(nodeMap, depHasCaller, initializerTypes, r.Deps, &edges)
 	// --- Runnable ---
 	buildRunnerGraph(r.Runners, nodeMap, &edges, appNodeID)
-	// --- Initializers ---
-	buildInitializerGraph(r.Initializers, nodeMap, &edges, appNodeID)
+
 	// Remove duplicates and preserve order
 	order := buildOrderedNodeIDs(nodeMap)
 	// --- Set styles using declarative Style struct ---
@@ -125,11 +126,13 @@ func buildDependencyGraph(nodeMap map[string]Node, depHasCaller map[string]bool,
 				if callerType == NodeInitializer {
 					style = styleInitializer
 				}
-				nodeMap[callerID] = Node{
-					ID:    callerID,
-					Label: LabelBuilder{Label: callerID, FontSize: 15, Bold: true}.ToHTML(),
-					Type:  callerType,
-					Style: style,
+				if _, ok := nodeMap[callerID]; !ok {
+					nodeMap[callerID] = Node{
+						ID:    callerID,
+						Label: LabelBuilder{Label: callerID, FontSize: 15, Bold: true}.ToHTML(),
+						Type:  callerType,
+						Style: style,
+					}
 				}
 				*edges = append(*edges, Edge{From: callerID, To: dependency, Arrow: "--o"})
 			}
@@ -264,7 +267,7 @@ func buildRunnerGraph(runnerInfos []introspection.RunnerInfo, nodeMap map[string
 	}
 }
 
-func buildInitializerGraph(initializers []introspection.InitializerInfo, nodeMap map[string]Node, edges *[]Edge, appNodeId string) {
+func buildInitializerGraph(initializers []introspection.InitializerInfo, nodeMap map[string]Node) {
 	for _, init := range initializers {
 		initID := init.Type
 		label := LabelBuilder{
@@ -281,7 +284,6 @@ func buildInitializerGraph(initializers []introspection.InitializerInfo, nodeMap
 			Type:  NodeInitializer,
 			Style: styleInitializer,
 		}
-		*edges = append(*edges, Edge{From: initID, To: appNodeId, Arrow: "---"})
 	}
 }
 

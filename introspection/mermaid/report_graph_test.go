@@ -23,7 +23,6 @@ func TestGenerateIntrospectionGraph_IncludesInitializers(t *testing.T) {
 	out := GenerateIntrospectionGraph(report)
 	println(out)
 
-	assert.Contains(t, out, sanitizeID("*examples.initLogger")+" --- SymbiontApp")
 	assert.Contains(t, out, sanitizeID("*examples.initLogger")+" --o DepImpl")
 	assert.Contains(t, out, "DepImpl -.-> run1")
 	assert.Contains(t, out, "cfg -.-> "+sanitizeID("*examples.initLogger"))
