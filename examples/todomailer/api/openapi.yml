@@ -1,0 +1,416 @@
+openapi: 3.0.3
+info:
+  title: Todo Completion Email Demo API
+  version: 1.0.0
+  description: >
+    Minimal demo API (3 endpoints) for a Todo app where an email is sent asynchronously
+    only when a todo is completed. The API never calls the email provider directly.
+    A background worker delivers emails and updates per-todo email delivery status.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Todos
+    description: Todo creation, updates, and listing (includes email delivery status).
+
+paths:
+  /api/v1/todos:
+    post:
+      tags: [Todos]
+      operationId: createTodo
+      summary: Create a todo
+      description: >
+        Creates a new todo in OPEN state.
+        No email is sent for creation. Email delivery fields exist for UI visibility
+        and remain in a "no work pending" state until completion.
+      requestBody:
+        required: true
+        description: Payload to create a todo.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTodoRequest'
+            examples:
+              create:
+                summary: Create a new OPEN todo
+                value:
+                  title: Buy milk
+      responses:
+        "201":
+          description: Todo created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Todo'
+              examples:
+                created:
+                  summary: Newly created todo (no completion email pending)
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    title: "Buy milk"
+                    status: "OPEN"
+                    email_status: "SENT"
+                    email_attempts: 0
+                    email_last_error: null
+                    email_provider_id: null
+                    created_at: "2026-01-19T19:20:30Z"
+                    updated_at: "2026-01-19T19:20:30Z"
+        "400":
+          $ref: '#/components/responses/BadRequest'
+
+    get:
+      tags: [Todos]
+      operationId: listTodos
+      summary: List todos
+      description: >
+        Lists todos, including the completion-email delivery status fields.
+        The worker only attempts to deliver emails for todos where:
+        status = DONE and email_status in (PENDING, FAILED).
+      parameters:
+        - in: query
+          name: status
+          required: false
+          description: Filter todos by status.
+          schema:
+            $ref: '#/components/schemas/TodoStatus'
+        - in: query
+          name: pagesize
+          required: true
+          description: Maximum number of todos to return (server may cap).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+        - in: query
+          name: page
+          required: true
+          description: >
+            Opaque cursor from a prior ListTodosResponse to fetch the next page.
+            Omit or set to null to fetch the first page.
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Todos list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListTodosResponse'
+              examples:
+                list:
+                  summary: Mixed list showing completion email statuses
+                  value:
+                    items:
+                      - id: "550e8400-e29b-41d4-a716-446655440000"
+                        title: "Buy milk"
+                        status: "OPEN"
+                        email_status: "PENDING"
+                        email_attempts: 0
+                        email_last_error: null
+                        email_provider_id: null
+                        created_at: "2026-01-19T19:20:30Z"
+                        updated_at: "2026-01-19T19:20:30Z"
+                      - id: "c1c1a8de-0dbe-4a6e-9b0d-8f8e0a04e9b1"
+                        title: "Submit taxes"
+                        status: "DONE"
+                        email_status: "SENT"
+                        email_attempts: 0
+                        email_last_error: null
+                        email_provider_id: null
+                        created_at: "2026-01-18T11:00:00Z"
+                        updated_at: "2026-01-19T10:15:00Z"
+                      - id: "2a6b1bb2-9b03-4bfb-9f1c-7ec3bfb00cb0"
+                        title: "Book dentist appointment"
+                        status: "DONE"
+                        email_status: "FAILED"
+                        email_attempts: 3
+                        email_last_error: "provider returned 500"
+                        email_provider_id: null
+                        created_at: "2026-01-17T08:10:00Z"
+                        updated_at: "2026-01-19T10:16:10Z"
+                      - id: "7e2f2f54-8f6d-4c55-9d62-089e0c4b0e60"
+                        title: "Pay electricity bill"
+                        status: "DONE"
+                        email_status: "SENT"
+                        email_attempts: 1
+                        email_last_error: null
+                        email_provider_id: "123"
+                        created_at: "2026-01-16T08:10:00Z"
+                        updated_at: "2026-01-16T08:10:02Z"
+                    next_page: "2"
+                    page:
+
+  /api/v1/todos/{todo_id}:
+    patch:
+      tags: [Todos]
+      operationId: updateTodo
+      summary: Update a todo
+      description: >
+        Partially updates a todo. Supports renaming and/or completing a todo.
+        When status transitions from OPEN to DONE, the API sets email_status=PENDING
+        and resets email_attempts=0, enabling the background worker to send the completion email.
+        If the todo is already DONE, marking it DONE again is idempotent and does not re-enqueue.
+      parameters:
+        - in: path
+          name: todo_id
+          required: true
+          description: Todo identifier (UUID).
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        description: Fields to update. Provide at least one field.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTodoRequest'
+            examples:
+              rename:
+                summary: Rename an OPEN todo
+                value:
+                  title: "Buy milk and eggs"
+              complete:
+                summary: Complete a todo (enqueues completion email)
+                value:
+                  status: "DONE"
+              renameAndComplete:
+                summary: Rename and complete in one request
+                value:
+                  title: "Buy milk and eggs"
+                  status: "DONE"
+      responses:
+        "200":
+          description: Todo updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Todo'
+              examples:
+                completed:
+                  summary: Todo completed (email pending for async worker)
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    title: "Buy milk"
+                    status: "DONE"
+                    email_status: "PENDING"
+                    email_attempts: 0
+                    email_last_error: null
+                    email_provider_id: null
+                    created_at: "2026-01-19T19:20:30Z"
+                    updated_at: "2026-01-19T19:21:10Z"
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+components:
+  responses:
+    BadRequest:
+      description: The request payload was invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            emptyTitle:
+              summary: Validation error
+              value:
+                error:
+                  code: "BAD_REQUEST"
+                  message: "title must not be empty"
+    NotFound:
+      description: The requested todo does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            missingTodo:
+              summary: Todo not found
+              value:
+                error:
+                  code: "NOT_FOUND"
+                  message: "todo not found"
+
+  schemas:
+    CreateTodoRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      description: Request payload for creating a todo.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: >
+            Human-readable todo title. Must be non-empty.
+          example: "Buy milk"
+
+    UpdateTodoRequest:
+      type: object
+      additionalProperties: false
+      description: >
+        Partial update payload. Provide at least one of: title, status.
+        Setting status to DONE triggers async completion email enqueue if transitioning from OPEN -> DONE.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: >
+            New title for the todo. Must be non-empty if provided.
+          example: "Buy milk and eggs"
+        status:
+          $ref: '#/components/schemas/TodoStatus'
+      anyOf:
+        - required: [title]
+        - required: [status]
+
+    ListTodosResponse:
+      type: object
+      additionalProperties: false
+      required: [items, page]
+      description: A paginated list of todos.
+      properties:
+        items:
+          type: array
+          description: List of todos, including completion email delivery status fields.
+          items:
+            $ref: '#/components/schemas/Todo'
+        page:
+          type: integer
+          description: >
+            Opaque cursor to fetch the current page of results.
+            Omit or set to null when fetching the first page.
+          example: "1"
+        previous_page:
+          type: integer
+          nullable: true
+          description: >
+            Opaque cursor to fetch the previous page of results.
+            Null if there is no previous page.
+          example: "0"
+        next_page:
+          type: integer
+          nullable: true
+          description: >
+            Opaque cursor to fetch the next page of results.
+            Null if there are no more pages.
+          example: "2"
+
+    Todo:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - status
+        - email_status
+        - email_attempts
+        - email_last_error
+        - email_provider_id
+        - created_at
+        - updated_at
+      description: >
+        A todo item with completion-email delivery status.
+        Email is sent asynchronously only when status is DONE.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the todo.
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+        title:
+          type: string
+          description: Human-readable todo title.
+          example: "Buy milk"
+
+        status:
+          $ref: '#/components/schemas/TodoStatus'
+
+        email_status:
+          $ref: '#/components/schemas/EmailStatus'
+
+        email_attempts:
+          type: integer
+          minimum: 0
+          description: >
+            Number of attempts made by the background worker to send the completion email.
+            Resets to 0 when transitioning from OPEN -> DONE.
+          example: 3
+
+        email_last_error:
+          type: string
+          nullable: true
+          description: >
+            Last error message from the email provider call, if the most recent attempt failed.
+            Null when email_status is SENT or when no attempts have failed.
+          example: "provider returned 500"
+
+        email_provider_id:
+          type: string
+          nullable: true
+          description: >
+            Provider-specific message identifier returned upon successful send (if available).
+            Null until a successful delivery occurs.
+          example: "mockoon-123"
+
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the todo was created.
+          example: "2026-01-19T19:20:30Z"
+
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the todo was last updated.
+          example: "2026-01-19T19:21:10Z"
+
+    TodoStatus:
+      type: string
+      description: >
+        Todo lifecycle status.
+        OPEN means the todo is active.
+        DONE means the todo has been completed (triggers async email enqueue on transition).
+      enum: [OPEN, DONE]
+      example: "OPEN"
+
+    EmailStatus:
+      type: string
+      description: >
+        Completion email delivery status.
+        PENDING: todo is DONE and email needs to be sent (or retried).
+        FAILED: last attempt failed; the worker will retry.
+        SENT: email delivered successfully.
+        Note: For OPEN todos, email_status is typically SENT to mean "no pending email work".
+      enum: [PENDING, SENT, FAILED]
+      example: "PENDING"
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      description: Standard error envelope.
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          description: Error details.
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code.
+              enum: [BAD_REQUEST, NOT_FOUND, INTERNAL_ERROR]
+              example: "BAD_REQUEST"
+            message:
+              type: string
+              description: Human-readable error message.
+              example: "title must not be empty"

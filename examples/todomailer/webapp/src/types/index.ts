@@ -1,0 +1,39 @@
+// src/types/index.ts
+
+export type TodoStatus = 'OPEN' | 'DONE';
+export type EmailStatus = 'PENDING' | 'SENT' | 'FAILED';
+
+export interface Todo {
+  id: string;
+  title: string;
+  status: TodoStatus;
+  email_status: EmailStatus;
+  email_attempts: number;
+  email_last_error: string | null;
+  email_provider_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateTodoRequest {
+  title: string;
+}
+
+export interface UpdateTodoRequest {
+  title?: string;
+  status?: TodoStatus;
+}
+
+export interface ListTodosResponse {
+  items: Todo[];
+  page: number;
+  previous_page: number | null;
+  next_page: number | null;
+}
+
+export interface ErrorResponse {
+  error: {
+    code: 'BAD_REQUEST' | 'NOT_FOUND' | 'INTERNAL_ERROR';
+    message: string;
+  };
+}

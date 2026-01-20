@@ -1,0 +1,72 @@
+package domain
+
+import (
+	"context"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// EmailStatus represents the status of the email notification for a todo item.
+type EmailStatus string
+
+const (
+	// EmailStatus_PENDING indicates that the email is pending to be sent.
+	EmailStatus_PENDING EmailStatus = "PENDING"
+	// EmailStatus_SENT indicates that the email has been sent successfully.
+	EmailStatus_SENT EmailStatus = "SENT"
+	// EmailStatus_FAILED indicates that the email failed to send.
+	EmailStatus_FAILED EmailStatus = "FAILED"
+)
+
+// TodoStatus represents the status of a todo item.
+type TodoStatus string
+
+const (
+	// TodoStatus_OPEN indicates that the todo item is open and not yet completed.
+	TodoStatus_OPEN TodoStatus = "OPEN"
+	// TodoStatus_DONE indicates that the todo item has been completed.
+	TodoStatus_DONE TodoStatus = "DONE"
+)
+
+// Todo represents a todo item in the system.
+type Todo struct {
+	CreatedAt       time.Time
+	EmailAttempts   int
+	EmailLastError  *string
+	EmailProviderId *string
+	EmailStatus     EmailStatus
+	Id              uuid.UUID
+	Status          TodoStatus
+	Title           string
+	UpdatedAt       time.Time
+}
+
+// ListTodosParams represents the parameters for listing todo items.
+type ListTodosParams struct {
+	Status *TodoStatus
+}
+
+// ListTodoOptions defines a function type for modifying ListTodosParams.
+type ListTodoOptions func(*ListTodosParams)
+
+func WithStatus(status TodoStatus) ListTodoOptions {
+	return func(params *ListTodosParams) {
+		params.Status = &status
+	}
+}
+
+// Repository defines the interface for interacting with todo items in the data store.
+type Repository interface {
+	// ListTodos retrieves a list of todo items with pagination support.
+	ListTodos(ctx context.Context, page int, pageSize int, opts ...ListTodoOptions) ([]Todo, bool, error)
+
+	// CreateTodo creates a new todo item with the given title.
+	CreateTodo(ctx context.Context, todo Todo) error
+
+	// UpdateTodo updates an existing todo item identified by id with the provided fields.
+	UpdateTodo(ctx context.Context, todo Todo) error
+
+	// GetTodo retrieves a todo item by its unique identifier.
+	GetTodo(ctx context.Context, id uuid.UUID) (Todo, error)
+}

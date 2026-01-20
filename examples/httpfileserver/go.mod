@@ -1,8 +1,8 @@
-module github.com/cleitonmarx/symbiont/examples
+module github.com/cleitonmarx/symbiont/examples/httpfileserver
 
 go 1.24.0
 
-replace github.com/cleitonmarx/symbiont => ../
+replace github.com/cleitonmarx/symbiont => ../../
 
 require (
 	github.com/cleitonmarx/symbiont v0.0.0-00010101000000-000000000000

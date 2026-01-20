@@ -1,0 +1,66 @@
+package usecases
+
+import (
+	"context"
+
+	"github.com/cleitonmarx/symbiont/depend"
+	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain"
+	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/tracing"
+	"github.com/google/uuid"
+)
+
+type CreateTodo interface {
+	Execute(ctx context.Context, title string) (domain.Todo, error)
+}
+
+// CreateTodoImpl is the implementation of the CreateTodo use case.
+type CreateTodoImpl struct {
+	repo        domain.Repository
+	timeService domain.TimeService
+}
+
+func NewCreateTodoImpl(repo domain.Repository, timeService domain.TimeService) CreateTodoImpl {
+	return CreateTodoImpl{
+		repo:        repo,
+		timeService: timeService,
+	}
+}
+
+func (cti CreateTodoImpl) Execute(ctx context.Context, title string) (domain.Todo, error) {
+	spanCtx, span := tracing.Start(ctx)
+	defer span.End()
+
+	if len(title) < 3 || len(title) > 200 {
+		err := domain.NewValidationErr("title must be between 3 and 200 characters")
+		tracing.RecordErrorAndStatus(span, err)
+		return domain.Todo{}, err
+	}
+
+	now := cti.timeService.Now()
+	todo := domain.Todo{
+		Id:          uuid.New(),
+		Title:       title,
+		Status:      domain.TodoStatus_OPEN,
+		EmailStatus: domain.EmailStatus_PENDING,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+
+	err := cti.repo.CreateTodo(spanCtx, todo)
+	if tracing.RecordErrorAndStatus(span, err) {
+		return domain.Todo{}, err
+	}
+
+	return todo, nil
+}
+
+type InitCreateTodo struct {
+	Repo        domain.Repository  `resolve:""`
+	TimeService domain.TimeService `resolve:""`
+}
+
+// Initialize initializes the CreateTodoImpl use case.
+func (ict *InitCreateTodo) Initialize(ctx context.Context) (context.Context, error) {
+	depend.Register[CreateTodo](NewCreateTodoImpl(ict.Repo, ict.TimeService))
+	return ctx, nil
+}
