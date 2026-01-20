@@ -139,8 +139,13 @@ func buildDependencyGraph(nodeMap map[string]Node, depHasCaller map[string]bool,
 		}
 		if ev.Kind == introspection.DepResolved {
 			toCaller, callerType := canonicalCaller(ev.Caller.Func, initializerTypes)
-			if toCaller == "" {
+			if toCaller == "" && ev.Component != "" {
 				toCaller = ev.Component
+				if _, ok := initializerTypes[ev.Component]; ok {
+					callerType = NodeInitializer
+				} else {
+					callerType = NodeCaller
+				}
 			}
 			if toCaller == "" {
 				toCaller = ev.Type
@@ -152,9 +157,12 @@ func buildDependencyGraph(nodeMap map[string]Node, depHasCaller map[string]bool,
 				Label:    toCaller,
 				FontSize: 15,
 				Bold:     true,
-				SubLines: []string{
-					Subline(styleCodeLoc, "%s(%s:%d)", emojiCodeLocation, ev.Caller.File, ev.Caller.Line),
-				},
+				SubLines: func() []string {
+					if callerType == NodeInitializer {
+						return []string{Subline(styleTypeName, "%s <b>Initializer</b>", emojiInitializer)}
+					}
+					return []string{Subline(styleCodeLoc, "%s(%s:%d)", emojiCodeLocation, ev.Caller.File, ev.Caller.Line)}
+				}(),
 			}.ToHTML()
 
 			style := styleCaller
@@ -217,20 +225,28 @@ func buildConfigGraph(nodeMap map[string]Node, initializerTypes map[string]struc
 		caller, callerType := canonicalCaller(k.Caller.Func, initializerTypes)
 		if caller == "" && k.Component != "" {
 			caller = k.Component
-			callerType = NodeCaller
+			if _, ok := initializerTypes[k.Component]; ok {
+				callerType = NodeInitializer
+			} else {
+				callerType = NodeCaller
+			}
 		}
 		if caller == "" {
 			caller = "unknown caller"
 			callerType = NodeCaller
 		}
+
 		*edges = append(*edges, Edge{From: configKey, To: caller, Arrow: "-.->"})
 		labelCaller := LabelBuilder{
 			Label:    caller,
 			FontSize: 15,
 			Bold:     true,
-			SubLines: []string{
-				Subline(styleCodeLoc, "%s(%s:%d)", emojiCodeLocation, k.Caller.File, k.Caller.Line),
-			},
+			SubLines: func() []string {
+				if callerType == NodeInitializer {
+					return []string{Subline(styleTypeName, "%s <b>Initializer</b>", emojiInitializer)}
+				}
+				return []string{Subline(styleCodeLoc, "%s(%s:%d)", emojiCodeLocation, k.Caller.File, k.Caller.Line)}
+			}(),
 		}.ToHTML()
 		style := styleCaller
 		if callerType == NodeInitializer {
