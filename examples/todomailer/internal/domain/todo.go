@@ -44,15 +44,24 @@ type Todo struct {
 
 // ListTodosParams represents the parameters for listing todo items.
 type ListTodosParams struct {
-	Status *TodoStatus
+	Status      *TodoStatus
+	EmailStatus *EmailStatus
 }
 
 // ListTodoOptions defines a function type for modifying ListTodosParams.
 type ListTodoOptions func(*ListTodosParams)
 
+// WithStatus is a ListTodoOptions that filters todos by their status.
 func WithStatus(status TodoStatus) ListTodoOptions {
 	return func(params *ListTodosParams) {
 		params.Status = &status
+	}
+}
+
+// WithEmailStatus is a ListTodoOptions that filters todos by their email status.
+func WithEmailStatus(emailStatus EmailStatus) ListTodoOptions {
+	return func(params *ListTodosParams) {
+		params.EmailStatus = &emailStatus
 	}
 }
 

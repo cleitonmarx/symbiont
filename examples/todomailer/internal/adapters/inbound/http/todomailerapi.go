@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
+// TodoMailerAPI implements the HTTP API for the TodoMailer application.
 type TodoMailerAPI struct {
 	ServerInterface
 	Port              int                 `config:"HTTP_PORT" default:"8080"`
@@ -24,44 +25,6 @@ type TodoMailerAPI struct {
 }
 
 func (api *TodoMailerAPI) ListTodos(w http.ResponseWriter, r *http.Request, params ListTodosParams) {
-	// resp := ListTodosResponse{
-	// 	Items: []Todo{
-	// 		{
-	// 			Id:              openapi_types.UUID(uuid.MustParse("11111111-1111-1111-1111-111111111111")),
-	// 			Title:           "Sample Todo",
-	// 			CreatedAt:       time.Date(2026, 1, 16, 8, 10, 0, 0, time.UTC),
-	// 			EmailAttempts:   0,
-	// 			EmailLastError:  nil,
-	// 			EmailProviderId: nil,
-	// 			EmailStatus:     PENDING,
-	// 			Status:          OPEN,
-	// 			UpdatedAt:       time.Date(2026, 1, 16, 8, 10, 2, 0, time.UTC),
-	// 		},
-	// 		{
-	// 			Id:              openapi_types.UUID(uuid.MustParse("33333333-3333-3333-3333-333333333333")),
-	// 			Title:           "Another Todo",
-	// 			CreatedAt:       time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC),
-	// 			EmailAttempts:   1,
-	// 			EmailLastError:  ptr("SMTP server not reachable"),
-	// 			EmailProviderId: ptr("provider-xyz"),
-	// 			EmailStatus:     FAILED,
-	// 			Status:          DONE,
-	// 			UpdatedAt:       time.Date(2026, 1, 15, 12, 5, 0, 0, time.UTC),
-	// 		},
-	// 		{
-	// 			Id:              openapi_types.UUID(uuid.MustParse("44444444-4444-4444-4444-444444444444")),
-	// 			Title:           "Completed Todo",
-	// 			CreatedAt:       time.Date(2026, 1, 14, 9, 30, 0, 0, time.UTC),
-	// 			EmailAttempts:   1,
-	// 			EmailLastError:  nil,
-	// 			EmailProviderId: ptr("provider-abc"),
-	// 			EmailStatus:     SENT,
-	// 			Status:          DONE,
-	// 			UpdatedAt:       time.Date(2026, 1, 14, 9, 45, 0, 0, time.UTC),
-	// 		},
-	// 	},
-	// 	Page: 1,
-	// }
 	resp := ListTodosResponse{
 		Items: []Todo{},
 		Page:  params.Page,
@@ -105,18 +68,6 @@ func (api *TodoMailerAPI) ListTodos(w http.ResponseWriter, r *http.Request, para
 }
 
 func (api *TodoMailerAPI) CreateTodo(w http.ResponseWriter, r *http.Request) {
-	// resp := Todo{
-	// 	Id:              openapi_types.UUID(uuid.MustParse("22222222-2222-2222-2222-222222222222")),
-	// 	Title:           "New Todo",
-	// 	CreatedAt:       time.Date(2026, 1, 16, 9, 0, 0, 0, time.UTC),
-	// 	EmailAttempts:   0,
-	// 	EmailLastError:  nil,
-	// 	EmailProviderId: nil,
-	// 	EmailStatus:     PENDING,
-	// 	Status:          OPEN,
-	// 	UpdatedAt:       time.Date(2026, 1, 16, 9, 0, 0, 0, time.UTC),
-	// }
-
 	var req CreateTodoJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errResp := ErrorResponse{}
@@ -158,18 +109,6 @@ func (api *TodoMailerAPI) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(resp)
 }
 func (api *TodoMailerAPI) UpdateTodo(w http.ResponseWriter, r *http.Request, todoId openapi_types.UUID) {
-	// resp := Todo{
-	// 	Id:              openapi_types.UUID(uuid.MustParse("22222222-2222-2222-2222-222222222222")),
-	// 	Title:           "New Todo",
-	// 	CreatedAt:       time.Date(2026, 1, 16, 9, 0, 0, 0, time.UTC),
-	// 	EmailAttempts:   0,
-	// 	EmailLastError:  nil,
-	// 	EmailProviderId: nil,
-	// 	EmailStatus:     PENDING,
-	// 	Status:          OPEN,
-	// 	UpdatedAt:       time.Date(2026, 1, 16, 9, 0, 0, 0, time.UTC),
-	// }
-
 	var req UpdateTodoJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errResp := ErrorResponse{}
@@ -209,6 +148,7 @@ func (api *TodoMailerAPI) UpdateTodo(w http.ResponseWriter, r *http.Request, tod
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
+// Run starts the HTTP server for the TodoMailerAPI.
 func (api *TodoMailerAPI) Run(ctx context.Context) error {
 	mux := http.NewServeMux()
 
@@ -217,17 +157,14 @@ func (api *TodoMailerAPI) Run(ctx context.Context) error {
 	mux.Handle("/", fs)
 
 	// get an `http.Handler` that we can use
-	// Custom span name formatter
-	spanNameFormatter := func(operation string, r *http.Request) string {
-		return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
-	}
-
 	h := HandlerWithOptions(api, StdHTTPServerOptions{
 		BaseRouter: mux,
 		Middlewares: []MiddlewareFunc{
 			otelhttp.NewMiddleware(
 				"todomailer-api",
-				otelhttp.WithSpanNameFormatter(spanNameFormatter),
+				otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+					return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
+				}),
 			)},
 	})
 

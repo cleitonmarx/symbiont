@@ -18,6 +18,7 @@ type ListTodosImpl struct {
 	Repo domain.Repository `resolve:""`
 }
 
+// NewListTodosImpl creates a new instance of ListTodosImpl.
 func NewListTodosImpl(repo domain.Repository) ListTodosImpl {
 	return ListTodosImpl{
 		Repo: repo,
@@ -36,11 +37,12 @@ func (lti ListTodosImpl) Query(ctx context.Context, page int, pageSize int, opts
 	return todos, hasMore, nil
 }
 
+// InitListTodos initializes the ListTodos use case and registers it in the dependency container.
 type InitListTodos struct {
 	Repo domain.Repository `resolve:""`
 }
 
-// Initialize initializes the ListTodosImpl use case.
+// Initialize initializes the ListTodosImpl use case and registers it in the dependency container.
 func (ilt *InitListTodos) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[ListTodos](NewListTodosImpl(ilt.Repo))
 	return ctx, nil

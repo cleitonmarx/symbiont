@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// CreateTodo defines the interface for the CreateTodo use case.
 type CreateTodo interface {
 	Execute(ctx context.Context, title string) (domain.Todo, error)
 }
@@ -19,6 +20,7 @@ type CreateTodoImpl struct {
 	timeService domain.TimeService
 }
 
+// NewCreateTodoImpl creates a new instance of CreateTodoImpl.
 func NewCreateTodoImpl(repo domain.Repository, timeService domain.TimeService) CreateTodoImpl {
 	return CreateTodoImpl{
 		repo:        repo,
@@ -26,6 +28,7 @@ func NewCreateTodoImpl(repo domain.Repository, timeService domain.TimeService) C
 	}
 }
 
+// Execute creates a new todo item.
 func (cti CreateTodoImpl) Execute(ctx context.Context, title string) (domain.Todo, error) {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
@@ -54,12 +57,13 @@ func (cti CreateTodoImpl) Execute(ctx context.Context, title string) (domain.Tod
 	return todo, nil
 }
 
+// InitCreateTodo initializes the CreateTodo use case and registers it in the dependency container.
 type InitCreateTodo struct {
 	Repo        domain.Repository  `resolve:""`
 	TimeService domain.TimeService `resolve:""`
 }
 
-// Initialize initializes the CreateTodoImpl use case.
+// Initialize initializes the CreateTodoImpl use case and registers it in the dependency container.
 func (ict *InitCreateTodo) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[CreateTodo](NewCreateTodoImpl(ict.Repo, ict.TimeService))
 	return ctx, nil

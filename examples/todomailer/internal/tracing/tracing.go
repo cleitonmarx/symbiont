@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"runtime"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -49,7 +50,9 @@ func getCallerName(skip int) string {
 		return "unknown"
 	}
 
-	return fn.Name()
+	parts := strings.Split(fn.Name()+"()", "/")
+
+	return parts[len(parts)-1]
 }
 
 // OpenTelemetry is a component that sets up OpenTelemetry tracing and logging.
@@ -59,6 +62,7 @@ type OpenTelemetry struct {
 	se     sdktrace.SpanExporter
 }
 
+// Initialize sets up OpenTelemetry tracing and logging.
 func (o *OpenTelemetry) Initialize(ctx context.Context) (context.Context, error) {
 	var err error
 	// Set up propagator.
@@ -74,6 +78,7 @@ func (o *OpenTelemetry) Initialize(ctx context.Context) (context.Context, error)
 	return ctx, nil
 }
 
+// Close shuts down the OpenTelemetry tracer provider and span exporter.
 func (o *OpenTelemetry) Close() {
 	cancelCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -85,6 +90,7 @@ func (o *OpenTelemetry) Close() {
 	}
 }
 
+// newPropagator creates a new composite text map propagator.
 func newPropagator() propagation.TextMapPropagator {
 	return propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
@@ -92,6 +98,7 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
+// newTracerProvider creates a new tracer provider with an OTLP HTTP exporter.
 func newTracerProvider(ctx context.Context) (*sdktrace.TracerProvider, sdktrace.SpanExporter, error) {
 	otlpExporter, err := otlptracehttp.New(ctx)
 	if err != nil {

@@ -19,6 +19,7 @@ type UpdateTodoImpl struct {
 	timeService domain.TimeService `resolve:""`
 }
 
+// NewUpdateTodoImpl creates a new instance of UpdateTodoImpl.
 func NewUpdateTodoImpl(repo domain.Repository, timeService domain.TimeService) UpdateTodoImpl {
 	return UpdateTodoImpl{
 		repo:        repo,
@@ -54,6 +55,7 @@ func (uti UpdateTodoImpl) Execute(ctx context.Context, id uuid.UUID, title *stri
 	return todo, nil
 }
 
+// InitUpdateTodo initializes the UpdateTodo use case and registers it in the dependency container.
 type InitUpdateTodo struct {
 	Repo        domain.Repository  `resolve:""`
 	TimeService domain.TimeService `resolve:""`

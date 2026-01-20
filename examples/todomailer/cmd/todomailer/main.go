@@ -7,6 +7,7 @@ import (
 	"github.com/cleitonmarx/symbiont"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/inbound/http"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/inbound/worker"
+	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/email"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/log"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/postgres"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/time"
@@ -25,13 +26,15 @@ func main() {
 			&tracing.OpenTelemetry{},
 			&postgres.InitTodoRepository{},
 			&time.InitTimeService{},
+			&email.InitEmailSender{},
 			&usecases.InitListTodos{},
 			&usecases.InitCreateTodo{},
 			&usecases.InitUpdateTodo{},
+			&usecases.InitSendDoneTodoEmails{},
 		).
 		Host(
 			&http.TodoMailerAPI{},
-			&worker.EmailSender{},
+			&worker.TodoEmailSender{},
 		).
 		Instrospect(&myIntrospector{}).
 		Run()
@@ -40,10 +43,12 @@ func main() {
 	}
 }
 
+// myIntrospector is an implementation of introspection.Introspector that logs the introspection report.
 type myIntrospector struct {
 	Logger *glog.Logger `resolve:""`
 }
 
+// Introspect generates and logs the introspection report and a Mermaid graph.
 func (i *myIntrospector) Introspect(ctx context.Context, r introspection.Report) error {
 	b, err := r.ToJSON()
 	if err != nil {
