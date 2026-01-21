@@ -10,9 +10,9 @@ type TodoEventType string
 
 const (
 	// TodoEventType_TODO_CREATED represents the event when a todo item is created.
-	TodoEventType_TODO_CREATED TodoEventType = "TODO_CREATED"
+	TodoEventType_TODO_CREATED TodoEventType = "TODO.CREATED"
 	// TodoEventType_TODO_UPDATED represents the event when a todo item is updated.
-	TodoEventType_TODO_UPDATED TodoEventType = "TODO_UPDATED"
+	TodoEventType_TODO_UPDATED TodoEventType = "TODO.UPDATED"
 )
 
 // TodoEvent represents a domain event in the system.

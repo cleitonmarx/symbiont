@@ -48,3 +48,21 @@ services:
         sleep 5
         sh /vault-init.sh
         wait $$VAULT_PID
+
+  pubsub-emulator:
+    image: marcelcorso/gcloud-pubsub-emulator:latest
+    platform: linux/amd64
+    ports:
+      - "8681:8681"
+    environment:
+      PUBSUB_PROJECT1: local-dev,Todo:todo_summary_generator
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8681"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+models:
+  llm:
+    model: ai/mistral

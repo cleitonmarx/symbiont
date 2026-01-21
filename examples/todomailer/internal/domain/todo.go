@@ -31,16 +31,16 @@ const (
 
 // Todo represents a todo item in the system.
 type Todo struct {
-	CreatedAt       time.Time
-	DueDate         time.Time
-	EmailAttempts   int
-	EmailLastError  *string
-	EmailProviderID *string
-	EmailStatus     EmailStatus
-	ID              uuid.UUID
-	Status          TodoStatus
-	Title           string
-	UpdatedAt       time.Time
+	CreatedAt       time.Time   `json:"created_at"`
+	DueDate         time.Time   `json:"due_date"`
+	EmailAttempts   int         `json:"email_attempts"`
+	EmailLastError  *string     `json:"email_last_error,omitempty"`
+	EmailProviderID *string     `json:"email_provider_id,omitempty"`
+	EmailStatus     EmailStatus `json:"email_status"`
+	ID              uuid.UUID   `json:"id"`
+	Status          TodoStatus  `json:"status"`
+	Title           string      `json:"title"`
+	UpdatedAt       time.Time   `json:"updated_at"`
 }
 
 // ListTodosParams represents the parameters for listing todo items.

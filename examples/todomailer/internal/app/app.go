@@ -7,10 +7,12 @@ import (
 	"github.com/cleitonmarx/symbiont"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/inbound/http"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/inbound/worker"
+	aillm "github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/ai_llm"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/config"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/email"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/log"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/postgres"
+	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/pubsub"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/time"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/tracing"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/usecases"
@@ -28,8 +30,11 @@ func NewTodoMailerApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&config.InitVaultProvider{},
 			&postgres.InitDB{},
 			&postgres.InitTodoRepository{},
+			&postgres.InitBoardSummaryRepository{},
 			&time.InitTimeService{},
+			&pubsub.InitTodoEventPublisher{},
 			&email.InitEmailSender{},
+			&aillm.InitBoardSummaryGenerator{},
 			&usecases.InitListTodos{},
 			&usecases.InitCreateTodo{},
 			&usecases.InitUpdateTodo{},
