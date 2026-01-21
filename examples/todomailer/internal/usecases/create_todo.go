@@ -17,16 +17,18 @@ type CreateTodo interface {
 
 // CreateTodoImpl is the implementation of the CreateTodo use case.
 type CreateTodoImpl struct {
-	repo        domain.Repository
+	todoRepo    domain.TodoRepository
 	timeService domain.TimeService
+	publisher   domain.TodoEventPublisher
 	createUUID  func() uuid.UUID
 }
 
 // NewCreateTodoImpl creates a new instance of CreateTodoImpl.
-func NewCreateTodoImpl(repo domain.Repository, timeService domain.TimeService) CreateTodoImpl {
+func NewCreateTodoImpl(todoRepo domain.TodoRepository, timeService domain.TimeService, publisher domain.TodoEventPublisher) CreateTodoImpl {
 	return CreateTodoImpl{
-		repo:        repo,
+		todoRepo:    todoRepo,
 		timeService: timeService,
+		publisher:   publisher,
 		createUUID:  uuid.New,
 	}
 }
@@ -44,7 +46,7 @@ func (cti CreateTodoImpl) Execute(ctx context.Context, title string, dueDate tim
 
 	now := cti.timeService.Now()
 	todo := domain.Todo{
-		Id:          cti.createUUID(),
+		ID:          cti.createUUID(),
 		Title:       title,
 		Status:      domain.TodoStatus_OPEN,
 		EmailStatus: domain.EmailStatus_PENDING,
@@ -53,7 +55,16 @@ func (cti CreateTodoImpl) Execute(ctx context.Context, title string, dueDate tim
 		UpdatedAt:   now,
 	}
 
-	err := cti.repo.CreateTodo(spanCtx, todo)
+	err := cti.todoRepo.CreateTodo(spanCtx, todo)
+	if tracing.RecordErrorAndStatus(span, err) {
+		return domain.Todo{}, err
+	}
+
+	err = cti.publisher.PublishEvent(spanCtx, domain.TodoEvent{
+		Type:   domain.TodoEventType_TODO_CREATED,
+		TodoID: todo.ID,
+	})
+
 	if tracing.RecordErrorAndStatus(span, err) {
 		return domain.Todo{}, err
 	}
@@ -63,12 +74,13 @@ func (cti CreateTodoImpl) Execute(ctx context.Context, title string, dueDate tim
 
 // InitCreateTodo initializes the CreateTodo use case and registers it in the dependency container.
 type InitCreateTodo struct {
-	Repo        domain.Repository  `resolve:""`
-	TimeService domain.TimeService `resolve:""`
+	Repo        domain.TodoRepository     `resolve:""`
+	TimeService domain.TimeService        `resolve:""`
+	Publisher   domain.TodoEventPublisher `resolve:""`
 }
 
 // Initialize initializes the CreateTodoImpl use case and registers it in the dependency container.
 func (ict *InitCreateTodo) Initialize(ctx context.Context) (context.Context, error) {
-	depend.Register[CreateTodo](NewCreateTodoImpl(ict.Repo, ict.TimeService))
+	depend.Register[CreateTodo](NewCreateTodoImpl(ict.Repo, ict.TimeService, ict.Publisher))
 	return ctx, nil
 }

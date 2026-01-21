@@ -84,13 +84,13 @@ func (tr *TodoRepository) ListTodos(ctx context.Context, page int, pageSize int,
 	for rows.Next() {
 		var todo domain.Todo
 		err := rows.Scan(
-			&todo.Id,
+			&todo.ID,
 			&todo.Title,
 			&todo.Status,
 			&todo.EmailStatus,
 			&todo.EmailAttempts,
 			&todo.EmailLastError,
-			&todo.EmailProviderId,
+			&todo.EmailProviderID,
 			&todo.DueDate,
 			&todo.CreatedAt,
 			&todo.UpdatedAt,
@@ -123,13 +123,13 @@ func (tr *TodoRepository) CreateTodo(ctx context.Context, todo domain.Todo) erro
 			todoFields...,
 		).
 		Values(
-			todo.Id,
+			todo.ID,
 			todo.Title,
 			todo.Status,
 			todo.EmailStatus,
 			todo.EmailAttempts,
 			todo.EmailLastError,
-			todo.EmailProviderId,
+			todo.EmailProviderID,
 			todo.DueDate,
 			todo.CreatedAt,
 			todo.UpdatedAt,
@@ -155,10 +155,10 @@ func (tr *TodoRepository) UpdateTodo(ctx context.Context, todo domain.Todo) erro
 		Set("email_status", todo.EmailStatus).
 		Set("email_attempts", todo.EmailAttempts).
 		Set("email_last_error", todo.EmailLastError).
-		Set("email_provider_id", todo.EmailProviderId).
+		Set("email_provider_id", todo.EmailProviderID).
 		Set("due_date", todo.DueDate).
 		Set("updated_at", todo.UpdatedAt).
-		Where(squirrel.Eq{"id": todo.Id}).
+		Where(squirrel.Eq{"id": todo.ID}).
 		ExecContext(spanCtx)
 
 	if tracing.RecordErrorAndStatus(span, err) {
@@ -181,13 +181,13 @@ func (tr *TodoRepository) GetTodo(ctx context.Context, id uuid.UUID) (domain.Tod
 		Where(squirrel.Eq{"id": id}).
 		QueryRowContext(spanCtx).
 		Scan(
-			&todo.Id,
+			&todo.ID,
 			&todo.Title,
 			&todo.Status,
 			&todo.EmailStatus,
 			&todo.EmailAttempts,
 			&todo.EmailLastError,
-			&todo.EmailProviderId,
+			&todo.EmailProviderID,
 			&todo.DueDate,
 			&todo.CreatedAt,
 			&todo.UpdatedAt,
@@ -210,6 +210,6 @@ type InitTodoRepository struct {
 
 // Initialize registers the TodoRepository in the dependency container.
 func (tr *InitTodoRepository) Initialize(ctx context.Context) (context.Context, error) {
-	depend.Register[domain.Repository](NewTodoRepository(tr.DB))
+	depend.Register[domain.TodoRepository](NewTodoRepository(tr.DB))
 	return ctx, nil
 }

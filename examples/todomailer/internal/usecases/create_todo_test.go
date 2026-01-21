@@ -8,6 +8,7 @@ import (
 
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain"
+	domain_mocks "github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain/mocks"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -19,7 +20,7 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 	}
 	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 	todo := domain.Todo{
-		Id:          fixedUUID(),
+		ID:          fixedUUID(),
 		Title:       "My new todo",
 		Status:      domain.TodoStatus_OPEN,
 		EmailStatus: domain.EmailStatus_PENDING,
@@ -29,7 +30,7 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		setExpectations func(repo *domain.MockRepository, timeService *domain.MockTimeService)
+		setExpectations func(repo *domain_mocks.MockTodoRepository, timeService *domain_mocks.MockTimeService, publisher *domain_mocks.MockTodoEventPublisher)
 		title           string
 		dueDate         time.Time
 		expectedTodo    domain.Todo
@@ -38,12 +39,20 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 		"success": {
 			title:   "My new todo",
 			dueDate: fixedTime,
-			setExpectations: func(repo *domain.MockRepository, timeService *domain.MockTimeService) {
+			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeService *domain_mocks.MockTimeService, publisher *domain_mocks.MockTodoEventPublisher) {
 				timeService.EXPECT().Now().Return(fixedTime)
 
 				repo.EXPECT().CreateTodo(
 					mock.Anything,
 					todo,
+				).Return(nil)
+
+				publisher.EXPECT().PublishEvent(
+					mock.Anything,
+					domain.TodoEvent{
+						Type:   domain.TodoEventType_TODO_CREATED,
+						TodoID: fixedUUID(),
+					},
 				).Return(nil)
 			},
 			expectedTodo: todo,
@@ -72,7 +81,7 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 		"repository-error": {
 			title:   "My new todo",
 			dueDate: fixedTime,
-			setExpectations: func(repo *domain.MockRepository, timeService *domain.MockTimeService) {
+			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeService *domain_mocks.MockTimeService, publisher *domain_mocks.MockTodoEventPublisher) {
 				timeService.EXPECT().Now().Return(fixedTime)
 
 				repo.EXPECT().CreateTodo(
@@ -86,13 +95,14 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			repo := domain.NewMockRepository(t)
-			timeService := domain.NewMockTimeService(t)
+			repo := domain_mocks.NewMockTodoRepository(t)
+			timeService := domain_mocks.NewMockTimeService(t)
+			publisher := domain_mocks.NewMockTodoEventPublisher(t)
 			if tt.setExpectations != nil {
-				tt.setExpectations(repo, timeService)
+				tt.setExpectations(repo, timeService, publisher)
 			}
 
-			cti := NewCreateTodoImpl(repo, timeService)
+			cti := NewCreateTodoImpl(repo, timeService, publisher)
 			cti.createUUID = fixedUUID
 
 			got, gotErr := cti.Execute(context.Background(), tt.title, tt.dueDate)
@@ -103,13 +113,7 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 }
 
 func TestInitCreateTodo_Initialize(t *testing.T) {
-	repo := domain.NewMockRepository(t)
-	timeService := domain.NewMockTimeService(t)
-
-	ict := InitCreateTodo{
-		Repo:        repo,
-		TimeService: timeService,
-	}
+	ict := InitCreateTodo{}
 
 	ctx, err := ict.Initialize(context.Background())
 	assert.NoError(t, err)

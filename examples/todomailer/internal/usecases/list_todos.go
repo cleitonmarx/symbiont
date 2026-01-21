@@ -15,13 +15,13 @@ type ListTodos interface {
 
 // ListTodosImpl is the implementation of the ListTodos use case.
 type ListTodosImpl struct {
-	Repo domain.Repository `resolve:""`
+	TodoRepo domain.TodoRepository `resolve:""`
 }
 
 // NewListTodosImpl creates a new instance of ListTodosImpl.
-func NewListTodosImpl(repo domain.Repository) ListTodosImpl {
+func NewListTodosImpl(todoRepo domain.TodoRepository) ListTodosImpl {
 	return ListTodosImpl{
-		Repo: repo,
+		TodoRepo: todoRepo,
 	}
 }
 
@@ -30,7 +30,7 @@ func (lti ListTodosImpl) Query(ctx context.Context, page int, pageSize int, opts
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
-	todos, hasMore, err := lti.Repo.ListTodos(spanCtx, page, pageSize, opts...)
+	todos, hasMore, err := lti.TodoRepo.ListTodos(spanCtx, page, pageSize, opts...)
 	if tracing.RecordErrorAndStatus(span, err) {
 		return nil, false, err
 	}
@@ -39,11 +39,11 @@ func (lti ListTodosImpl) Query(ctx context.Context, page int, pageSize int, opts
 
 // InitListTodos initializes the ListTodos use case and registers it in the dependency container.
 type InitListTodos struct {
-	Repo domain.Repository `resolve:""`
+	TodoRepo domain.TodoRepository `resolve:""`
 }
 
 // Initialize initializes the ListTodosImpl use case and registers it in the dependency container.
 func (ilt *InitListTodos) Initialize(ctx context.Context) (context.Context, error) {
-	depend.Register[ListTodos](NewListTodosImpl(ilt.Repo))
+	depend.Register[ListTodos](NewListTodosImpl(ilt.TodoRepo))
 	return ctx, nil
 }

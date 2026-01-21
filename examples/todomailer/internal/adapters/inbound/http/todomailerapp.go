@@ -52,12 +52,12 @@ func (api *TodoMailerApp) ListTodos(w http.ResponseWriter, r *http.Request, para
 
 	for _, t := range todos {
 		resp.Items = append(resp.Items, Todo{
-			Id:              openapi_types.UUID(t.Id),
+			Id:              openapi_types.UUID(t.ID),
 			Title:           t.Title,
 			CreatedAt:       t.CreatedAt,
 			EmailAttempts:   t.EmailAttempts,
 			EmailLastError:  t.EmailLastError,
-			EmailProviderId: t.EmailProviderId,
+			EmailProviderId: t.EmailProviderID,
 			EmailStatus:     EmailStatus(t.EmailStatus),
 			Status:          TodoStatus(t.Status),
 			DueDate:         openapi_types.Date{Time: t.DueDate},
@@ -104,12 +104,12 @@ func (api *TodoMailerApp) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := Todo{
-		Id:              openapi_types.UUID(todo.Id),
+		Id:              openapi_types.UUID(todo.ID),
 		Title:           todo.Title,
 		CreatedAt:       todo.CreatedAt,
 		EmailAttempts:   todo.EmailAttempts,
 		EmailLastError:  todo.EmailLastError,
-		EmailProviderId: todo.EmailProviderId,
+		EmailProviderId: todo.EmailProviderID,
 		EmailStatus:     EmailStatus(todo.EmailStatus),
 		Status:          TodoStatus(todo.Status),
 		DueDate:         openapi_types.Date{Time: todo.DueDate},
@@ -157,12 +157,12 @@ func (api *TodoMailerApp) UpdateTodo(w http.ResponseWriter, r *http.Request, tod
 	}
 
 	resp := Todo{
-		Id:              openapi_types.UUID(todo.Id),
+		Id:              openapi_types.UUID(todo.ID),
 		Title:           todo.Title,
 		CreatedAt:       todo.CreatedAt,
 		EmailAttempts:   todo.EmailAttempts,
 		EmailLastError:  todo.EmailLastError,
-		EmailProviderId: todo.EmailProviderId,
+		EmailProviderId: todo.EmailProviderID,
 		EmailStatus:     EmailStatus(todo.EmailStatus),
 		Status:          TodoStatus(todo.Status),
 		DueDate:         openapi_types.Date{Time: todo.DueDate},

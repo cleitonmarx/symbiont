@@ -35,9 +35,9 @@ type Todo struct {
 	DueDate         time.Time
 	EmailAttempts   int
 	EmailLastError  *string
-	EmailProviderId *string
+	EmailProviderID *string
 	EmailStatus     EmailStatus
-	Id              uuid.UUID
+	ID              uuid.UUID
 	Status          TodoStatus
 	Title           string
 	UpdatedAt       time.Time
@@ -66,8 +66,8 @@ func WithEmailStatuses(emailStatuses ...EmailStatus) ListTodoOptions {
 	}
 }
 
-// Repository defines the interface for interacting with todo items in the data store.
-type Repository interface {
+// TodoRepository defines the interface for interacting with todo items in the data store.
+type TodoRepository interface {
 	// ListTodos retrieves a list of todo items with pagination support.
 	ListTodos(ctx context.Context, page int, pageSize int, opts ...ListTodoOptions) ([]Todo, bool, error)
 

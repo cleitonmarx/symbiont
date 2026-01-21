@@ -18,7 +18,7 @@ func TestTodoRepository_CreateTodo(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 	fixedDueDate := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
 	todo := domain.Todo{
-		Id:          fixedUUID,
+		ID:          fixedUUID,
 		Title:       "My new todo",
 		Status:      domain.TodoStatus_OPEN,
 		EmailStatus: domain.EmailStatus_PENDING,
@@ -37,13 +37,13 @@ func TestTodoRepository_CreateTodo(t *testing.T) {
 			setExpectations: func(mock sqlmock.Sqlmock) {
 				mock.ExpectExec("INSERT INTO todos (id,title,status,email_status,email_attempts,email_last_error,email_provider_id,due_date,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)").
 					WithArgs(
-						todo.Id,
+						todo.ID,
 						todo.Title,
 						todo.Status,
 						todo.EmailStatus,
 						todo.EmailAttempts,
 						todo.EmailLastError,
-						todo.EmailProviderId,
+						todo.EmailProviderID,
 						todo.DueDate,
 						todo.CreatedAt,
 						todo.UpdatedAt,
@@ -57,13 +57,13 @@ func TestTodoRepository_CreateTodo(t *testing.T) {
 			setExpectations: func(mock sqlmock.Sqlmock) {
 				mock.ExpectExec("INSERT INTO todos (id,title,status,email_status,email_attempts,email_last_error,email_provider_id,due_date,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)").
 					WithArgs(
-						todo.Id,
+						todo.ID,
 						todo.Title,
 						todo.Status,
 						todo.EmailStatus,
 						todo.EmailAttempts,
 						todo.EmailLastError,
-						todo.EmailProviderId,
+						todo.EmailProviderID,
 						todo.DueDate,
 						todo.CreatedAt,
 						todo.UpdatedAt,
@@ -95,7 +95,7 @@ func TestTodoRepository_GetTodo(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 	fixedDueDate := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
 	todo := domain.Todo{
-		Id:          fixedUUID,
+		ID:          fixedUUID,
 		Title:       "My todo",
 		Status:      domain.TodoStatus_OPEN,
 		EmailStatus: domain.EmailStatus_PENDING,
@@ -115,13 +115,13 @@ func TestTodoRepository_GetTodo(t *testing.T) {
 			setExpectations: func(mock sqlmock.Sqlmock) {
 				rows := sqlmock.NewRows(todoFields).
 					AddRow(
-						todo.Id,
+						todo.ID,
 						todo.Title,
 						todo.Status,
 						todo.EmailStatus,
 						todo.EmailAttempts,
 						todo.EmailLastError,
-						todo.EmailProviderId,
+						todo.EmailProviderID,
 						todo.DueDate,
 						todo.CreatedAt,
 						todo.UpdatedAt,
@@ -181,7 +181,7 @@ func TestTodoRepository_UpdateTodo(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 	fixedDueDate := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
 	todo := domain.Todo{
-		Id:          fixedUUID,
+		ID:          fixedUUID,
 		Title:       "Updated todo",
 		Status:      domain.TodoStatus_DONE,
 		EmailStatus: domain.EmailStatus_SENT,
@@ -205,10 +205,10 @@ func TestTodoRepository_UpdateTodo(t *testing.T) {
 						todo.EmailStatus,
 						todo.EmailAttempts,
 						todo.EmailLastError,
-						todo.EmailProviderId,
+						todo.EmailProviderID,
 						todo.DueDate,
 						todo.UpdatedAt,
-						todo.Id,
+						todo.ID,
 					).
 					WillReturnResult(sqlmock.NewResult(0, 1))
 			},
@@ -224,10 +224,10 @@ func TestTodoRepository_UpdateTodo(t *testing.T) {
 						todo.EmailStatus,
 						todo.EmailAttempts,
 						todo.EmailLastError,
-						todo.EmailProviderId,
+						todo.EmailProviderID,
 						todo.DueDate,
 						todo.UpdatedAt,
-						todo.Id,
+						todo.ID,
 					).
 					WillReturnError(errors.New("database error"))
 			},
@@ -300,8 +300,8 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 					WillReturnRows(rows)
 			},
 			expectedTodos: []domain.Todo{
-				{Id: fixedUUID1, Title: "Todo 1", Status: domain.TodoStatus_OPEN, EmailStatus: domain.EmailStatus_PENDING, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
-				{Id: fixedUUID2, Title: "Todo 2", Status: domain.TodoStatus_OPEN, EmailStatus: domain.EmailStatus_PENDING, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
+				{ID: fixedUUID1, Title: "Todo 1", Status: domain.TodoStatus_OPEN, EmailStatus: domain.EmailStatus_PENDING, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
+				{ID: fixedUUID2, Title: "Todo 2", Status: domain.TodoStatus_OPEN, EmailStatus: domain.EmailStatus_PENDING, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
 			},
 			expectedHasMore: false,
 			expectedErr:     false,
@@ -338,7 +338,7 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 					WillReturnRows(rows)
 			},
 			expectedTodos: []domain.Todo{
-				{Id: fixedUUID3, Title: "Todo 3", Status: domain.TodoStatus_DONE, EmailStatus: domain.EmailStatus_SENT, EmailAttempts: 1, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
+				{ID: fixedUUID3, Title: "Todo 3", Status: domain.TodoStatus_DONE, EmailStatus: domain.EmailStatus_SENT, EmailAttempts: 1, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
 			},
 			expectedHasMore: false,
 			expectedErr:     false,
@@ -388,8 +388,8 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 					WillReturnRows(rows)
 			},
 			expectedTodos: []domain.Todo{
-				{Id: fixedUUID1, Title: "Todo 1", Status: domain.TodoStatus_OPEN, EmailStatus: domain.EmailStatus_PENDING, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
-				{Id: fixedUUID2, Title: "Todo 2", Status: domain.TodoStatus_OPEN, EmailStatus: domain.EmailStatus_PENDING, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
+				{ID: fixedUUID1, Title: "Todo 1", Status: domain.TodoStatus_OPEN, EmailStatus: domain.EmailStatus_PENDING, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
+				{ID: fixedUUID2, Title: "Todo 2", Status: domain.TodoStatus_OPEN, EmailStatus: domain.EmailStatus_PENDING, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
 			},
 			expectedHasMore: true,
 			expectedErr:     false,
@@ -434,7 +434,7 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 					WillReturnRows(rows)
 			},
 			expectedTodos: []domain.Todo{
-				{Id: fixedUUID3, Title: "Todo 3", Status: domain.TodoStatus_DONE, EmailStatus: domain.EmailStatus_SENT, EmailAttempts: 1, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
+				{ID: fixedUUID3, Title: "Todo 3", Status: domain.TodoStatus_DONE, EmailStatus: domain.EmailStatus_SENT, EmailAttempts: 1, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
 			},
 			expectedHasMore: false,
 			expectedErr:     false,
@@ -466,7 +466,7 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 					WillReturnRows(rows)
 			},
 			expectedTodos: []domain.Todo{
-				{Id: fixedUUID1, Title: "Todo 1", Status: domain.TodoStatus_OPEN, EmailStatus: domain.EmailStatus_PENDING, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
+				{ID: fixedUUID1, Title: "Todo 1", Status: domain.TodoStatus_OPEN, EmailStatus: domain.EmailStatus_PENDING, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
 			},
 			expectedHasMore: false,
 			expectedErr:     false,
@@ -500,7 +500,7 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 					WillReturnRows(rows)
 			},
 			expectedTodos: []domain.Todo{
-				{Id: fixedUUID3, Title: "Todo 3", Status: domain.TodoStatus_DONE, EmailStatus: domain.EmailStatus_SENT, EmailAttempts: 1, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
+				{ID: fixedUUID3, Title: "Todo 3", Status: domain.TodoStatus_DONE, EmailStatus: domain.EmailStatus_SENT, EmailAttempts: 1, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
 			},
 			expectedHasMore: false,
 			expectedErr:     false,
@@ -526,7 +526,7 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 					WillReturnRows(rows)
 			},
 			expectedTodos: []domain.Todo{
-				{Id: fixedUUID1, Title: "Todo 1", Status: domain.TodoStatus_OPEN, EmailStatus: domain.EmailStatus_PENDING, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
+				{ID: fixedUUID1, Title: "Todo 1", Status: domain.TodoStatus_OPEN, EmailStatus: domain.EmailStatus_PENDING, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
 			},
 			expectedHasMore: false,
 			expectedErr:     false,

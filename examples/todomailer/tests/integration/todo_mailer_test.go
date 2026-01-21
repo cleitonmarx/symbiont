@@ -1,3 +1,5 @@
+//go:build integration
+
 package integration
 
 import (
@@ -77,7 +79,7 @@ func TestTodoMailer_Integration(t *testing.T) {
 			assert.Equal(t, httpapi.DONE, updateResp.JSON200.Status, "expected todo status to be 'completed'")
 			select {
 			case emailedTodo := <-queue:
-				assert.Equal(t, todo.Id, types.UUID(emailedTodo.Id), "expected emailed todo ID to match updated todo ID")
+				assert.Equal(t, todo.Id, types.UUID(emailedTodo.ID), "expected emailed todo ID to match updated todo ID")
 				assert.Equal(t, domain.EmailStatus_SENT, emailedTodo.EmailStatus, "expected emailed todo status to be 'SENT'")
 			case <-time.After(5 * time.Second):
 				t.Fatalf("Timed out waiting for emailed todo in queue for todo ID: %s", todo.Id.String())
