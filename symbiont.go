@@ -226,7 +226,7 @@ func initializeSafe(ctx context.Context, init Initializer) (newCtx context.Conte
 	}()
 	newCtx, err = init.Initialize(ctx)
 	if err != nil {
-		err = NewError(err, init.Initialize)
+		err = NewError(err, init)
 	}
 	return newCtx, err
 }
