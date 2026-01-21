@@ -19,18 +19,18 @@ COPY . .
 
 WORKDIR /build/examples/todomailer
 
+# Copy webapp static files
+COPY --from=webapp-builder /webapp/dist ./internal/adapters/inbound/http/webappdist
+
 RUN go mod download
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/todomailer/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o todomailer ./cmd/todomailer/main.go
 
 ## Minimal runtime image
 FROM scratch
 
 COPY --from=go-builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-COPY --from=go-builder /build/examples/todomailer/main .
+COPY --from=go-builder /build/examples/todomailer/todomailer .
 
-# Copy webapp static files
-COPY --from=webapp-builder /webapp/dist ./webapp/dist
-
-CMD ["/main"]
+CMD ["/todomailer"]

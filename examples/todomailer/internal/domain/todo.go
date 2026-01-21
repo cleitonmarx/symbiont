@@ -32,6 +32,7 @@ const (
 // Todo represents a todo item in the system.
 type Todo struct {
 	CreatedAt       time.Time
+	DueDate         time.Time
 	EmailAttempts   int
 	EmailLastError  *string
 	EmailProviderId *string
@@ -44,8 +45,8 @@ type Todo struct {
 
 // ListTodosParams represents the parameters for listing todo items.
 type ListTodosParams struct {
-	Status      *TodoStatus
-	EmailStatus *EmailStatus
+	Status        *TodoStatus
+	EmailStatuses []EmailStatus
 }
 
 // ListTodoOptions defines a function type for modifying ListTodosParams.
@@ -58,10 +59,10 @@ func WithStatus(status TodoStatus) ListTodoOptions {
 	}
 }
 
-// WithEmailStatus is a ListTodoOptions that filters todos by their email status.
-func WithEmailStatus(emailStatus EmailStatus) ListTodoOptions {
+// WithEmailStatuses is a ListTodoOptions that filters todos by their email statuses.
+func WithEmailStatuses(emailStatuses ...EmailStatus) ListTodoOptions {
 	return func(params *ListTodosParams) {
-		params.EmailStatus = &emailStatus
+		params.EmailStatuses = emailStatuses
 	}
 }
 

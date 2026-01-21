@@ -34,7 +34,13 @@ func (se SendDoneTodoEmailsImpl) Execute(ctx context.Context) error {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
-	todos, _, err := se.repo.ListTodos(spanCtx, 1, 100, domain.WithEmailStatus(domain.EmailStatus_PENDING), domain.WithStatus(domain.TodoStatus_DONE))
+	todos, _, err := se.repo.ListTodos(
+		spanCtx,
+		1,
+		100,
+		domain.WithEmailStatuses(domain.EmailStatus_PENDING, domain.EmailStatus_FAILED),
+		domain.WithStatus(domain.TodoStatus_DONE),
+	)
 	if tracing.RecordErrorAndStatus(span, err) {
 		return err
 	}
@@ -42,10 +48,12 @@ func (se SendDoneTodoEmailsImpl) Execute(ctx context.Context) error {
 	for _, todo := range todos {
 		transID, err := se.sender.SendEmail(spanCtx, "admin", "Todo Completed: "+todo.Title, "The todo item has been completed.")
 		if tracing.RecordErrorAndStatus(span, err) {
-			return err
+			todo.EmailStatus = domain.EmailStatus_FAILED
+			todo.EmailAttempts += 1
+		} else {
+			todo.EmailStatus = domain.EmailStatus_SENT
+			todo.EmailProviderId = &transID
 		}
-		todo.EmailStatus = domain.EmailStatus_SENT
-		todo.EmailProviderId = &transID
 		todo.UpdatedAt = se.time.Now()
 		err = se.repo.UpdateTodo(spanCtx, todo)
 		if tracing.RecordErrorAndStatus(span, err) {

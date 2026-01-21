@@ -2,8 +2,10 @@ package http
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 
@@ -14,8 +16,15 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-// TodoMailerAPI implements the HTTP API for the TodoMailer application.
-type TodoMailerAPI struct {
+// TodoMailerApp is the HTTP server adapter for the TodoMailer application.
+//
+// It implements the OpenAPI-generated ServerInterface and serves both the REST API
+// endpoints and the embedded web application static files. The server is instrumented
+// with OpenTelemetry for distributed tracing and configured via environment variables
+// or configuration providers through the symbiont framework.
+//
+// Dependencies are automatically resolved and injected at initialization time.
+type TodoMailerApp struct {
 	ServerInterface
 	Port              int                 `config:"HTTP_PORT" default:"8080"`
 	Logger            *log.Logger         `resolve:""`
@@ -24,7 +33,7 @@ type TodoMailerAPI struct {
 	UpdateTodoUseCase usecases.UpdateTodo `resolve:""`
 }
 
-func (api *TodoMailerAPI) ListTodos(w http.ResponseWriter, r *http.Request, params ListTodosParams) {
+func (api *TodoMailerApp) ListTodos(w http.ResponseWriter, r *http.Request, params ListTodosParams) {
 	resp := ListTodosResponse{
 		Items: []Todo{},
 		Page:  params.Page,
@@ -67,7 +76,7 @@ func (api *TodoMailerAPI) ListTodos(w http.ResponseWriter, r *http.Request, para
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-func (api *TodoMailerAPI) CreateTodo(w http.ResponseWriter, r *http.Request) {
+func (api *TodoMailerApp) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var req CreateTodoJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errResp := ErrorResponse{}
@@ -108,15 +117,16 @@ func (api *TodoMailerAPI) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(resp)
 }
-func (api *TodoMailerAPI) UpdateTodo(w http.ResponseWriter, r *http.Request, todoId openapi_types.UUID) {
+func (api *TodoMailerApp) UpdateTodo(w http.ResponseWriter, r *http.Request, todoId openapi_types.UUID) {
 	var req UpdateTodoJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errResp := ErrorResponse{}
 		errResp.Error.Code = BADREQUEST
 		errResp.Error.Message = fmt.Sprintf("invalid request body: %v", err)
 
-		_ = json.NewEncoder(w).Encode(errResp)
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(errResp)
 		return
 	}
 
@@ -126,8 +136,9 @@ func (api *TodoMailerAPI) UpdateTodo(w http.ResponseWriter, r *http.Request, tod
 		errResp.Error.Code = INTERNALERROR
 		errResp.Error.Message = fmt.Sprintf("failed to update todo: %v", err)
 
-		_ = json.NewEncoder(w).Encode(errResp)
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(errResp)
 		return
 	}
 
@@ -148,13 +159,19 @@ func (api *TodoMailerAPI) UpdateTodo(w http.ResponseWriter, r *http.Request, tod
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-// Run starts the HTTP server for the TodoMailerAPI.
-func (api *TodoMailerAPI) Run(ctx context.Context) error {
+//go:embed webappdist/*
+var embedFS embed.FS
+
+// Run starts the HTTP server for the TodoMailerApp.
+func (api *TodoMailerApp) Run(ctx context.Context) error {
 	mux := http.NewServeMux()
 
 	// Serve webapp static files
-	fs := http.FileServer(http.Dir("./webapp/dist"))
-	mux.Handle("/", fs)
+	sub, err := fs.Sub(embedFS, "webappdist")
+	if err != nil {
+		return fmt.Errorf("failed to create sub filesystem for webapp: %w", err)
+	}
+	mux.Handle("/", http.FileServerFS(sub))
 
 	// get an `http.Handler` that we can use
 	h := HandlerWithOptions(api, StdHTTPServerOptions{
@@ -175,13 +192,13 @@ func (api *TodoMailerAPI) Run(ctx context.Context) error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		api.Logger.Printf("TodoMailerAPIServer: Listening on port %d", api.Port)
+		api.Logger.Printf("TodoMailerApp: Listening on port %d", api.Port)
 		errCh <- s.ListenAndServe()
 	}()
 
 	select {
 	case <-ctx.Done():
-		api.Logger.Print("TodoMailerAPIServer: Shutting down")
+		api.Logger.Print("TodoMailerApp: Shutting down")
 		return s.Shutdown(ctx)
 	case err := <-errCh:
 		return err

@@ -51,6 +51,7 @@ paths:
                     id: "550e8400-e29b-41d4-a716-446655440000"
                     title: "Buy milk"
                     status: "OPEN"
+                    due_date: "2026-02-01"
                     email_status: "SENT"
                     email_attempts: 0
                     email_last_error: null
@@ -107,6 +108,7 @@ paths:
                       - id: "550e8400-e29b-41d4-a716-446655440000"
                         title: "Buy milk"
                         status: "OPEN"
+                        due_date: "2026-02-01"
                         email_status: "PENDING"
                         email_attempts: 0
                         email_last_error: null
@@ -116,6 +118,7 @@ paths:
                       - id: "c1c1a8de-0dbe-4a6e-9b0d-8f8e0a04e9b1"
                         title: "Submit taxes"
                         status: "DONE"
+                        due_date: "2026-03-15"
                         email_status: "SENT"
                         email_attempts: 0
                         email_last_error: null
@@ -125,6 +128,7 @@ paths:
                       - id: "2a6b1bb2-9b03-4bfb-9f1c-7ec3bfb00cb0"
                         title: "Book dentist appointment"
                         status: "DONE"
+                        due_date: "2026-02-10"
                         email_status: "FAILED"
                         email_attempts: 3
                         email_last_error: "provider returned 500"
@@ -134,6 +138,7 @@ paths:
                       - id: "7e2f2f54-8f6d-4c55-9d62-089e0c4b0e60"
                         title: "Pay electricity bill"
                         status: "DONE"
+                        due_date: "2026-01-20"
                         email_status: "SENT"
                         email_attempts: 1
                         email_last_error: null
@@ -196,6 +201,7 @@ paths:
                     id: "550e8400-e29b-41d4-a716-446655440000"
                     title: "Buy milk"
                     status: "DONE"
+                    due_date: "2026-02-01"
                     email_status: "PENDING"
                     email_attempts: 0
                     email_last_error: null
@@ -240,7 +246,7 @@ components:
     CreateTodoRequest:
       type: object
       additionalProperties: false
-      required: [title]
+      required: [title, due_date]
       description: Request payload for creating a todo.
       properties:
         title:
@@ -250,12 +256,17 @@ components:
           description: >
             Human-readable todo title. Must be non-empty.
           example: "Buy milk"
+        due_date:
+          type: string
+          format: date
+          description: Calendar due date (date only, no time component).
+          example: "2026-02-01"
 
     UpdateTodoRequest:
       type: object
       additionalProperties: false
       description: >
-        Partial update payload. Provide at least one of: title, status.
+        Partial update payload. Provide at least one of: title, status, due_date.
         Setting status to DONE triggers async completion email enqueue if transitioning from OPEN -> DONE.
       properties:
         title:
@@ -267,9 +278,15 @@ components:
           example: "Buy milk and eggs"
         status:
           $ref: '#/components/schemas/TodoStatus'
+        due_date:
+          type: string
+          format: date
+          description: Updated calendar due date (date only).
+          example: "2026-02-02"
       anyOf:
         - required: [title]
         - required: [status]
+        - required: [due_date]
 
     ListTodosResponse:
       type: object
@@ -310,6 +327,7 @@ components:
         - id
         - title
         - status
+        - due_date
         - email_status
         - email_attempts
         - email_last_error
@@ -333,6 +351,12 @@ components:
 
         status:
           $ref: '#/components/schemas/TodoStatus'
+
+        due_date:
+          type: string
+          format: date
+          description: Calendar due date (date only, no time component).
+          example: "2026-02-01"
 
         email_status:
           $ref: '#/components/schemas/EmailStatus'

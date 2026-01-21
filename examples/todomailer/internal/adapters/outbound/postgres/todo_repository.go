@@ -2,10 +2,12 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"sort"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -14,15 +16,32 @@ import (
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/tracing"
 )
 
+var (
+	todoFields = []string{
+		"id",
+		"title",
+		"status",
+		"email_status",
+		"email_attempts",
+		"email_last_error",
+		"email_provider_id",
+		"due_date",
+		"created_at",
+		"updated_at",
+	}
+)
+
 // TodoRepository is an in-memory implementation of domain.Repository for Todos.
 type TodoRepository struct {
-	items map[uuid.UUID]domain.Todo
+	db    *sql.DB
+	pqsql squirrel.StatementBuilderType
 }
 
 // NewTodoRepository creates a new instance of TodoRepository.
-func NewTodoRepository() *TodoRepository {
+func NewTodoRepository(db *sql.DB) *TodoRepository {
 	return &TodoRepository{
-		items: make(map[uuid.UUID]domain.Todo),
+		db:    db,
+		pqsql: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar).RunWith(db),
 	}
 }
 
@@ -34,81 +53,163 @@ func (tr *TodoRepository) ListTodos(ctx context.Context, page int, pageSize int,
 	))
 	defer span.End()
 
+	qry := tr.pqsql.
+		Select(
+			todoFields...,
+		).From("todos").
+		OrderBy("created_at DESC").
+		Limit(uint64(pageSize + 1)). // fetch one extra to determine if there's more
+		Offset(uint64((page - 1) * pageSize))
+
 	params := &domain.ListTodosParams{}
 	for _, opt := range opts {
 		opt(params)
 	}
+
+	if params.Status != nil {
+		qry = qry.Where(squirrel.Eq{"status": *params.Status})
+	}
+
+	if len(params.EmailStatuses) > 0 {
+		qry = qry.Where(squirrel.Eq{"email_status": params.EmailStatuses})
+	}
+
+	rows, err := qry.QueryContext(ctx)
+	if tracing.RecordErrorAndStatus(span, err) {
+		return nil, false, err
+	}
+	defer rows.Close()
+
 	var todos []domain.Todo
-	for _, todo := range tr.items {
-		if params.Status != nil && todo.Status != *params.Status {
-			continue
-		}
-		if params.EmailStatus != nil && todo.EmailStatus != *params.EmailStatus {
-			continue
+	for rows.Next() {
+		var todo domain.Todo
+		err := rows.Scan(
+			&todo.Id,
+			&todo.Title,
+			&todo.Status,
+			&todo.EmailStatus,
+			&todo.EmailAttempts,
+			&todo.EmailLastError,
+			&todo.EmailProviderId,
+			&todo.DueDate,
+			&todo.CreatedAt,
+			&todo.UpdatedAt,
+		)
+		if tracing.RecordErrorAndStatus(span, err) {
+			return nil, false, err
 		}
 		todos = append(todos, todo)
 	}
 
-	sort.Slice(todos, func(i, j int) bool {
-		return todos[i].CreatedAt.Before(todos[j].CreatedAt)
-	})
+	if err := rows.Err(); tracing.RecordErrorAndStatus(span, err) {
+		return nil, false, err
+	}
 
-	// pagination
-	if page < 1 {
-		page = 1
+	if len(todos) > pageSize {
+		todos = todos[:pageSize]
+		return todos, true, nil
 	}
-	if pageSize < 1 {
-		pageSize = 1
-	}
-	offset := (page - 1) * pageSize
-	if offset >= len(todos) {
-		return []domain.Todo{}, false, nil
-	}
-	end := offset + pageSize
-	if end > len(todos) {
-		end = len(todos)
-	}
-	hasMore := end < len(todos)
-
-	return todos[offset:end], hasMore, nil
+	return todos, false, nil
 }
 
 // CreateTodo creates a new todo.
 func (tr *TodoRepository) CreateTodo(ctx context.Context, todo domain.Todo) error {
-	_, span := tracing.Start(ctx)
+	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
-	tr.items[todo.Id] = todo
+	_, err := tr.pqsql.
+		Insert("todos").
+		Columns(
+			todoFields...,
+		).
+		Values(
+			todo.Id,
+			todo.Title,
+			todo.Status,
+			todo.EmailStatus,
+			todo.EmailAttempts,
+			todo.EmailLastError,
+			todo.EmailProviderId,
+			todo.DueDate,
+			todo.CreatedAt,
+			todo.UpdatedAt,
+		).
+		ExecContext(spanCtx)
+
+	if tracing.RecordErrorAndStatus(span, err) {
+		return err
+	}
+
 	return nil
 }
 
 // UpdateTodo updates an existing todo.
 func (tr *TodoRepository) UpdateTodo(ctx context.Context, todo domain.Todo) error {
-	_, span := tracing.Start(ctx)
+	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
-	tr.items[todo.Id] = todo
+	_, err := tr.pqsql.
+		Update("todos").
+		Set("title", todo.Title).
+		Set("status", todo.Status).
+		Set("email_status", todo.EmailStatus).
+		Set("email_attempts", todo.EmailAttempts).
+		Set("email_last_error", todo.EmailLastError).
+		Set("email_provider_id", todo.EmailProviderId).
+		Set("due_date", todo.DueDate).
+		Set("updated_at", todo.UpdatedAt).
+		Where(squirrel.Eq{"id": todo.Id}).
+		ExecContext(spanCtx)
+
+	if tracing.RecordErrorAndStatus(span, err) {
+		return err
+	}
 	return nil
 }
 
 // GetTodo retrieves a todo by its ID.
 func (tr *TodoRepository) GetTodo(ctx context.Context, id uuid.UUID) (domain.Todo, error) {
-	_, span := tracing.Start(ctx)
+	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
-	todo, exists := tr.items[id]
-	if !exists {
-		return domain.Todo{}, domain.NewValidationErr(fmt.Sprintf("todo with id %s not found", id))
+	var todo domain.Todo
+	err := tr.pqsql.
+		Select(
+			todoFields...,
+		).
+		From("todos").
+		Where(squirrel.Eq{"id": id}).
+		QueryRowContext(spanCtx).
+		Scan(
+			&todo.Id,
+			&todo.Title,
+			&todo.Status,
+			&todo.EmailStatus,
+			&todo.EmailAttempts,
+			&todo.EmailLastError,
+			&todo.EmailProviderId,
+			&todo.DueDate,
+			&todo.CreatedAt,
+			&todo.UpdatedAt,
+		)
+
+	if tracing.RecordErrorAndStatus(span, err) {
+		if err == sql.ErrNoRows {
+			return domain.Todo{}, fmt.Errorf("todo with id %s not found", id)
+		}
+		return domain.Todo{}, err
 	}
+
 	return todo, nil
 }
 
 // InitTodoRepository is a Symbiont initializer for TodoRepository.
 type InitTodoRepository struct {
+	DB *sql.DB `resolve:""`
 }
 
 // Initialize registers the TodoRepository in the dependency container.
 func (tr *InitTodoRepository) Initialize(ctx context.Context) (context.Context, error) {
-	depend.Register[domain.Repository](NewTodoRepository())
+	depend.Register[domain.Repository](NewTodoRepository(tr.DB))
 	return ctx, nil
 }

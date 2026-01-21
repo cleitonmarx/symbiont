@@ -55,15 +55,15 @@ func getCallerName(skip int) string {
 	return parts[len(parts)-1]
 }
 
-// OpenTelemetry is a component that sets up OpenTelemetry tracing and logging.
-type OpenTelemetry struct {
+// InitOpenTelemetry is a component that sets up OpenTelemetry tracing.
+type InitOpenTelemetry struct {
 	Logger *log.Logger `resolve:""`
 	tp     *sdktrace.TracerProvider
 	se     sdktrace.SpanExporter
 }
 
-// Initialize sets up OpenTelemetry tracing and logging.
-func (o *OpenTelemetry) Initialize(ctx context.Context) (context.Context, error) {
+// Initialize sets up OpenTelemetry tracing and exporting.
+func (o *InitOpenTelemetry) Initialize(ctx context.Context) (context.Context, error) {
 	var err error
 	// Set up propagator.
 	prop := newPropagator()
@@ -79,7 +79,7 @@ func (o *OpenTelemetry) Initialize(ctx context.Context) (context.Context, error)
 }
 
 // Close shuts down the OpenTelemetry tracer provider and span exporter.
-func (o *OpenTelemetry) Close() {
+func (o *InitOpenTelemetry) Close() {
 	cancelCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := o.tp.Shutdown(cancelCtx); err != nil {

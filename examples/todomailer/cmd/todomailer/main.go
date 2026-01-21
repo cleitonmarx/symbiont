@@ -7,6 +7,7 @@ import (
 	"github.com/cleitonmarx/symbiont"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/inbound/http"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/inbound/worker"
+	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/config"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/email"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/log"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/postgres"
@@ -23,7 +24,9 @@ func main() {
 	err := symbiont.NewApp().
 		Initialize(
 			&log.InitLogger{},
-			&tracing.OpenTelemetry{},
+			&tracing.InitOpenTelemetry{},
+			&config.InitVaultProvider{},
+			&postgres.InitDB{},
 			&postgres.InitTodoRepository{},
 			&time.InitTimeService{},
 			&email.InitEmailSender{},
@@ -33,7 +36,7 @@ func main() {
 			&usecases.InitSendDoneTodoEmails{},
 		).
 		Host(
-			&http.TodoMailerAPI{},
+			&http.TodoMailerApp{},
 			&worker.TodoEmailSender{},
 		).
 		Instrospect(&myIntrospector{}).

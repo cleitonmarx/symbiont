@@ -18,6 +18,7 @@ type CreateTodo interface {
 type CreateTodoImpl struct {
 	repo        domain.Repository
 	timeService domain.TimeService
+	createUUID  func() uuid.UUID
 }
 
 // NewCreateTodoImpl creates a new instance of CreateTodoImpl.
@@ -25,6 +26,7 @@ func NewCreateTodoImpl(repo domain.Repository, timeService domain.TimeService) C
 	return CreateTodoImpl{
 		repo:        repo,
 		timeService: timeService,
+		createUUID:  uuid.New,
 	}
 }
 
@@ -41,7 +43,7 @@ func (cti CreateTodoImpl) Execute(ctx context.Context, title string) (domain.Tod
 
 	now := cti.timeService.Now()
 	todo := domain.Todo{
-		Id:          uuid.New(),
+		Id:          cti.createUUID(),
 		Title:       title,
 		Status:      domain.TodoStatus_OPEN,
 		EmailStatus: domain.EmailStatus_PENDING,

@@ -1,13 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getTodos, createTodo, updateTodo } from '../services/api';
 import type { Todo, CreateTodoRequest, UpdateTodoRequest, TodoStatus } from '../types';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export const useTodos = () => {
   const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<TodoStatus | 'ALL'>('ALL');
+  const [statusFilter, setStatusFilterState] = useState<TodoStatus | 'ALL'>('ALL');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [mutationError, setMutationError] = useState<string | null>(null);
+
+  // Reset page to 1 whenever status filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
 
   const { 
     data: response, 
@@ -83,7 +88,7 @@ export const useTodos = () => {
       updateTitleMutation.mutate({ id, title }),
     refetch,
     statusFilter,
-    setStatusFilter,
+    setStatusFilter: setStatusFilterState,
     page,
     previousPage,
     nextPage,
