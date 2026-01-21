@@ -26,12 +26,12 @@ import (
 //
 // Dependencies are automatically resolved and injected at initialization time.
 type TodoMailerApp struct {
-	ServerInterface
-	Port              int                 `config:"HTTP_PORT" default:"8080"`
-	Logger            *log.Logger         `resolve:""`
-	ListTodosUseCase  usecases.ListTodos  `resolve:""`
-	CreateTodoUseCase usecases.CreateTodo `resolve:""`
-	UpdateTodoUseCase usecases.UpdateTodo `resolve:""`
+	Port                   int                      `config:"HTTP_PORT" default:"8080"`
+	Logger                 *log.Logger              `resolve:""`
+	ListTodosUseCase       usecases.ListTodos       `resolve:""`
+	CreateTodoUseCase      usecases.CreateTodo      `resolve:""`
+	UpdateTodoUseCase      usecases.UpdateTodo      `resolve:""`
+	GetBoardSummaryUseCase usecases.GetBoardSummary `resolve:""`
 }
 
 func (api *TodoMailerApp) ListTodos(w http.ResponseWriter, r *http.Request, params ListTodosParams) {
@@ -174,6 +174,42 @@ func (api *TodoMailerApp) UpdateTodo(w http.ResponseWriter, r *http.Request, tod
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
+func (api *TodoMailerApp) GetBoardSummary(w http.ResponseWriter, r *http.Request) {
+	summary, err := api.GetBoardSummaryUseCase.Query(r.Context())
+	if err != nil {
+		errResp := ErrorResp{}
+		errResp.Error.Code = INTERNALERROR
+		errResp.Error.Message = fmt.Sprintf("failed to get board summary: %v", err)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(errResp)
+		return
+	}
+
+	resp := BoardSummary{
+		Counts: TodoStatusCounts{
+			DONE: summary.Content.Counts.Done,
+			OPEN: summary.Content.Counts.Open,
+		},
+		NearDeadline: summary.Content.NearDeadline,
+		NextUp:       []NextUpTodoItem{},
+		Overdue:      summary.Content.Overdue,
+		Summary:      summary.Content.Summary,
+	}
+	for _, item := range summary.Content.NextUp {
+		resp.NextUp = append(resp.NextUp, NextUpTodoItem{
+			Title:  item.Title,
+			Reason: item.Reason,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(resp)
+
+}
+
 //go:embed webappdist/*
 var embedFS embed.FS
 
@@ -233,3 +269,5 @@ func (api *TodoMailerApp) IsReady(ctx context.Context) error {
 	}
 	return nil
 }
+
+var _ ServerInterface = (*TodoMailerApp)(nil)

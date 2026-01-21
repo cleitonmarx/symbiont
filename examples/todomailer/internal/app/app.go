@@ -34,6 +34,8 @@ func NewTodoMailerApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&usecases.InitCreateTodo{},
 			&usecases.InitUpdateTodo{},
 			&usecases.InitSendDoneTodoEmails{},
+			&usecases.InitGenerateBoardSummary{},
+			&usecases.InitGetBoardSummary{},
 		).
 		Host(
 			&http.TodoMailerApp{},

@@ -14,6 +14,8 @@ servers:
 tags:
   - name: Todos
     description: Todo creation, updates, and listing (includes email delivery status).
+  - name: Board
+    description: AI-generated summary of the todo board.
 
 paths:
   /api/v1/todos:
@@ -212,6 +214,31 @@ paths:
           $ref: '#/components/responses/BadRequest'
         "404":
           $ref: '#/components/responses/NotFound'
+  
+  /api/v1/board/summary:
+    get:
+      summary: Get AI-generated board summary
+      description: >
+        Returns the latest AI-generated summary of the todo board.
+        The summary is generated asynchronously and reflects the most
+        recent known state of the board.
+      operationId: getBoardSummary
+      tags:
+        - Board
+      responses:
+        "200":
+          description: Current board summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardSummary"
+        "404":
+          description: Summary not available yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResp"
+
 
 components:
   responses:
@@ -438,3 +465,73 @@ components:
               type: string
               description: Human-readable error message.
               example: "title must not be empty"
+
+
+    BoardSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - counts
+        - next_up
+        - overdue
+        - near_deadline
+        - summary
+      properties:
+        counts:
+          $ref: '#/components/schemas/TodoStatusCounts'
+        next_up:
+          type: array
+          description: >
+            Prioritized list of up to three todos recommended for completion next.
+          items:
+            $ref: '#/components/schemas/NextUpTodoItem'
+        overdue:
+          type: array
+          description: Titles of overdue todos.
+          items:
+            type: string
+          example:
+            - "Pay electricity bill"
+            - "Renew car insurance"
+        near_deadline:
+          type: array
+          description: Titles of todos approaching their due date.
+          items:
+            type: string
+          example:
+            - "Schedule annual medical checkup"
+        summary:
+          type: string
+          description: Short, user-facing summary of the board state.
+          example: "You have three overdue tasks that need immediate attention."
+
+    TodoStatusCounts:
+      type: object
+      description: Count of todos per status.
+      additionalProperties: false
+      required:
+        - OPEN
+        - DONE
+      properties:
+        OPEN:
+          type: integer
+          description: Number of open todos.
+          example: 7
+        DONE:
+          type: integer
+          description: Number of completed todos.
+          example: 2
+
+    NextUpTodoItem:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - reason
+      properties:
+        title:
+          type: string
+          example: "Pay electricity bill"
+        reason:
+          type: string
+          example: "Overdue"

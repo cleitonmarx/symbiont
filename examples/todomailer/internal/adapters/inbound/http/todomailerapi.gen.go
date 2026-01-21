@@ -40,6 +40,24 @@ const (
 	OPEN TodoStatus = "OPEN"
 )
 
+// BoardSummary defines model for BoardSummary.
+type BoardSummary struct {
+	// Counts Count of todos per status.
+	Counts TodoStatusCounts `json:"counts"`
+
+	// NearDeadline Titles of todos approaching their due date.
+	NearDeadline []string `json:"near_deadline"`
+
+	// NextUp Prioritized list of up to three todos recommended for completion next.
+	NextUp []NextUpTodoItem `json:"next_up"`
+
+	// Overdue Titles of overdue todos.
+	Overdue []string `json:"overdue"`
+
+	// Summary Short, user-facing summary of the board state.
+	Summary string `json:"summary"`
+}
+
 // CreateTodoRequest Request payload for creating a todo.
 type CreateTodoRequest struct {
 	// DueDate Calendar due date (date only, no time component).
@@ -82,6 +100,12 @@ type ListTodosResp struct {
 	PreviousPage *int `json:"previous_page"`
 }
 
+// NextUpTodoItem defines model for NextUpTodoItem.
+type NextUpTodoItem struct {
+	Reason string `json:"reason"`
+	Title  string `json:"title"`
+}
+
 // Todo A todo item with completion-email delivery status. Email is sent asynchronously only when status is DONE.
 type Todo struct {
 	// CreatedAt Timestamp when the todo was created.
@@ -117,6 +141,15 @@ type Todo struct {
 
 // TodoStatus Todo lifecycle status. OPEN means the todo is active. DONE means the todo has been completed (triggers async email enqueue on transition).
 type TodoStatus string
+
+// TodoStatusCounts Count of todos per status.
+type TodoStatusCounts struct {
+	// DONE Number of completed todos.
+	DONE int `json:"DONE"`
+
+	// OPEN Number of open todos.
+	OPEN int `json:"OPEN"`
+}
 
 // UpdateTodoRequest Partial update payload. Provide at least one of: title, status, due_date. Setting status to DONE triggers async completion email enqueue if transitioning from OPEN -> DONE.
 type UpdateTodoRequest struct {
@@ -387,6 +420,9 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// GetBoardSummary request
+	GetBoardSummary(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListTodos request
 	ListTodos(ctx context.Context, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -399,6 +435,18 @@ type ClientInterface interface {
 	UpdateTodoWithBody(ctx context.Context, todoId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateTodo(ctx context.Context, todoId openapi_types.UUID, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GetBoardSummary(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetBoardSummaryRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) ListTodos(ctx context.Context, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -459,6 +507,33 @@ func (c *Client) UpdateTodo(ctx context.Context, todoId openapi_types.UUID, body
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewGetBoardSummaryRequest generates requests for GetBoardSummary
+func NewGetBoardSummaryRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/board/summary")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewListTodosRequest generates requests for ListTodos
@@ -664,6 +739,9 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GetBoardSummaryWithResponse request
+	GetBoardSummaryWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetBoardSummaryResponse, error)
+
 	// ListTodosWithResponse request
 	ListTodosWithResponse(ctx context.Context, params *ListTodosParams, reqEditors ...RequestEditorFn) (*ListTodosResponse, error)
 
@@ -676,6 +754,29 @@ type ClientWithResponsesInterface interface {
 	UpdateTodoWithBodyWithResponse(ctx context.Context, todoId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
 
 	UpdateTodoWithResponse(ctx context.Context, todoId openapi_types.UUID, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
+}
+
+type GetBoardSummaryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *BoardSummary
+	JSON404      *ErrorResp
+}
+
+// Status returns HTTPResponse.Status
+func (r GetBoardSummaryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetBoardSummaryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type ListTodosResponse struct {
@@ -747,6 +848,15 @@ func (r UpdateTodoResponse) StatusCode() int {
 	return 0
 }
 
+// GetBoardSummaryWithResponse request returning *GetBoardSummaryResponse
+func (c *ClientWithResponses) GetBoardSummaryWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetBoardSummaryResponse, error) {
+	rsp, err := c.GetBoardSummary(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBoardSummaryResponse(rsp)
+}
+
 // ListTodosWithResponse request returning *ListTodosResponse
 func (c *ClientWithResponses) ListTodosWithResponse(ctx context.Context, params *ListTodosParams, reqEditors ...RequestEditorFn) (*ListTodosResponse, error) {
 	rsp, err := c.ListTodos(ctx, params, reqEditors...)
@@ -788,6 +898,39 @@ func (c *ClientWithResponses) UpdateTodoWithResponse(ctx context.Context, todoId
 		return nil, err
 	}
 	return ParseUpdateTodoResponse(rsp)
+}
+
+// ParseGetBoardSummaryResponse parses an HTTP response from a GetBoardSummaryWithResponse call
+func ParseGetBoardSummaryResponse(rsp *http.Response) (*GetBoardSummaryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetBoardSummaryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BoardSummary
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResp
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseListTodosResponse parses an HTTP response from a ListTodosWithResponse call
@@ -891,6 +1034,9 @@ func ParseUpdateTodoResponse(rsp *http.Response) (*UpdateTodoResponse, error) {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Get AI-generated board summary
+	// (GET /api/v1/board/summary)
+	GetBoardSummary(w http.ResponseWriter, r *http.Request)
 	// List todos
 	// (GET /api/v1/todos)
 	ListTodos(w http.ResponseWriter, r *http.Request, params ListTodosParams)
@@ -910,6 +1056,20 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// GetBoardSummary operation middleware
+func (siw *ServerInterfaceWrapper) GetBoardSummary(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetBoardSummary(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ListTodos operation middleware
 func (siw *ServerInterfaceWrapper) ListTodos(w http.ResponseWriter, r *http.Request) {
@@ -1127,6 +1287,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/board/summary", wrapper.GetBoardSummary)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/todos", wrapper.ListTodos)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/todos", wrapper.CreateTodo)
 	m.HandleFunc("PATCH "+options.BaseURL+"/api/v1/todos/{todo_id}", wrapper.UpdateTodo)
