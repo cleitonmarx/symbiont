@@ -27,7 +27,6 @@ func (esw *TodoEmailSender) Run(ctx context.Context) error {
 			esw.Logger.Println("EmailSender: stopping...")
 			return nil
 		case <-ticker.C:
-			esw.Logger.Println("EmailSender: sending emails...")
 			err := esw.SendEmails.Execute(ctx)
 			if err != nil {
 				esw.Logger.Printf("EmailSender: error sending emails: %v", err)

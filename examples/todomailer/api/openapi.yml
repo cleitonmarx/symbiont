@@ -89,7 +89,7 @@ paths:
           name: page
           required: true
           description: >
-            Opaque cursor from a prior ListTodosResponse to fetch the next page.
+            Opaque cursor from a prior ListTodosResp to fetch the next page.
             Omit or set to null to fetch the first page.
           schema:
             type: integer
@@ -99,7 +99,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListTodosResponse'
+                $ref: '#/components/schemas/ListTodosResp'
               examples:
                 list:
                   summary: Mixed list showing completion email statuses
@@ -220,7 +220,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ErrorResp'
           examples:
             emptyTitle:
               summary: Validation error
@@ -233,7 +233,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ErrorResp'
           examples:
             missingTodo:
               summary: Todo not found
@@ -288,7 +288,7 @@ components:
         - required: [status]
         - required: [due_date]
 
-    ListTodosResponse:
+    ListTodosResp:
       type: object
       additionalProperties: false
       required: [items, page]
@@ -417,7 +417,7 @@ components:
       enum: [PENDING, SENT, FAILED]
       example: "PENDING"
 
-    ErrorResponse:
+    ErrorResp:
       type: object
       additionalProperties: false
       required: [error]

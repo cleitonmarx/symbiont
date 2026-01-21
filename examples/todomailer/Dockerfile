@@ -24,7 +24,7 @@ COPY --from=webapp-builder /webapp/dist ./internal/adapters/inbound/http/webappd
 
 RUN go mod download
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o todomailer ./cmd/todomailer/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o todomailer ./cmd/todomailer
 
 ## Minimal runtime image
 FROM scratch

@@ -3,4 +3,5 @@ package: http
 output: todomailerapi.gen.go
 generate:
   models: true
+  client: true
   std-http-server: true

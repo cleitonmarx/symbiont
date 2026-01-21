@@ -35,7 +35,7 @@ type TodoMailerApp struct {
 }
 
 func (api *TodoMailerApp) ListTodos(w http.ResponseWriter, r *http.Request, params ListTodosParams) {
-	resp := ListTodosResponse{
+	resp := ListTodosResp{
 		Items: []Todo{},
 		Page:  params.Page,
 	}
@@ -81,7 +81,7 @@ func (api *TodoMailerApp) ListTodos(w http.ResponseWriter, r *http.Request, para
 func (api *TodoMailerApp) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var req CreateTodoJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errResp := ErrorResponse{}
+		errResp := ErrorResp{}
 		errResp.Error.Code = BADREQUEST
 		errResp.Error.Message = fmt.Sprintf("invalid request body: %v", err)
 
@@ -93,7 +93,7 @@ func (api *TodoMailerApp) CreateTodo(w http.ResponseWriter, r *http.Request) {
 
 	todo, err := api.CreateTodoUseCase.Execute(r.Context(), req.Title, req.DueDate.Time)
 	if err != nil {
-		errResp := ErrorResponse{}
+		errResp := ErrorResp{}
 		errResp.Error.Code = INTERNALERROR
 		errResp.Error.Message = fmt.Sprintf("failed to create todo: %v", err)
 
@@ -123,7 +123,7 @@ func (api *TodoMailerApp) CreateTodo(w http.ResponseWriter, r *http.Request) {
 func (api *TodoMailerApp) UpdateTodo(w http.ResponseWriter, r *http.Request, todoId openapi_types.UUID) {
 	var req UpdateTodoJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errResp := ErrorResponse{}
+		errResp := ErrorResp{}
 		errResp.Error.Code = BADREQUEST
 		errResp.Error.Message = fmt.Sprintf("invalid request body: %v", err)
 
@@ -146,7 +146,7 @@ func (api *TodoMailerApp) UpdateTodo(w http.ResponseWriter, r *http.Request, tod
 		dueDate,
 	)
 	if err != nil {
-		errResp := ErrorResponse{}
+		errResp := ErrorResp{}
 		errResp.Error.Code = INTERNALERROR
 		errResp.Error.Message = fmt.Sprintf("failed to update todo: %v", err)
 
@@ -218,4 +218,18 @@ func (api *TodoMailerApp) Run(ctx context.Context) error {
 	case err := <-errCh:
 		return err
 	}
+}
+
+// IsReady checks if the TodoMailerApp HTTP server is ready by performing a health check.
+func (api *TodoMailerApp) IsReady(ctx context.Context) error {
+	resp, err := http.Get(fmt.Sprintf("http://:%d", api.Port))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+	return nil
 }
