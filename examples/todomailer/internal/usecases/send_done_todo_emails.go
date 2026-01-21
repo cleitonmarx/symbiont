@@ -8,6 +8,9 @@ import (
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/tracing"
 )
 
+// CompletedTodoEmailQueue is a channel type for sending processed domain.Todo items.
+type CompletedTodoEmailQueue chan domain.Todo
+
 // SendDoneTodoEmails is the use case interface for sending emails for done todos.
 type SendDoneTodoEmails interface {
 	Execute(ctx context.Context) error
@@ -18,14 +21,16 @@ type SendDoneTodoEmailsImpl struct {
 	repo   domain.Repository
 	sender domain.EmailSender
 	time   domain.TimeService
+	queue  CompletedTodoEmailQueue
 }
 
 // NewSendDoneTodoEmailsImpl creates a new instance of SendDoneTodoEmailsImpl.
-func NewSendDoneTodoEmailsImpl(repo domain.Repository, sender domain.EmailSender, time domain.TimeService) SendDoneTodoEmailsImpl {
+func NewSendDoneTodoEmailsImpl(repo domain.Repository, sender domain.EmailSender, time domain.TimeService, queue CompletedTodoEmailQueue) SendDoneTodoEmailsImpl {
 	return SendDoneTodoEmailsImpl{
 		repo:   repo,
 		sender: sender,
 		time:   time,
+		queue:  queue,
 	}
 }
 
@@ -59,6 +64,10 @@ func (se SendDoneTodoEmailsImpl) Execute(ctx context.Context) error {
 		if tracing.RecordErrorAndStatus(span, err) {
 			return err
 		}
+
+		if se.queue != nil {
+			se.queue <- todo
+		}
 	}
 
 	return nil
@@ -73,6 +82,8 @@ type InitSendDoneTodoEmails struct {
 
 // Initialize registers the SendDoneTodoEmails implementation in the dependency container.
 func (ie *InitSendDoneTodoEmails) Initialize(ctx context.Context) (context.Context, error) {
-	depend.Register[SendDoneTodoEmails](NewSendDoneTodoEmailsImpl(ie.Repo, ie.Sender, ie.Time))
+	queue, _ := depend.Resolve[CompletedTodoEmailQueue]()
+	depend.Register[SendDoneTodoEmails](NewSendDoneTodoEmailsImpl(ie.Repo, ie.Sender, ie.Time, queue))
+
 	return ctx, nil
 }

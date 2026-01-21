@@ -121,7 +121,7 @@ func TestSendDoneTodoEmailsImpl_Execute(t *testing.T) {
 				tt.setExpectations(repo, sender, timeService)
 			}
 
-			sdte := NewSendDoneTodoEmailsImpl(repo, sender, timeService)
+			sdte := NewSendDoneTodoEmailsImpl(repo, sender, timeService, nil)
 
 			gotErr := sdte.Execute(context.Background())
 			assert.Equal(t, tt.expectedErr, gotErr)
@@ -133,7 +133,7 @@ func TestInitSendDoneTodoEmails_Initialize(t *testing.T) {
 	repo := domain.NewMockRepository(t)
 	sender := domain.NewMockEmailSender(t)
 
-	expectedSendDoneTodoEmails := NewSendDoneTodoEmailsImpl(repo, sender, domain.NewMockTimeService(t))
+	expectedSendDoneTodoEmails := NewSendDoneTodoEmailsImpl(repo, sender, domain.NewMockTimeService(t), nil)
 
 	ie := InitSendDoneTodoEmails{
 		Repo:   repo,
