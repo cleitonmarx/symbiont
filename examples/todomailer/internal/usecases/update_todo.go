@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"time"
 
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain"
@@ -10,7 +11,7 @@ import (
 )
 
 type UpdateTodo interface {
-	Execute(ctx context.Context, id uuid.UUID, title *string, status *domain.TodoStatus) (domain.Todo, error)
+	Execute(ctx context.Context, id uuid.UUID, title *string, status *domain.TodoStatus, dueDate *time.Time) (domain.Todo, error)
 }
 
 // UpdateTodoImpl is the implementation of the UpdateTodo use case.
@@ -28,7 +29,7 @@ func NewUpdateTodoImpl(repo domain.Repository, timeService domain.TimeService) U
 }
 
 // Execute updates an existing todo item identified by id with the provided title and/or status.
-func (uti UpdateTodoImpl) Execute(ctx context.Context, id uuid.UUID, title *string, status *domain.TodoStatus) (domain.Todo, error) {
+func (uti UpdateTodoImpl) Execute(ctx context.Context, id uuid.UUID, title *string, status *domain.TodoStatus, dueDate *time.Time) (domain.Todo, error) {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
@@ -43,6 +44,9 @@ func (uti UpdateTodoImpl) Execute(ctx context.Context, id uuid.UUID, title *stri
 
 	if status != nil {
 		todo.Status = *status
+	}
+	if dueDate != nil {
+		todo.DueDate = *dueDate
 	}
 
 	todo.UpdatedAt = uti.timeService.Now()

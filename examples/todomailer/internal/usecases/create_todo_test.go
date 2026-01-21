@@ -25,16 +25,19 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 		EmailStatus: domain.EmailStatus_PENDING,
 		CreatedAt:   fixedTime,
 		UpdatedAt:   fixedTime,
+		DueDate:     fixedTime,
 	}
 
 	tests := map[string]struct {
 		setExpectations func(repo *domain.MockRepository, timeService *domain.MockTimeService)
 		title           string
+		dueDate         time.Time
 		expectedTodo    domain.Todo
 		expectedErr     error
 	}{
 		"success": {
-			title: "My new todo",
+			title:   "My new todo",
+			dueDate: fixedTime,
 			setExpectations: func(repo *domain.MockRepository, timeService *domain.MockTimeService) {
 				timeService.EXPECT().Now().Return(fixedTime)
 
@@ -48,6 +51,7 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 		},
 		"validation-error-short-title": {
 			title:           "Hi",
+			dueDate:         fixedTime,
 			setExpectations: nil,
 			expectedTodo:    domain.Todo{},
 			expectedErr:     domain.NewValidationErr("title must be between 3 and 200 characters"),
@@ -60,12 +64,14 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 				}
 				return longTitle
 			}(),
+			dueDate:         fixedTime,
 			setExpectations: nil,
 			expectedTodo:    domain.Todo{},
 			expectedErr:     domain.NewValidationErr("title must be between 3 and 200 characters"),
 		},
 		"repository-error": {
-			title: "My new todo",
+			title:   "My new todo",
+			dueDate: fixedTime,
 			setExpectations: func(repo *domain.MockRepository, timeService *domain.MockTimeService) {
 				timeService.EXPECT().Now().Return(fixedTime)
 
@@ -89,7 +95,7 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 			cti := NewCreateTodoImpl(repo, timeService)
 			cti.createUUID = fixedUUID
 
-			got, gotErr := cti.Execute(context.Background(), tt.title)
+			got, gotErr := cti.Execute(context.Background(), tt.title, tt.dueDate)
 			assert.Equal(t, tt.expectedErr, gotErr)
 			assert.Equal(t, tt.expectedTodo, got)
 		})

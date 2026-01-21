@@ -37,6 +37,9 @@ const (
 
 // CreateTodoRequest Request payload for creating a todo.
 type CreateTodoRequest struct {
+	// DueDate Calendar due date (date only, no time component).
+	DueDate openapi_types.Date `json:"due_date"`
+
 	// Title Human-readable todo title. Must be non-empty.
 	Title string `json:"title"`
 }
@@ -79,6 +82,9 @@ type Todo struct {
 	// CreatedAt Timestamp when the todo was created.
 	CreatedAt time.Time `json:"created_at"`
 
+	// DueDate Calendar due date (date only, no time component).
+	DueDate openapi_types.Date `json:"due_date"`
+
 	// EmailAttempts Number of attempts made by the background worker to send the completion email. Resets to 0 when transitioning from OPEN -> DONE.
 	EmailAttempts int `json:"email_attempts"`
 
@@ -107,8 +113,11 @@ type Todo struct {
 // TodoStatus Todo lifecycle status. OPEN means the todo is active. DONE means the todo has been completed (triggers async email enqueue on transition).
 type TodoStatus string
 
-// UpdateTodoRequest Partial update payload. Provide at least one of: title, status. Setting status to DONE triggers async completion email enqueue if transitioning from OPEN -> DONE.
+// UpdateTodoRequest Partial update payload. Provide at least one of: title, status, due_date. Setting status to DONE triggers async completion email enqueue if transitioning from OPEN -> DONE.
 type UpdateTodoRequest struct {
+	// DueDate Updated calendar due date (date only).
+	DueDate *openapi_types.Date `json:"due_date,omitempty"`
+
 	// Status Todo lifecycle status. OPEN means the todo is active. DONE means the todo has been completed (triggers async email enqueue on transition).
 	Status *TodoStatus `json:"status,omitempty"`
 
@@ -122,6 +131,9 @@ type UpdateTodoRequest0 = interface{}
 
 // UpdateTodoRequest1 defines model for .
 type UpdateTodoRequest1 = interface{}
+
+// UpdateTodoRequest2 defines model for .
+type UpdateTodoRequest2 = interface{}
 
 // BadRequest Standard error envelope.
 type BadRequest = ErrorResponse
@@ -199,6 +211,32 @@ func (t *UpdateTodoRequest) MergeUpdateTodoRequest1(v UpdateTodoRequest1) error 
 	return err
 }
 
+// AsUpdateTodoRequest2 returns the union data inside the UpdateTodoRequest as a UpdateTodoRequest2
+func (t UpdateTodoRequest) AsUpdateTodoRequest2() (UpdateTodoRequest2, error) {
+	var body UpdateTodoRequest2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateTodoRequest2 overwrites any union data inside the UpdateTodoRequest as the provided UpdateTodoRequest2
+func (t *UpdateTodoRequest) FromUpdateTodoRequest2(v UpdateTodoRequest2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateTodoRequest2 performs a merge with any union data inside the UpdateTodoRequest, using the provided UpdateTodoRequest2
+func (t *UpdateTodoRequest) MergeUpdateTodoRequest2(v UpdateTodoRequest2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t UpdateTodoRequest) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	if err != nil {
@@ -209,6 +247,13 @@ func (t UpdateTodoRequest) MarshalJSON() ([]byte, error) {
 		err = json.Unmarshal(b, &object)
 		if err != nil {
 			return nil, err
+		}
+	}
+
+	if t.DueDate != nil {
+		object["due_date"], err = json.Marshal(t.DueDate)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'due_date': %w", err)
 		}
 	}
 
@@ -238,6 +283,13 @@ func (t *UpdateTodoRequest) UnmarshalJSON(b []byte) error {
 	err = json.Unmarshal(b, &object)
 	if err != nil {
 		return err
+	}
+
+	if raw, found := object["due_date"]; found {
+		err = json.Unmarshal(raw, &t.DueDate)
+		if err != nil {
+			return fmt.Errorf("error reading 'due_date': %w", err)
+		}
 	}
 
 	if raw, found := object["status"]; found {

@@ -59,6 +59,7 @@ func (api *TodoMailerApp) ListTodos(w http.ResponseWriter, r *http.Request, para
 			EmailProviderId: t.EmailProviderId,
 			EmailStatus:     EmailStatus(t.EmailStatus),
 			Status:          TodoStatus(t.Status),
+			DueDate:         openapi_types.Date{Time: t.DueDate},
 			UpdatedAt:       t.UpdatedAt,
 		})
 	}
@@ -89,7 +90,7 @@ func (api *TodoMailerApp) CreateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	todo, err := api.CreateTodoUseCase.Execute(r.Context(), req.Title)
+	todo, err := api.CreateTodoUseCase.Execute(r.Context(), req.Title, req.DueDate.Time)
 	if err != nil {
 		errResp := ErrorResponse{}
 		errResp.Error.Code = INTERNALERROR
@@ -110,6 +111,7 @@ func (api *TodoMailerApp) CreateTodo(w http.ResponseWriter, r *http.Request) {
 		EmailProviderId: todo.EmailProviderId,
 		EmailStatus:     EmailStatus(todo.EmailStatus),
 		Status:          TodoStatus(todo.Status),
+		DueDate:         openapi_types.Date{Time: todo.DueDate},
 		UpdatedAt:       todo.UpdatedAt,
 	}
 
@@ -130,7 +132,13 @@ func (api *TodoMailerApp) UpdateTodo(w http.ResponseWriter, r *http.Request, tod
 		return
 	}
 
-	todo, err := api.UpdateTodoUseCase.Execute(r.Context(), uuid.UUID(todoId), req.Title, (*domain.TodoStatus)(req.Status))
+	todo, err := api.UpdateTodoUseCase.Execute(
+		r.Context(),
+		uuid.UUID(todoId),
+		req.Title,
+		(*domain.TodoStatus)(req.Status),
+		&req.DueDate.Time,
+	)
 	if err != nil {
 		errResp := ErrorResponse{}
 		errResp.Error.Code = INTERNALERROR
@@ -151,6 +159,7 @@ func (api *TodoMailerApp) UpdateTodo(w http.ResponseWriter, r *http.Request, tod
 		EmailProviderId: todo.EmailProviderId,
 		EmailStatus:     EmailStatus(todo.EmailStatus),
 		Status:          TodoStatus(todo.Status),
+		DueDate:         openapi_types.Date{Time: todo.DueDate},
 		UpdatedAt:       todo.UpdatedAt,
 	}
 

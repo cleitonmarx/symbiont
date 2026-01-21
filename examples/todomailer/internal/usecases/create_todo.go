@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"time"
 
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain"
@@ -11,7 +12,7 @@ import (
 
 // CreateTodo defines the interface for the CreateTodo use case.
 type CreateTodo interface {
-	Execute(ctx context.Context, title string) (domain.Todo, error)
+	Execute(ctx context.Context, title string, dueDate time.Time) (domain.Todo, error)
 }
 
 // CreateTodoImpl is the implementation of the CreateTodo use case.
@@ -31,7 +32,7 @@ func NewCreateTodoImpl(repo domain.Repository, timeService domain.TimeService) C
 }
 
 // Execute creates a new todo item.
-func (cti CreateTodoImpl) Execute(ctx context.Context, title string) (domain.Todo, error) {
+func (cti CreateTodoImpl) Execute(ctx context.Context, title string, dueDate time.Time) (domain.Todo, error) {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
@@ -47,6 +48,7 @@ func (cti CreateTodoImpl) Execute(ctx context.Context, title string) (domain.Tod
 		Title:       title,
 		Status:      domain.TodoStatus_OPEN,
 		EmailStatus: domain.EmailStatus_PENDING,
+		DueDate:     dueDate,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}

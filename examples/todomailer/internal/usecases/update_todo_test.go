@@ -17,9 +17,10 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 	fixedUUID := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
 	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 	todo := domain.Todo{
-		Id:     fixedUUID,
-		Title:  "Updated Todo",
-		Status: domain.TodoStatus_OPEN,
+		Id:      fixedUUID,
+		Title:   "Updated Todo",
+		Status:  domain.TodoStatus_OPEN,
+		DueDate: fixedTime,
 	}
 
 	tests := map[string]struct {
@@ -27,6 +28,7 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 		id              uuid.UUID
 		title           *string
 		status          *domain.TodoStatus
+		dueDate         *time.Time
 		expectedTodo    domain.Todo
 		expectedErr     error
 	}{
@@ -74,7 +76,7 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 
 			uti := NewUpdateTodoImpl(repo, timeService)
 
-			got, gotErr := uti.Execute(context.Background(), tt.id, tt.title, tt.status)
+			got, gotErr := uti.Execute(context.Background(), tt.id, tt.title, tt.status, tt.dueDate)
 			assert.Equal(t, tt.expectedErr, gotErr)
 			if tt.expectedErr == nil {
 				assert.Equal(t, tt.id, got.Id)
