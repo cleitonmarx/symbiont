@@ -1,24 +1,37 @@
 import React, { useState } from 'react';
 
 interface CreateTodoFormProps {
-  onCreateTodo: (title: string) => void;
+  onCreateTodo: (title: string, due_date: string) => void;
 }
 
 const CreateTodoForm: React.FC<CreateTodoFormProps> = ({ onCreateTodo }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState('');
+  const [due_date, setDueDate] = useState('');
+
+  const getMinDate = () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+    const year = yesterday.getFullYear();
+    const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+    const day = String(yesterday.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (title.trim()) {
-      onCreateTodo(title.trim());
+    if (title.trim() && due_date) {
+      onCreateTodo(title.trim(), due_date);
       setTitle('');
+      setDueDate('');
       setIsOpen(false);
     }
   };
 
   const handleCancel = () => {
     setTitle('');
+    setDueDate('');
     setIsOpen(false);
   };
 
@@ -51,6 +64,16 @@ const CreateTodoForm: React.FC<CreateTodoFormProps> = ({ onCreateTodo }) => {
                   autoFocus
                 />
               </div>
+              <div className="form-group">
+                <label htmlFor="todo-due-date">Due Date</label>
+                <input
+                  id="todo-due-date"
+                  type="date"
+                  value={due_date}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  min={getMinDate()}
+                />
+              </div>
             </div>
 
             <div className="modal-footer">
@@ -64,7 +87,7 @@ const CreateTodoForm: React.FC<CreateTodoFormProps> = ({ onCreateTodo }) => {
               <button 
                 type="submit" 
                 className="btn-primary"
-                disabled={!title.trim()}
+                disabled={!title.trim() || !due_date}
               >
                 Create
               </button>

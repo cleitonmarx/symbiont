@@ -624,6 +624,33 @@ button:disabled {
   font-size: 0.875rem;
 }
 
+.due-date {
+  font-weight: 500;
+  margin: 1rem 0;
+  font-size: 1rem;
+}
+
+.due-date-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) 0;
+  margin-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--sb-border);
+}
+
+.due-date-label {
+  font-weight: 500;
+  color: var(--sb-text-muted);
+  font-size: 0.875rem;
+}
+
+.due-date-value {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
 @media (max-width: 1024px) {
   .todos-grid {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

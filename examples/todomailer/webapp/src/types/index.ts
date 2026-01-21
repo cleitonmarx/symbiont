@@ -17,11 +17,13 @@ export interface Todo {
 
 export interface CreateTodoRequest {
   title: string;
+  due_date: string;
 }
 
 export interface UpdateTodoRequest {
   title?: string;
-  status?: TodoStatus;
+  due_date?: string;
+  status?: string;
 }
 
 export interface ListTodosResponse {

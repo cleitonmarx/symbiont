@@ -4,14 +4,16 @@ import type { Todo, TodoStatus } from '../types';
 interface TodoItemProps {
   todo: Todo;
   onUpdateTodo: (id: string, status: TodoStatus) => void;
-  onUpdateTitle: (id: string, title: string) => void;
+  onUpdateTitle: (id: string, title: string, due_date: string) => void;
 }
 
 const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdateTodo, onUpdateTitle }) => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
+  const [editDueDate, setEditDueDate] = useState(todo.due_date);
 
   const formatDate = (dateString: string) => {
+    // Parse ISO datetime string correctly
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       month: 'short',
@@ -22,20 +24,56 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdateTodo, onUpdateTitle }
     });
   };
 
+  const formatDueDate = (dateString: string) => {
+    // Parse as local date to avoid timezone issues
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const getMinDate = () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+    const year = yesterday.getFullYear();
+    const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+    const day = String(yesterday.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const markAsDone = () => {
     onUpdateTodo(todo.id, 'DONE');
   };
 
   const handleSaveEdit = () => {
-    if (editTitle.trim() && editTitle !== todo.title) {
-      onUpdateTitle(todo.id, editTitle);
+    if (editTitle.trim() && editDueDate && (editTitle !== todo.title || editDueDate !== todo.due_date)) {
+      onUpdateTitle(todo.id, editTitle.trim(), editDueDate);
     }
     setIsEditOpen(false);
   };
 
   const handleCancelEdit = () => {
     setEditTitle(todo.title);
+    setEditDueDate(todo.due_date);
     setIsEditOpen(false);
+  };
+
+  const getDueDateColor = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Parse as local date to avoid timezone issues
+    const [year, month, day] = todo.due_date.split('-').map(Number);
+    const dueDate = new Date(year, month - 1, day);
+    dueDate.setHours(0, 0, 0, 0);
+
+    if (dueDate < today) return '#E74C3C'; // red - overdue
+    if (dueDate.getTime() === today.getTime()) return '#FFB84D'; // yellow - due today
+    return '#4A9DD4'; // blue - due in future
   };
 
   return (
@@ -51,6 +89,13 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdateTodo, onUpdateTitle }
         </div>
 
         <div className="todo-card-body">
+          <div className="due-date-row">
+            <span className="due-date-label">Due:</span>
+            <span className="due-date-value" style={{ color: getDueDateColor() }}>
+              {formatDueDate(todo.due_date)}
+            </span>
+          </div>
+
           <div className="todo-info-row">
             <span className="todo-label">Email Status:</span>
             <span className={`status-badge email-${todo.email_status.toLowerCase()}`}>
@@ -127,6 +172,18 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdateTodo, onUpdateTitle }
                   onChange={(e) => setEditTitle(e.target.value)}
                   placeholder="Enter todo title..."
                   autoFocus
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="edit-due-date">Due Date</label>
+                <input
+                  id="edit-due-date"
+                  type="date"
+                  value={editDueDate}
+                  onChange={(e) => setEditDueDate(e.target.value)}
+                  min={getMinDate()}
+                  required
                 />
               </div>
             </div>
@@ -142,7 +199,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdateTodo, onUpdateTitle }
               <button 
                 type="submit" 
                 className="btn-primary"
-                disabled={!editTitle.trim() || editTitle === todo.title}
+                disabled={!editTitle.trim() || !editDueDate || (editTitle === todo.title && editDueDate === todo.due_date)}
               >
                 Save
               </button>

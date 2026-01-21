@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/usecases"
@@ -132,12 +133,17 @@ func (api *TodoMailerApp) UpdateTodo(w http.ResponseWriter, r *http.Request, tod
 		return
 	}
 
+	var dueDate *time.Time
+	if req.DueDate != nil {
+		dueDate = &req.DueDate.Time
+	}
+
 	todo, err := api.UpdateTodoUseCase.Execute(
 		r.Context(),
 		uuid.UUID(todoId),
 		req.Title,
 		(*domain.TodoStatus)(req.Status),
-		&req.DueDate.Time,
+		dueDate,
 	)
 	if err != nil {
 		errResp := ErrorResponse{}

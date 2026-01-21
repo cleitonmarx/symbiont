@@ -42,7 +42,7 @@ export const useTodos = () => {
     : mutationError;
 
   const createMutation = useMutation({
-    mutationFn: (title: string) => createTodo({ title }),
+    mutationFn: (request: CreateTodoRequest) => createTodo(request),
     onSuccess: () => {
       setMutationError(null);
       setCurrentPage(1);
@@ -66,8 +66,8 @@ export const useTodos = () => {
   });
 
   const updateTitleMutation = useMutation({
-    mutationFn: ({ id, title }: { id: string; title: string }) => 
-      updateTodo(id, { title }),
+    mutationFn: ({ id, title, due_date }: { id: string; title: string; due_date: string }) => 
+      updateTodo(id, { title, due_date }),
     onSuccess: () => {
       setMutationError(null);
       queryClient.invalidateQueries({ queryKey: ['todos'] });
@@ -81,11 +81,11 @@ export const useTodos = () => {
     todos,
     loading,
     error: errorMessage,
-    createTodo: (title: string) => createMutation.mutate(title),
+    createTodo: (title: string, due_date: string) => createMutation.mutate({ title, due_date }),
     updateTodo: (id: string, status: TodoStatus) => 
       updateStatusMutation.mutate({ id, status }),
-    updateTitle: (id: string, title: string) => 
-      updateTitleMutation.mutate({ id, title }),
+    updateTitle: (id: string, title: string, due_date: string) => 
+      updateTitleMutation.mutate({ id, title, due_date }),
     refetch,
     statusFilter,
     setStatusFilter: setStatusFilterState,

@@ -48,11 +48,19 @@ export const getTodos = async (
 };
 
 export const createTodo = async (request: CreateTodoRequest): Promise<Todo> => {
-  const response = await apiClient.post<Todo>('/api/v1/todos', request);
+  const response = await apiClient.post<Todo>('/api/v1/todos', {
+    title: request.title,
+    due_date: request.due_date,
+  });
   return response.data;
 };
 
 export const updateTodo = async (id: string, request: UpdateTodoRequest): Promise<Todo> => {
-  const response = await apiClient.patch<Todo>(`/api/v1/todos/${id}`, request);
+  const payload: UpdateTodoRequest = {};
+  if (request.title !== undefined) payload.title = request.title;
+  if (request.due_date !== undefined) payload.due_date = request.due_date;
+  if (request.status !== undefined) payload.status = request.status;
+  
+  const response = await apiClient.patch<Todo>(`/api/v1/todos/${id}`, payload);
   return response.data;
 };
