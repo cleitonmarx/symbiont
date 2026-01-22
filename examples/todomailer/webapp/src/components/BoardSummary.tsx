@@ -26,7 +26,7 @@ export const BoardSummary = ({ data }: BoardSummaryProps) => {
           <span className="stat-value">{data.counts.OPEN}</span>
         </div>
         <div className="stat">
-          <span className="stat-label">Completed</span>
+          <span className="stat-label">Done</span>
           <span className="stat-value">{data.counts.DONE}</span>
         </div>
         {hasDetails && (
