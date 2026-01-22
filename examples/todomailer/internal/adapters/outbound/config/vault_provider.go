@@ -21,18 +21,18 @@ type VaultProvider struct {
 // The token is the Vault authentication token.
 // The mountPath is the mount point for the KV secrets engine (e.g., "secret").
 // The secretPath is the path to the secret within the mount (e.g., "appname").
-func NewVaultProvider(server, token, mountPath, secretPath string) (*VaultProvider, error) {
+func NewVaultProvider(server, token, mountPath, secretPath string) (VaultProvider, error) {
 	if server == "" {
-		return nil, fmt.Errorf("server is required")
+		return VaultProvider{}, fmt.Errorf("server is required")
 	}
 	if token == "" {
-		return nil, fmt.Errorf("token is required")
+		return VaultProvider{}, fmt.Errorf("token is required")
 	}
 	if mountPath == "" {
-		return nil, fmt.Errorf("mountPath is required")
+		return VaultProvider{}, fmt.Errorf("mountPath is required")
 	}
 	if secretPath == "" {
-		return nil, fmt.Errorf("secretPath is required")
+		return VaultProvider{}, fmt.Errorf("secretPath is required")
 	}
 
 	cfg := api.DefaultConfig()
@@ -40,12 +40,12 @@ func NewVaultProvider(server, token, mountPath, secretPath string) (*VaultProvid
 
 	client, err := api.NewClient(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create vault client: %w", err)
+		return VaultProvider{}, fmt.Errorf("failed to create vault client: %w", err)
 	}
 
 	client.SetToken(token)
 
-	vp := &VaultProvider{
+	vp := VaultProvider{
 		client:     client,
 		mountPath:  mountPath,
 		secretPath: secretPath,
@@ -58,7 +58,7 @@ func NewVaultProvider(server, token, mountPath, secretPath string) (*VaultProvid
 //
 // It looks up the key in the configured secret path.
 // Returns an error if the secret or key is not found.
-func (vp *VaultProvider) Get(ctx context.Context, key string) (string, error) {
+func (vp VaultProvider) Get(ctx context.Context, key string) (string, error) {
 	secret, err := vp.client.KVv2(vp.mountPath).Get(ctx, vp.secretPath)
 	if err != nil {
 		return "", err

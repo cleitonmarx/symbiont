@@ -43,7 +43,7 @@ type InitListTodos struct {
 }
 
 // Initialize initializes the ListTodosImpl use case and registers it in the dependency container.
-func (ilt *InitListTodos) Initialize(ctx context.Context) (context.Context, error) {
+func (ilt InitListTodos) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[ListTodos](NewListTodosImpl(ilt.TodoRepo))
 	return ctx, nil
 }

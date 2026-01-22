@@ -80,7 +80,7 @@ func (a *App) Host(runnable ...Runnable) *App {
 
 // Run executes the app: initializes components, runs runnables concurrently, and handles graceful shutdown.
 // Blocks until completion or signal (SIGINT, SIGTERM). Returns error if any phase fails.
-func (a *App) Run() error {
+func (a App) Run() error {
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
 		// Interrupt signal sent from terminal
@@ -95,13 +95,13 @@ func (a *App) Run() error {
 }
 
 // RunWithContext executes the app with the provided context for cancellation control.
-func (a *App) RunWithContext(ctx context.Context) error {
+func (a App) RunWithContext(ctx context.Context) error {
 	return a.runWithContext(ctx)
 }
 
 // RunAsync executes the app asynchronously in a background goroutine.
 // Returns a channel that receives the final error (or nil) when execution completes.
-func (a *App) RunAsync(ctx context.Context) chan error {
+func (a App) RunAsync(ctx context.Context) chan error {
 	a.errCh = make(chan error, 1)
 	go func() {
 		a.errCh <- a.runWithContext(ctx)
@@ -111,7 +111,7 @@ func (a *App) RunAsync(ctx context.Context) chan error {
 }
 
 // runWithContext is the core orchestrator: initializes, wires dependencies, runs runnables, cleans up.
-func (a *App) runWithContext(ctx context.Context) error {
+func (a App) runWithContext(ctx context.Context) error {
 	var closers []closerFunc
 	defer func() { combineClosers(closers)() }()
 
@@ -192,7 +192,7 @@ func combineClosers(closers []closerFunc) closerFunc {
 	}
 }
 
-func (a *App) runnerInfos() []introspection.RunnerInfo {
+func (a App) runnerInfos() []introspection.RunnerInfo {
 	rInfos := make([]introspection.RunnerInfo, 0, len(a.runnableSpecsList))
 	for _, rs := range a.runnableSpecsList {
 		t := reflect.TypeOf(rs.original)
@@ -204,7 +204,7 @@ func (a *App) runnerInfos() []introspection.RunnerInfo {
 	return rInfos
 }
 
-func (a *App) initializerInfos() []introspection.InitializerInfo {
+func (a App) initializerInfos() []introspection.InitializerInfo {
 	inits := make([]introspection.InitializerInfo, 0, len(a.initializers))
 	for _, init := range a.initializers {
 		t := reflect.TypeOf(init)

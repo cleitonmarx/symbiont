@@ -16,20 +16,20 @@ type TodoEmailSender struct {
 }
 
 // Run starts the email sending worker.
-func (esw *TodoEmailSender) Run(ctx context.Context) error {
-	esw.Logger.Println("EmailSender: running...")
+func (esw TodoEmailSender) Run(ctx context.Context) error {
+	esw.Logger.Println("TodoEmailSender: running...")
 	ticker := time.NewTicker(esw.Interval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			esw.Logger.Println("EmailSender: stopping...")
+			esw.Logger.Println("TodoEmailSender: stopping...")
 			return nil
 		case <-ticker.C:
 			err := esw.SendEmails.Execute(ctx)
 			if err != nil {
-				esw.Logger.Printf("EmailSender: error sending emails: %v", err)
+				esw.Logger.Printf("TodoEmailSender: error sending emails: %v", err)
 			}
 		}
 	}

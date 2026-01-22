@@ -22,15 +22,15 @@ type TodoEventSubscriber struct {
 }
 
 // Run starts the subscriber worker.
-func (w *TodoEventSubscriber) Run(ctx context.Context) error {
-	w.Logger.Println("TodoEventSubscriber: running...")
+func (s TodoEventSubscriber) Run(ctx context.Context) error {
+	s.Logger.Println("TodoEventSubscriber: running...")
 
-	eventCh := make(chan *pubsub.Message, w.BatchSize*2)
+	eventCh := make(chan *pubsub.Message, s.BatchSize*2)
 	subscriberInitErrCh := make(chan error, 1)
 
 	// 1. Receive messages in background (blocking call)
 	go func() {
-		err := w.Client.Subscriber(w.SubscriptionID).Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
+		err := s.Client.Subscriber(s.SubscriptionID).Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
 			select {
 			case eventCh <- msg:
 				// Ack later, after batching
@@ -45,7 +45,7 @@ func (w *TodoEventSubscriber) Run(ctx context.Context) error {
 	}()
 
 	// 2. Batch + flush loop
-	ticker := time.NewTicker(w.Interval)
+	ticker := time.NewTicker(s.Interval)
 	defer ticker.Stop()
 
 	var batch []*pubsub.Message
@@ -53,7 +53,7 @@ func (w *TodoEventSubscriber) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			w.Logger.Println("TodoEventSubscriber: stopping...")
+			s.Logger.Println("TodoEventSubscriber: stopping...")
 			return nil
 
 		case err := <-subscriberInitErrCh:
@@ -62,26 +62,26 @@ func (w *TodoEventSubscriber) Run(ctx context.Context) error {
 		case msg := <-eventCh:
 			batch = append(batch, msg)
 
-			if len(batch) >= w.BatchSize {
-				w.flush(ctx, batch)
+			if len(batch) >= s.BatchSize {
+				s.flush(ctx, batch)
 				batch = nil
 			}
 
 		case <-ticker.C:
 			if len(batch) > 0 {
-				w.flush(ctx, batch)
+				s.flush(ctx, batch)
 				batch = nil
 			}
 		}
 	}
 }
 
-func (w *TodoEventSubscriber) flush(ctx context.Context, batch []*pubsub.Message) {
-	w.Logger.Printf("TodoEventSubscriber: processing batch size=%d", len(batch))
+func (s TodoEventSubscriber) flush(ctx context.Context, batch []*pubsub.Message) {
+	s.Logger.Printf("TodoEventSubscriber: processing batch size=%d", len(batch))
 
 	// Generate board-level summary once per batch
-	if err := w.GenerateBoardSummary.Execute(ctx); err != nil {
-		w.Logger.Printf("AI summary generation failed: %v", err)
+	if err := s.GenerateBoardSummary.Execute(ctx); err != nil {
+		s.Logger.Printf("AI summary generation failed: %v", err)
 		return
 	}
 

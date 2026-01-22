@@ -38,15 +38,15 @@ type TodoRepository struct {
 }
 
 // NewTodoRepository creates a new instance of TodoRepository.
-func NewTodoRepository(db *sql.DB) *TodoRepository {
-	return &TodoRepository{
+func NewTodoRepository(db *sql.DB) TodoRepository {
+	return TodoRepository{
 		db:    db,
 		pqsql: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar).RunWith(db),
 	}
 }
 
 // ListTodos lists todos with pagination and optional filters.
-func (tr *TodoRepository) ListTodos(ctx context.Context, page int, pageSize int, opts ...domain.ListTodoOptions) ([]domain.Todo, bool, error) {
+func (tr TodoRepository) ListTodos(ctx context.Context, page int, pageSize int, opts ...domain.ListTodoOptions) ([]domain.Todo, bool, error) {
 	spanCtx, span := tracing.Start(ctx, trace.WithAttributes(
 		attribute.Int("page", page),
 		attribute.Int("pageSize", pageSize),
@@ -113,7 +113,7 @@ func (tr *TodoRepository) ListTodos(ctx context.Context, page int, pageSize int,
 }
 
 // CreateTodo creates a new todo.
-func (tr *TodoRepository) CreateTodo(ctx context.Context, todo domain.Todo) error {
+func (tr TodoRepository) CreateTodo(ctx context.Context, todo domain.Todo) error {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
@@ -144,7 +144,7 @@ func (tr *TodoRepository) CreateTodo(ctx context.Context, todo domain.Todo) erro
 }
 
 // UpdateTodo updates an existing todo.
-func (tr *TodoRepository) UpdateTodo(ctx context.Context, todo domain.Todo) error {
+func (tr TodoRepository) UpdateTodo(ctx context.Context, todo domain.Todo) error {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
@@ -168,7 +168,7 @@ func (tr *TodoRepository) UpdateTodo(ctx context.Context, todo domain.Todo) erro
 }
 
 // GetTodo retrieves a todo by its ID.
-func (tr *TodoRepository) GetTodo(ctx context.Context, id uuid.UUID) (domain.Todo, error) {
+func (tr TodoRepository) GetTodo(ctx context.Context, id uuid.UUID) (domain.Todo, error) {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
@@ -209,7 +209,7 @@ type InitTodoRepository struct {
 }
 
 // Initialize registers the TodoRepository in the dependency container.
-func (tr *InitTodoRepository) Initialize(ctx context.Context) (context.Context, error) {
+func (tr InitTodoRepository) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[domain.TodoRepository](NewTodoRepository(tr.DB))
 	return ctx, nil
 }

@@ -27,7 +27,7 @@ func NewTodoEventPublisher(client *pubsubV2.Client, topicID string) *TodoEventPu
 }
 
 // PublishEvent publishes a todo event to the pub/sub topic.
-func (p *TodoEventPublisher) PublishEvent(ctx context.Context, event domain.TodoEvent) error {
+func (p TodoEventPublisher) PublishEvent(ctx context.Context, event domain.TodoEvent) error {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
@@ -59,7 +59,7 @@ type InitClient struct {
 	client    *pubsubV2.Client
 }
 
-func (i *InitClient) Initialize(ctx context.Context) (context.Context, error) {
+func (i InitClient) Initialize(ctx context.Context) (context.Context, error) {
 	client, err := pubsubV2.NewClient(ctx, i.ProjectID)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to create pubsub client: %w", err)
@@ -71,7 +71,7 @@ func (i *InitClient) Initialize(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
-func (i *InitClient) Close() {
+func (i InitClient) Close() {
 	if err := i.client.Close(); err != nil {
 		i.Logger.Printf("InitClient:failed to close pubsub client: %v", err)
 	}
@@ -86,7 +86,7 @@ type InitTodoEventPublisher struct {
 }
 
 // Initialize registers the TodoEventPublisher in the dependency container.
-func (i *InitTodoEventPublisher) Initialize(ctx context.Context) (context.Context, error) {
+func (i InitTodoEventPublisher) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[domain.TodoEventPublisher](NewTodoEventPublisher(i.Client, i.TopicID))
 	return ctx, nil
 }

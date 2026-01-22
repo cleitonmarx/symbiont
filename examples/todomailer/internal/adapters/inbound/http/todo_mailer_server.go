@@ -18,7 +18,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-// TodoMailerApp is the HTTP server adapter for the TodoMailer application.
+// TodoMailerServer is the HTTP server adapter for the TodoMailer application.
 //
 // It implements the OpenAPI-generated ServerInterface and serves both the REST API
 // endpoints and the embedded web application static files. The server is instrumented
@@ -26,7 +26,7 @@ import (
 // or configuration providers through the symbiont framework.
 //
 // Dependencies are automatically resolved and injected at initialization time.
-type TodoMailerApp struct {
+type TodoMailerServer struct {
 	Port                   int                      `config:"HTTP_PORT" default:"8080"`
 	Logger                 *log.Logger              `resolve:""`
 	ListTodosUseCase       usecases.ListTodos       `resolve:""`
@@ -35,7 +35,7 @@ type TodoMailerApp struct {
 	GetBoardSummaryUseCase usecases.GetBoardSummary `resolve:""`
 }
 
-func (api *TodoMailerApp) ListTodos(w http.ResponseWriter, r *http.Request, params ListTodosParams) {
+func (api TodoMailerServer) ListTodos(w http.ResponseWriter, r *http.Request, params ListTodosParams) {
 	resp := ListTodosResp{
 		Items: []Todo{},
 		Page:  params.Page,
@@ -79,7 +79,7 @@ func (api *TodoMailerApp) ListTodos(w http.ResponseWriter, r *http.Request, para
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-func (api *TodoMailerApp) CreateTodo(w http.ResponseWriter, r *http.Request) {
+func (api TodoMailerServer) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var req CreateTodoJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errResp := ErrorResp{}
@@ -121,7 +121,7 @@ func (api *TodoMailerApp) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(resp)
 }
-func (api *TodoMailerApp) UpdateTodo(w http.ResponseWriter, r *http.Request, todoId openapi_types.UUID) {
+func (api TodoMailerServer) UpdateTodo(w http.ResponseWriter, r *http.Request, todoId openapi_types.UUID) {
 	var req UpdateTodoJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errResp := ErrorResp{}
@@ -175,7 +175,7 @@ func (api *TodoMailerApp) UpdateTodo(w http.ResponseWriter, r *http.Request, tod
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-func (api *TodoMailerApp) GetBoardSummary(w http.ResponseWriter, r *http.Request) {
+func (api TodoMailerServer) GetBoardSummary(w http.ResponseWriter, r *http.Request) {
 	summary, found, err := api.GetBoardSummaryUseCase.Query(r.Context())
 	if err != nil {
 		errResp := ErrorResp{}
@@ -224,8 +224,8 @@ func (api *TodoMailerApp) GetBoardSummary(w http.ResponseWriter, r *http.Request
 //go:embed webappdist/*
 var embedFS embed.FS
 
-// Run starts the HTTP server for the TodoMailerApp.
-func (api *TodoMailerApp) Run(ctx context.Context) error {
+// Run starts the HTTP server for the TodoMailerServer.
+func (api TodoMailerServer) Run(ctx context.Context) error {
 	mux := http.NewServeMux()
 
 	// Serve webapp static files
@@ -252,21 +252,21 @@ func (api *TodoMailerApp) Run(ctx context.Context) error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		api.Logger.Printf("TodoMailerApp: Listening on port %d", api.Port)
+		api.Logger.Printf("TodoMailerServer: Listening on port %d", api.Port)
 		errCh <- s.ListenAndServe()
 	}()
 
 	select {
 	case <-ctx.Done():
-		api.Logger.Print("TodoMailerApp: Shutting down")
+		api.Logger.Print("TodoMailerServer: Shutting down")
 		return s.Shutdown(ctx)
 	case err := <-errCh:
 		return err
 	}
 }
 
-// IsReady checks if the TodoMailerApp HTTP server is ready by performing a health check.
-func (api *TodoMailerApp) IsReady(ctx context.Context) error {
+// IsReady checks if the TodoMailerServer is ready by performing a health check.
+func (api TodoMailerServer) IsReady(ctx context.Context) error {
 	resp, err := http.Get(fmt.Sprintf("http://:%d", api.Port))
 	if err != nil {
 		return err
@@ -279,4 +279,4 @@ func (api *TodoMailerApp) IsReady(ctx context.Context) error {
 	return nil
 }
 
-var _ ServerInterface = (*TodoMailerApp)(nil)
+var _ ServerInterface = (*TodoMailerServer)(nil)

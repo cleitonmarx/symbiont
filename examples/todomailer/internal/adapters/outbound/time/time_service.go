@@ -21,7 +21,7 @@ type InitTimeService struct {
 }
 
 // Initialize registers the TimeService in the dependency container.
-func (its *InitTimeService) Initialize(ctx context.Context) (context.Context, error) {
+func (its InitTimeService) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[domain.TimeService](TimeService{})
 	return ctx, nil
 }

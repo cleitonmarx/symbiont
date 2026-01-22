@@ -45,7 +45,7 @@ func NewTodoMailerApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&usecases.InitGetBoardSummary{},
 		).
 		Host(
-			&http.TodoMailerApp{},
+			&http.TodoMailerServer{},
 			&worker.TodoEmailSender{},
 			&worker.TodoEventSubscriber{},
 		)

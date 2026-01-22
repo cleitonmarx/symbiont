@@ -16,20 +16,20 @@ import (
 
 // BoardSummaryGenerator implements domain.BoardSummaryGenerator using Docker Models API.
 type BoardSummaryGenerator struct {
-	client *DockerModelAPIClient
+	client DockerModelAPIClient
 	model  string
 }
 
 // NewBoardSummaryGenerator creates a new BoardSummaryGenerator instance.
-func NewBoardSummaryGenerator(client *DockerModelAPIClient, model string) *BoardSummaryGenerator {
-	return &BoardSummaryGenerator{
+func NewBoardSummaryGenerator(client DockerModelAPIClient, model string) BoardSummaryGenerator {
+	return BoardSummaryGenerator{
 		client: client,
 		model:  model,
 	}
 }
 
 // GenerateBoardSummary generates a board summary from todos using the LLM.
-func (bsg *BoardSummaryGenerator) GenerateBoardSummary(ctx context.Context, todos []domain.Todo) (domain.BoardSummary, error) {
+func (bsg BoardSummaryGenerator) GenerateBoardSummary(ctx context.Context, todos []domain.Todo) (domain.BoardSummary, error) {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
@@ -92,7 +92,7 @@ Definitions:
 
 Requirements:
 1) Count todos per status (include every status present).
-2) Recommend up to 3 todos to complete next, in priority order.
+2) Recommend up to 5 todos to complete next, in priority order.
 3) List overdue and near-deadline todos (titles only).
 4) Summary must be user-friendly, concise, and non-technical.
 
@@ -109,8 +109,8 @@ Return ONLY this JSON schema:
 }
 
 Rules:
-- next_up: maximum 3 items, ordered by priority.
-- overdue and near_deadline: titles only.
+- next_up: maximum 10 items, ordered by priority. Never include DONE todos.
+- overdue and near_deadline: titles only. Never include DONE todos.
 - summary: exactly 1 short sentence, friendly and encouraging.
 - Do not include IDs or technical language.
 - Output JSON only.`, today, todosJSON)
@@ -182,7 +182,7 @@ type InitBoardSummaryGenerator struct {
 }
 
 // Initialize registers the BoardSummaryGenerator in the dependency container.
-func (i *InitBoardSummaryGenerator) Initialize(ctx context.Context) (context.Context, error) {
+func (i InitBoardSummaryGenerator) Initialize(ctx context.Context) (context.Context, error) {
 	client, err := NewDockerModelAPIClient(i.Host, i.ModelAPIKey, i.HttpClient)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to create DockerModelAPI client: %w", err)

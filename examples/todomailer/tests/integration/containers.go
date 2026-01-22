@@ -12,7 +12,7 @@ type InitDockerCompose struct {
 	compose *compose.DockerCompose
 }
 
-func (i *InitDockerCompose) Initialize(ctx context.Context) (context.Context, error) {
+func (i InitDockerCompose) Initialize(ctx context.Context) (context.Context, error) {
 	dc, err := compose.NewDockerCompose("../../docker-compose.deps.yml")
 	if err != nil {
 		return ctx, err
@@ -33,7 +33,7 @@ func (i *InitDockerCompose) Initialize(ctx context.Context) (context.Context, er
 	return ctx, nil
 }
 
-func (i *InitDockerCompose) Close() {
+func (i InitDockerCompose) Close() {
 	if i.compose != nil {
 		cancelCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()

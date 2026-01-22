@@ -38,7 +38,7 @@ type InitGetBoardSummary struct {
 	SummaryRepo domain.BoardSummaryRepository `resolve:""`
 }
 
-func (igbs *InitGetBoardSummary) Initialize(ctx context.Context) (context.Context, error) {
+func (igbs InitGetBoardSummary) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[GetBoardSummary](NewGetBoardSummaryImpl(igbs.SummaryRepo))
 
 	return ctx, nil

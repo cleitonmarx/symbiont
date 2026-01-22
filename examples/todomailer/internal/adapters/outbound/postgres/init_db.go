@@ -33,7 +33,7 @@ type InitDB struct {
 
 // Initialize sets up the database connection and runs migrations and registers
 // the *sql.DB in the dependency container.
-func (di *InitDB) Initialize(ctx context.Context) (context.Context, error) {
+func (di InitDB) Initialize(ctx context.Context) (context.Context, error) {
 	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		di.DBUser,
 		di.DBPass,
@@ -63,7 +63,7 @@ func (di *InitDB) Initialize(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
-func (di *InitDB) runMigrations() error {
+func (di InitDB) runMigrations() error {
 	source, err := iofs.New(migrationsFS, "migrations")
 	if err != nil {
 		return fmt.Errorf("failed to create migration source: %w", err)
@@ -92,7 +92,7 @@ func (di *InitDB) runMigrations() error {
 	return nil
 }
 
-func (di *InitDB) Close() {
+func (di InitDB) Close() {
 	if di.db != nil {
 		if err := di.db.Close(); err != nil {
 			di.Logger.Printf("InitDB: failed to close database connection: %v", err)

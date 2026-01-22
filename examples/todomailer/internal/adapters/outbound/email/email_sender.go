@@ -32,7 +32,7 @@ type InitEmailSender struct {
 }
 
 // Initialize registers the EmailSender in the dependency container.
-func (ie *InitEmailSender) Initialize(ctx context.Context) (context.Context, error) {
+func (ie InitEmailSender) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[domain.EmailSender](NewEmailSender())
 	return ctx, nil
 }

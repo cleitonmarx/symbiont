@@ -81,7 +81,7 @@ type InitSendDoneTodoEmails struct {
 }
 
 // Initialize registers the SendDoneTodoEmails implementation in the dependency container.
-func (ie *InitSendDoneTodoEmails) Initialize(ctx context.Context) (context.Context, error) {
+func (ie InitSendDoneTodoEmails) Initialize(ctx context.Context) (context.Context, error) {
 	queue, _ := depend.Resolve[CompletedTodoEmailQueue]()
 	depend.Register[SendDoneTodoEmails](NewSendDoneTodoEmailsImpl(ie.TodoRepo, ie.Sender, ie.Time, queue))
 

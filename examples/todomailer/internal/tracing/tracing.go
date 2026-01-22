@@ -72,7 +72,7 @@ type InitOpenTelemetry struct {
 }
 
 // Initialize sets up OpenTelemetry tracing and exporting.
-func (o *InitOpenTelemetry) Initialize(ctx context.Context) (context.Context, error) {
+func (o InitOpenTelemetry) Initialize(ctx context.Context) (context.Context, error) {
 	var err error
 	// Set up propagator.
 	prop := newPropagator()
@@ -88,7 +88,7 @@ func (o *InitOpenTelemetry) Initialize(ctx context.Context) (context.Context, er
 }
 
 // Close shuts down the OpenTelemetry tracer provider and span exporter.
-func (o *InitOpenTelemetry) Close() {
+func (o InitOpenTelemetry) Close() {
 	cancelCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := o.tp.Shutdown(cancelCtx); err != nil {
@@ -137,7 +137,7 @@ func newTracerProvider(ctx context.Context) (*sdktrace.TracerProvider, sdktrace.
 type InitHttpClient struct {
 }
 
-func (i *InitHttpClient) Initialize(ctx context.Context) (context.Context, error) {
+func (i InitHttpClient) Initialize(ctx context.Context) (context.Context, error) {
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryWaitMax = 10 * time.Second
 	retryClient.RetryMax = 3

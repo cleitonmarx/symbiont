@@ -77,7 +77,7 @@ type InitUpdateTodo struct {
 }
 
 // Initialize initializes the UpdateTodoImpl use case.
-func (iut *InitUpdateTodo) Initialize(ctx context.Context) (context.Context, error) {
+func (iut InitUpdateTodo) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[UpdateTodo](NewUpdateTodoImpl(iut.Repo, iut.TimeService, iut.Publisher))
 	return ctx, nil
 }

@@ -80,7 +80,7 @@ type InitCreateTodo struct {
 }
 
 // Initialize initializes the CreateTodoImpl use case and registers it in the dependency container.
-func (ict *InitCreateTodo) Initialize(ctx context.Context) (context.Context, error) {
+func (ict InitCreateTodo) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[CreateTodo](NewCreateTodoImpl(ict.Repo, ict.TimeService, ict.Publisher))
 	return ctx, nil
 }

@@ -31,15 +31,15 @@ type BoardSummaryRepository struct {
 }
 
 // NewBoardSummaryRepository creates a new instance of BoardSummaryRepository.
-func NewBoardSummaryRepository(db *sql.DB) *BoardSummaryRepository {
-	return &BoardSummaryRepository{
+func NewBoardSummaryRepository(db *sql.DB) BoardSummaryRepository {
+	return BoardSummaryRepository{
 		db:    db,
 		pqsql: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar).RunWith(db),
 	}
 }
 
 // StoreSummary stores a board summary in the database, updating if it already exists.
-func (bsr *BoardSummaryRepository) StoreSummary(ctx context.Context, summary domain.BoardSummary) error {
+func (bsr BoardSummaryRepository) StoreSummary(ctx context.Context, summary domain.BoardSummary) error {
 	spanCtx, span := tracing.Start(ctx, trace.WithAttributes(
 		attribute.String("summary_id", summary.ID.String()),
 		attribute.String("model", summary.Model),
@@ -80,7 +80,7 @@ func (bsr *BoardSummaryRepository) StoreSummary(ctx context.Context, summary dom
 }
 
 // GetLatestSummary retrieves the most recently generated board summary.
-func (bsr *BoardSummaryRepository) GetLatestSummary(ctx context.Context) (domain.BoardSummary, bool, error) {
+func (bsr BoardSummaryRepository) GetLatestSummary(ctx context.Context) (domain.BoardSummary, bool, error) {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
@@ -125,7 +125,7 @@ type InitBoardSummaryRepository struct {
 }
 
 // Initialize registers the BoardSummaryRepository in the dependency container.
-func (ibsr *InitBoardSummaryRepository) Initialize(ctx context.Context) (context.Context, error) {
+func (ibsr InitBoardSummaryRepository) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[domain.BoardSummaryRepository](NewBoardSummaryRepository(ibsr.DB))
 	return ctx, nil
 }

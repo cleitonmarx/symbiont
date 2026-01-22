@@ -59,7 +59,7 @@ type InitGenerateBoardSummary struct {
 	TodoRepo    domain.TodoRepository         `resolve:""`
 }
 
-func (igbs *InitGenerateBoardSummary) Initialize(ctx context.Context) (context.Context, error) {
+func (igbs InitGenerateBoardSummary) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[GenerateBoardSummary](NewGenerateBoardSummaryImpl(igbs.Generator, igbs.SummaryRepo, igbs.TodoRepo))
 	return ctx, nil
 }

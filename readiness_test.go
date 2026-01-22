@@ -89,7 +89,7 @@ func TestWaitForReadiness(t *testing.T) {
 					assert.ErrorIs(t, err, tt.expectErrIs)
 				}
 				if tt.expectMsg != "" {
-					var se *Error
+					var se Error
 					assert.True(t, errors.As(err, &se))
 					assert.Contains(t, se.Error(), tt.expectMsg)
 				}

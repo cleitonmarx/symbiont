@@ -12,7 +12,7 @@ import (
 type InitLogger struct{}
 
 // Initialize registers the logger in the dependency container.
-func (il *InitLogger) Initialize(ctx context.Context) (context.Context, error) {
+func (il InitLogger) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register(log.New(os.Stdout, "", log.Lmsgprefix))
 	return ctx, nil
 }

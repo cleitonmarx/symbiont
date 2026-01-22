@@ -172,7 +172,7 @@ func TestApp_RunWithContext(t *testing.T) {
 			inits:     []Initializer{&errInitializer{}},
 			expectErr: "error: init error, component: symbiont.errInitializer",
 			validate: func(t *testing.T, _ *testCase, err error) {
-				var se *Error
+				var se Error
 				require.Error(t, err)
 				require.True(t, errors.As(err, &se))
 				assert.Contains(t, se.Error(), "init error")
@@ -182,7 +182,7 @@ func TestApp_RunWithContext(t *testing.T) {
 			inits:     []Initializer{&panicInitializer{}},
 			expectErr: "panic in setup func",
 			validate: func(t *testing.T, _ *testCase, err error) {
-				var se *Error
+				var se Error
 				require.Error(t, err)
 				require.True(t, errors.As(err, &se))
 				assert.Contains(t, se.Error(), "panic in Initialize func: boom")
@@ -192,7 +192,7 @@ func TestApp_RunWithContext(t *testing.T) {
 			runs: []Runnable{&runCloser{willErr: true}},
 			validate: func(t *testing.T, _ *testCase, err error) {
 				// runnable error propagates through errgroup
-				var se *Error
+				var se Error
 				require.Error(t, err)
 				require.True(t, errors.As(err, &se))
 				assert.Contains(t, se.Error(), "run error")
@@ -202,7 +202,7 @@ func TestApp_RunWithContext(t *testing.T) {
 			runs:      []Runnable{&runCloser{willPanic: true}},
 			expectErr: "panic in Run func",
 			validate: func(t *testing.T, _ *testCase, err error) {
-				var se *Error
+				var se Error
 				require.Error(t, err)
 				require.True(t, errors.As(err, &se))
 				assert.Contains(t, se.Error(), "panic in Run func: boom")
@@ -232,7 +232,7 @@ func TestApp_RunWithContext(t *testing.T) {
 			runs:      []Runnable{&resolveDepRun{gotVal: new(string)}},
 			expectErr: "the dependency type 'string' was not registered",
 			validate: func(t *testing.T, _ *testCase, err error) {
-				var se *Error
+				var se Error
 				require.Error(t, err)
 				require.True(t, errors.As(err, &se))
 				assert.Contains(t, se.Error(), "not registered")
@@ -243,7 +243,7 @@ func TestApp_RunWithContext(t *testing.T) {
 			runs:      []Runnable{&configRun{gotVal: new(string)}},
 			expectErr: "error getting value for field",
 			validate: func(t *testing.T, _ *testCase, err error) {
-				var se *Error
+				var se Error
 				require.Error(t, err)
 				require.True(t, errors.As(err, &se))
 				assert.Contains(t, se.Error(), "not found")

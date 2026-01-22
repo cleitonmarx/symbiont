@@ -21,7 +21,7 @@ type initLogger struct {
 	Prefix string `config:"prefix" default:"httpFileServer->"`
 }
 
-func (i *initLogger) Initialize(ctx context.Context) (context.Context, error) {
+func (i initLogger) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register(log.New(os.Stdout, i.Prefix, log.LstdFlags))
 	return ctx, nil
 }
@@ -30,7 +30,7 @@ type httpFileServer struct {
 	Logger *log.Logger `resolve:""`
 }
 
-func (h *httpFileServer) Run(ctx context.Context) error {
+func (h httpFileServer) Run(ctx context.Context) error {
 	h.Logger.Print("Starting")
 
 	server := &http.Server{
@@ -52,7 +52,7 @@ func (h *httpFileServer) Run(ctx context.Context) error {
 	}
 }
 
-func (h *httpFileServer) IsReady(ctx context.Context) error {
+func (h httpFileServer) IsReady(ctx context.Context) error {
 	resp, err := http.Get("http://:12345")
 	if err != nil {
 		return err

@@ -28,15 +28,15 @@ type DockerModelAPIClient struct {
 // NewDockerModelAPIClient creates a new client.
 // baseURL example: "http://localhost:12434" (no trailing slash required)
 // apiKey is optional for local deployments.
-func NewDockerModelAPIClient(baseURL string, apiKey string, httpClient *http.Client) (*DockerModelAPIClient, error) {
+func NewDockerModelAPIClient(baseURL string, apiKey string, httpClient *http.Client) (DockerModelAPIClient, error) {
 	baseURL = strings.TrimRight(baseURL, "/")
 	if baseURL == "" {
-		return nil, errors.New("aillm: baseURL is required")
+		return DockerModelAPIClient{}, errors.New("aillm: baseURL is required")
 	}
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: 30 * time.Second}
 	}
-	return &DockerModelAPIClient{
+	return DockerModelAPIClient{
 		baseURL: baseURL,
 		apiKey:  apiKey,
 		http:    httpClient,
@@ -103,7 +103,7 @@ type Usage struct {
 }
 
 // Chat sends a chat completion request and returns the parsed response.
-func (c *DockerModelAPIClient) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
+func (c DockerModelAPIClient) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
 	if req.Model == "" {
 		return nil, errors.New("llm: request model is required")
 	}
