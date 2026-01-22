@@ -16,17 +16,17 @@ type UpdateTodo interface {
 
 // UpdateTodoImpl is the implementation of the UpdateTodo use case.
 type UpdateTodoImpl struct {
-	todoRepo    domain.TodoRepository     `resolve:""`
-	timeService domain.TimeService        `resolve:""`
-	publisher   domain.TodoEventPublisher `resolve:""`
+	todoRepo     domain.TodoRepository      `resolve:""`
+	timeProvider domain.CurrentTimeProvider `resolve:""`
+	publisher    domain.TodoEventPublisher  `resolve:""`
 }
 
 // NewUpdateTodoImpl creates a new instance of UpdateTodoImpl.
-func NewUpdateTodoImpl(todoRepo domain.TodoRepository, timeService domain.TimeService, publisher domain.TodoEventPublisher) UpdateTodoImpl {
+func NewUpdateTodoImpl(todoRepo domain.TodoRepository, timeProvider domain.CurrentTimeProvider, publisher domain.TodoEventPublisher) UpdateTodoImpl {
 	return UpdateTodoImpl{
-		todoRepo:    todoRepo,
-		timeService: timeService,
-		publisher:   publisher,
+		todoRepo:     todoRepo,
+		timeProvider: timeProvider,
+		publisher:    publisher,
 	}
 }
 
@@ -51,7 +51,7 @@ func (uti UpdateTodoImpl) Execute(ctx context.Context, id uuid.UUID, title *stri
 		todo.DueDate = *dueDate
 	}
 
-	todo.UpdatedAt = uti.timeService.Now()
+	todo.UpdatedAt = uti.timeProvider.Now()
 
 	err = uti.todoRepo.UpdateTodo(spanCtx, todo)
 	if tracing.RecordErrorAndStatus(span, err) {
@@ -71,9 +71,9 @@ func (uti UpdateTodoImpl) Execute(ctx context.Context, id uuid.UUID, title *stri
 
 // InitUpdateTodo initializes the UpdateTodo use case and registers it in the dependency container.
 type InitUpdateTodo struct {
-	Repo        domain.TodoRepository     `resolve:""`
-	TimeService domain.TimeService        `resolve:""`
-	Publisher   domain.TodoEventPublisher `resolve:""`
+	Repo        domain.TodoRepository      `resolve:""`
+	TimeService domain.CurrentTimeProvider `resolve:""`
+	Publisher   domain.TodoEventPublisher  `resolve:""`
 }
 
 // Initialize initializes the UpdateTodoImpl use case.

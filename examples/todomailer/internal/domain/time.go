@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-// TimeService provides the current time.
-type TimeService interface {
+// CurrentTimeProvider provides the current time.
+type CurrentTimeProvider interface {
 	Now() time.Time
 }

@@ -25,7 +25,7 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		setExpectations func(repo *domain_mocks.MockTodoRepository, timeService *domain_mocks.MockTimeService, publisher *domain_mocks.MockTodoEventPublisher)
+		setExpectations func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher)
 		id              uuid.UUID
 		title           *string
 		status          *domain.TodoStatus
@@ -37,8 +37,8 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 			id:     fixedUUID,
 			title:  &todo.Title,
 			status: &todo.Status,
-			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeService *domain_mocks.MockTimeService, publisher *domain_mocks.MockTodoEventPublisher) {
-				timeService.EXPECT().Now().Return(fixedTime)
+			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher) {
+				timeProvider.EXPECT().Now().Return(fixedTime)
 				repo.EXPECT().GetTodo(mock.Anything, fixedUUID).Return(todo, nil)
 				repo.EXPECT().UpdateTodo(mock.Anything, mock.MatchedBy(func(t domain.Todo) bool {
 					return t.ID == fixedUUID && t.Title == todo.Title && t.UpdatedAt == fixedTime
@@ -56,7 +56,7 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 		},
 		"todo-not-found": {
 			id: fixedUUID,
-			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeService *domain_mocks.MockTimeService, publisher *domain_mocks.MockTodoEventPublisher) {
+			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher) {
 				repo.EXPECT().GetTodo(mock.Anything, fixedUUID).Return(domain.Todo{}, errors.New("not found"))
 			},
 			expectedTodo: domain.Todo{},
@@ -64,8 +64,8 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 		},
 		"repository-error": {
 			id: fixedUUID,
-			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeService *domain_mocks.MockTimeService, publisher *domain_mocks.MockTodoEventPublisher) {
-				timeService.EXPECT().Now().Return(fixedTime)
+			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher) {
+				timeProvider.EXPECT().Now().Return(fixedTime)
 				repo.EXPECT().GetTodo(mock.Anything, fixedUUID).Return(todo, nil)
 				repo.EXPECT().UpdateTodo(mock.Anything, mock.Anything).Return(errors.New("database error"))
 			},
@@ -77,13 +77,13 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			repo := domain_mocks.NewMockTodoRepository(t)
-			timeService := domain_mocks.NewMockTimeService(t)
+			timeProvider := domain_mocks.NewMockCurrentTimeProvider(t)
 			publisher := domain_mocks.NewMockTodoEventPublisher(t)
 			if tt.setExpectations != nil {
-				tt.setExpectations(repo, timeService, publisher)
+				tt.setExpectations(repo, timeProvider, publisher)
 			}
 
-			uti := NewUpdateTodoImpl(repo, timeService, publisher)
+			uti := NewUpdateTodoImpl(repo, timeProvider, publisher)
 
 			got, gotErr := uti.Execute(context.Background(), tt.id, tt.title, tt.status, tt.dueDate)
 			assert.Equal(t, tt.expectedErr, gotErr)

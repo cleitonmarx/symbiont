@@ -32,7 +32,7 @@ func NewTodoMailerApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&postgres.InitDB{},
 			&postgres.InitTodoRepository{},
 			&postgres.InitBoardSummaryRepository{},
-			&time.InitTimeService{},
+			&time.InitCurrentTimeProvider{},
 			&pubsub.InitClient{},
 			&pubsub.InitTodoEventPublisher{},
 			&email.InitEmailSender{},
@@ -57,7 +57,7 @@ type ReportLoggerIntrospector struct {
 }
 
 // Introspect generates and logs the introspection report and a Mermaid graph.
-func (i *ReportLoggerIntrospector) Introspect(ctx context.Context, r introspection.Report) error {
+func (i ReportLoggerIntrospector) Introspect(ctx context.Context, r introspection.Report) error {
 	b, err := r.ToJSON()
 	if err != nil {
 		return err

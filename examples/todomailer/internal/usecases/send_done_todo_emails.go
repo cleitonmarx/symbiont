@@ -18,19 +18,19 @@ type SendDoneTodoEmails interface {
 
 // SendDoneTodoEmailsImpl is the implementation of SendDoneTodoEmails use case.
 type SendDoneTodoEmailsImpl struct {
-	todoRepo domain.TodoRepository
-	sender   domain.EmailSender
-	time     domain.TimeService
-	queue    CompletedTodoEmailQueue
+	todoRepo            domain.TodoRepository
+	sender              domain.EmailSender
+	currentTimeProvider domain.CurrentTimeProvider
+	queue               CompletedTodoEmailQueue
 }
 
 // NewSendDoneTodoEmailsImpl creates a new instance of SendDoneTodoEmailsImpl.
-func NewSendDoneTodoEmailsImpl(todoRepo domain.TodoRepository, sender domain.EmailSender, time domain.TimeService, queue CompletedTodoEmailQueue) SendDoneTodoEmailsImpl {
+func NewSendDoneTodoEmailsImpl(todoRepo domain.TodoRepository, sender domain.EmailSender, time domain.CurrentTimeProvider, queue CompletedTodoEmailQueue) SendDoneTodoEmailsImpl {
 	return SendDoneTodoEmailsImpl{
-		todoRepo: todoRepo,
-		sender:   sender,
-		time:     time,
-		queue:    queue,
+		todoRepo:            todoRepo,
+		sender:              sender,
+		currentTimeProvider: time,
+		queue:               queue,
 	}
 }
 
@@ -59,7 +59,7 @@ func (se SendDoneTodoEmailsImpl) Execute(ctx context.Context) error {
 			todo.EmailStatus = domain.EmailStatus_SENT
 			todo.EmailProviderID = &transID
 		}
-		todo.UpdatedAt = se.time.Now()
+		todo.UpdatedAt = se.currentTimeProvider.Now()
 		err = se.todoRepo.UpdateTodo(spanCtx, todo)
 		if tracing.RecordErrorAndStatus(span, err) {
 			return err
@@ -75,9 +75,9 @@ func (se SendDoneTodoEmailsImpl) Execute(ctx context.Context) error {
 
 // InitSendDoneTodoEmails is the initializer for SendDoneTodoEmails use case.
 type InitSendDoneTodoEmails struct {
-	TodoRepo domain.TodoRepository `resolve:""`
-	Sender   domain.EmailSender    `resolve:""`
-	Time     domain.TimeService    `resolve:""`
+	TodoRepo domain.TodoRepository      `resolve:""`
+	Sender   domain.EmailSender         `resolve:""`
+	Time     domain.CurrentTimeProvider `resolve:""`
 }
 
 // Initialize registers the SendDoneTodoEmails implementation in the dependency container.

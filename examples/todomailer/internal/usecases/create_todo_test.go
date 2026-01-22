@@ -30,7 +30,7 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		setExpectations func(repo *domain_mocks.MockTodoRepository, timeService *domain_mocks.MockTimeService, publisher *domain_mocks.MockTodoEventPublisher)
+		setExpectations func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher)
 		title           string
 		dueDate         time.Time
 		expectedTodo    domain.Todo
@@ -39,8 +39,8 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 		"success": {
 			title:   "My new todo",
 			dueDate: fixedTime,
-			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeService *domain_mocks.MockTimeService, publisher *domain_mocks.MockTodoEventPublisher) {
-				timeService.EXPECT().Now().Return(fixedTime)
+			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher) {
+				timeProvider.EXPECT().Now().Return(fixedTime)
 
 				repo.EXPECT().CreateTodo(
 					mock.Anything,
@@ -81,8 +81,8 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 		"repository-error": {
 			title:   "My new todo",
 			dueDate: fixedTime,
-			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeService *domain_mocks.MockTimeService, publisher *domain_mocks.MockTodoEventPublisher) {
-				timeService.EXPECT().Now().Return(fixedTime)
+			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher) {
+				timeProvider.EXPECT().Now().Return(fixedTime)
 
 				repo.EXPECT().CreateTodo(
 					mock.Anything,
@@ -96,13 +96,13 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			repo := domain_mocks.NewMockTodoRepository(t)
-			timeService := domain_mocks.NewMockTimeService(t)
+			timeProvider := domain_mocks.NewMockCurrentTimeProvider(t)
 			publisher := domain_mocks.NewMockTodoEventPublisher(t)
 			if tt.setExpectations != nil {
-				tt.setExpectations(repo, timeService, publisher)
+				tt.setExpectations(repo, timeProvider, publisher)
 			}
 
-			cti := NewCreateTodoImpl(repo, timeService, publisher)
+			cti := NewCreateTodoImpl(repo, timeProvider, publisher)
 			cti.createUUID = fixedUUID
 
 			got, gotErr := cti.Execute(context.Background(), tt.title, tt.dueDate)

@@ -16,11 +16,11 @@ import (
 
 func TestSendDoneTodoEmailsImpl_Execute(t *testing.T) {
 	tests := map[string]struct {
-		setExpectations func(repo *domain_mocks.MockTodoRepository, sender *domain_mocks.MockEmailSender, timeService *domain_mocks.MockTimeService)
+		setExpectations func(repo *domain_mocks.MockTodoRepository, sender *domain_mocks.MockEmailSender, timeProvider *domain_mocks.MockCurrentTimeProvider)
 		expectedErr     error
 	}{
 		"success": {
-			setExpectations: func(repo *domain_mocks.MockTodoRepository, sender *domain_mocks.MockEmailSender, timeService *domain_mocks.MockTimeService) {
+			setExpectations: func(repo *domain_mocks.MockTodoRepository, sender *domain_mocks.MockEmailSender, timeProvider *domain_mocks.MockCurrentTimeProvider) {
 				repo.EXPECT().
 					ListTodos(mock.Anything, 1, 100, mock.Anything, mock.Anything).
 					Return(
@@ -39,7 +39,7 @@ func TestSendDoneTodoEmailsImpl_Execute(t *testing.T) {
 
 				fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
-				timeService.EXPECT().Now().
+				timeProvider.EXPECT().Now().
 					Return(fixedTime)
 
 				repo.EXPECT().
@@ -56,13 +56,13 @@ func TestSendDoneTodoEmailsImpl_Execute(t *testing.T) {
 			expectedErr: nil,
 		},
 		"repository-error": {
-			setExpectations: func(repo *domain_mocks.MockTodoRepository, sender *domain_mocks.MockEmailSender, timeService *domain_mocks.MockTimeService) {
+			setExpectations: func(repo *domain_mocks.MockTodoRepository, sender *domain_mocks.MockEmailSender, timeProvider *domain_mocks.MockCurrentTimeProvider) {
 				repo.EXPECT().ListTodos(mock.Anything, 1, 100, mock.Anything, mock.Anything).Return(nil, false, errors.New("database error"))
 			},
 			expectedErr: errors.New("database error"),
 		},
 		"email-sending-error": {
-			setExpectations: func(repo *domain_mocks.MockTodoRepository, sender *domain_mocks.MockEmailSender, timeService *domain_mocks.MockTimeService) {
+			setExpectations: func(repo *domain_mocks.MockTodoRepository, sender *domain_mocks.MockEmailSender, timeProvider *domain_mocks.MockCurrentTimeProvider) {
 				repo.EXPECT().ListTodos(mock.Anything, 1, 100, mock.Anything, mock.Anything).Return([]domain.Todo{
 					{ID: uuid.New(), Title: "Todo 1", Status: domain.TodoStatus_DONE, EmailStatus: domain.EmailStatus_PENDING},
 				}, false, nil)
@@ -71,7 +71,7 @@ func TestSendDoneTodoEmailsImpl_Execute(t *testing.T) {
 
 				fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
-				timeService.EXPECT().Now().
+				timeProvider.EXPECT().Now().
 					Return(fixedTime)
 				repo.EXPECT().UpdateTodo(mock.Anything, mock.MatchedBy(func(t domain.Todo) bool {
 					return t.Title == "Todo 1" &&
@@ -82,7 +82,7 @@ func TestSendDoneTodoEmailsImpl_Execute(t *testing.T) {
 			},
 		},
 		"update-todo-error": {
-			setExpectations: func(repo *domain_mocks.MockTodoRepository, sender *domain_mocks.MockEmailSender, timeService *domain_mocks.MockTimeService) {
+			setExpectations: func(repo *domain_mocks.MockTodoRepository, sender *domain_mocks.MockEmailSender, timeProvider *domain_mocks.MockCurrentTimeProvider) {
 				repo.EXPECT().ListTodos(mock.Anything, 1, 100, mock.Anything, mock.Anything).Return([]domain.Todo{
 					{ID: uuid.MustParse("123e4567-e89b-12d3-a456-426614174000"), Title: "Todo 1", Status: domain.TodoStatus_DONE, EmailStatus: domain.EmailStatus_PENDING},
 				}, false, nil)
@@ -95,7 +95,7 @@ func TestSendDoneTodoEmailsImpl_Execute(t *testing.T) {
 
 				fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
-				timeService.EXPECT().Now().
+				timeProvider.EXPECT().Now().
 					Return(fixedTime)
 
 				repo.EXPECT().
@@ -117,12 +117,12 @@ func TestSendDoneTodoEmailsImpl_Execute(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			repo := domain_mocks.NewMockTodoRepository(t)
 			sender := domain_mocks.NewMockEmailSender(t)
-			timeService := domain_mocks.NewMockTimeService(t)
+			timeProvider := domain_mocks.NewMockCurrentTimeProvider(t)
 			if tt.setExpectations != nil {
-				tt.setExpectations(repo, sender, timeService)
+				tt.setExpectations(repo, sender, timeProvider)
 			}
 
-			sdte := NewSendDoneTodoEmailsImpl(repo, sender, timeService, nil)
+			sdte := NewSendDoneTodoEmailsImpl(repo, sender, timeProvider, nil)
 
 			gotErr := sdte.Execute(context.Background())
 			assert.Equal(t, tt.expectedErr, gotErr)

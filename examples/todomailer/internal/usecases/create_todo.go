@@ -17,19 +17,19 @@ type CreateTodo interface {
 
 // CreateTodoImpl is the implementation of the CreateTodo use case.
 type CreateTodoImpl struct {
-	todoRepo    domain.TodoRepository
-	timeService domain.TimeService
-	publisher   domain.TodoEventPublisher
-	createUUID  func() uuid.UUID
+	todoRepo     domain.TodoRepository
+	timeProvider domain.CurrentTimeProvider
+	publisher    domain.TodoEventPublisher
+	createUUID   func() uuid.UUID
 }
 
 // NewCreateTodoImpl creates a new instance of CreateTodoImpl.
-func NewCreateTodoImpl(todoRepo domain.TodoRepository, timeService domain.TimeService, publisher domain.TodoEventPublisher) CreateTodoImpl {
+func NewCreateTodoImpl(todoRepo domain.TodoRepository, timeProvider domain.CurrentTimeProvider, publisher domain.TodoEventPublisher) CreateTodoImpl {
 	return CreateTodoImpl{
-		todoRepo:    todoRepo,
-		timeService: timeService,
-		publisher:   publisher,
-		createUUID:  uuid.New,
+		todoRepo:     todoRepo,
+		timeProvider: timeProvider,
+		publisher:    publisher,
+		createUUID:   uuid.New,
 	}
 }
 
@@ -44,7 +44,7 @@ func (cti CreateTodoImpl) Execute(ctx context.Context, title string, dueDate tim
 		return domain.Todo{}, err
 	}
 
-	now := cti.timeService.Now()
+	now := cti.timeProvider.Now()
 	todo := domain.Todo{
 		ID:          cti.createUUID(),
 		Title:       title,
@@ -74,9 +74,9 @@ func (cti CreateTodoImpl) Execute(ctx context.Context, title string, dueDate tim
 
 // InitCreateTodo initializes the CreateTodo use case and registers it in the dependency container.
 type InitCreateTodo struct {
-	Repo        domain.TodoRepository     `resolve:""`
-	TimeService domain.TimeService        `resolve:""`
-	Publisher   domain.TodoEventPublisher `resolve:""`
+	Repo        domain.TodoRepository      `resolve:""`
+	TimeService domain.CurrentTimeProvider `resolve:""`
+	Publisher   domain.TodoEventPublisher  `resolve:""`
 }
 
 // Initialize initializes the CreateTodoImpl use case and registers it in the dependency container.

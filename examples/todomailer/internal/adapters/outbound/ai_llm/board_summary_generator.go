@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain"
@@ -16,15 +15,17 @@ import (
 
 // BoardSummaryGenerator implements domain.BoardSummaryGenerator using Docker Models API.
 type BoardSummaryGenerator struct {
-	client DockerModelAPIClient
-	model  string
+	timeProvider domain.CurrentTimeProvider
+	client       DockerModelAPIClient
+	model        string
 }
 
 // NewBoardSummaryGenerator creates a new BoardSummaryGenerator instance.
-func NewBoardSummaryGenerator(client DockerModelAPIClient, model string) BoardSummaryGenerator {
+func NewBoardSummaryGenerator(timeProvider domain.CurrentTimeProvider, client DockerModelAPIClient, model string) BoardSummaryGenerator {
 	return BoardSummaryGenerator{
-		client: client,
-		model:  model,
+		timeProvider: timeProvider,
+		client:       client,
+		model:        model,
 	}
 }
 
@@ -33,7 +34,8 @@ func (bsg BoardSummaryGenerator) GenerateBoardSummary(ctx context.Context, todos
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
-	prompt := buildPrompt(todos)
+	now := bsg.timeProvider.Now()
+	prompt := buildPrompt(todos, now.Format("2006-01-02"))
 
 	req := ChatRequest{
 		Model:  bsg.model,
@@ -69,16 +71,14 @@ func (bsg BoardSummaryGenerator) GenerateBoardSummary(ctx context.Context, todos
 
 	summary.ID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	summary.Model = bsg.model
-	summary.GeneratedAt = time.Now()
+	summary.GeneratedAt = now
 	summary.SourceVersion = 1
 
 	return summary, nil
 }
 
 // buildPrompt creates a detailed prompt for the LLM based on todos.
-func buildPrompt(todos []domain.Todo) string {
-	today := time.Now().Format("2006-01-02")
-
+func buildPrompt(todos []domain.Todo, today string) string {
 	todosJSON := buildTodosJSON(todos)
 
 	prompt := fmt.Sprintf(`Generate a short, user-facing board summary.
@@ -175,10 +175,12 @@ func parseResponse(response string) (domain.BoardSummary, error) {
 
 // InitBoardSummaryGenerator is the initializer for BoardSummaryGenerator.
 type InitBoardSummaryGenerator struct {
-	Host        string       `config:"DOCKER_MODEL_HOST"`
-	Model       string       `config:"DOCKER_MODEL" default:"ai/mistral"`
-	HttpClient  *http.Client `resolve:""`
-	ModelAPIKey string       `config:"DOCKER_MODEL_API_KEY" default:"none"`
+	HttpClient   *http.Client               `resolve:""`
+	TimeProvider domain.CurrentTimeProvider `resolve:""`
+	Host         string                     `config:"DOCKER_MODEL_HOST"`
+	Model        string                     `config:"DOCKER_MODEL" default:"ai/mistral"`
+
+	ModelAPIKey string `config:"DOCKER_MODEL_API_KEY" default:"none"`
 }
 
 // Initialize registers the BoardSummaryGenerator in the dependency container.
@@ -188,7 +190,7 @@ func (i InitBoardSummaryGenerator) Initialize(ctx context.Context) (context.Cont
 		return ctx, fmt.Errorf("failed to create DockerModelAPI client: %w", err)
 	}
 
-	generator := NewBoardSummaryGenerator(client, i.Model)
+	generator := NewBoardSummaryGenerator(i.TimeProvider, client, i.Model)
 	depend.Register[domain.BoardSummaryGenerator](generator)
 
 	return ctx, nil
