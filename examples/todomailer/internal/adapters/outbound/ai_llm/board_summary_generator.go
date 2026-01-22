@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain"
@@ -38,12 +39,14 @@ func (bsg BoardSummaryGenerator) GenerateBoardSummary(ctx context.Context, todos
 	prompt := buildPrompt(todos, now.Format("2006-01-02"))
 
 	req := ChatRequest{
-		Model:  bsg.model,
-		Stream: false,
+		Model:       bsg.model,
+		Stream:      false,
+		Temperature: ptr[float64](0),
+		TopP:        ptr[float64](0.1),
 		Messages: []ChatMessage{
 			{
 				Role:    "system",
-				Content: "You are an assistant embedded in a todo application. Use ONLY the provided data. Do NOT invent todos, dates, or statuses. Do NOT reveal reasoning or explanations. Output ONLY a valid JSON object matching the schema exactly. No extra keys. No markdown. No commentary.",
+				Content: "You are a JSON-only processor. Output ONLY raw JSON object. NO markdown code blocks, NO triple backticks, NO text before or after. Output starts with { and ends with }.",
 			},
 			{
 				Role:    "user",
@@ -81,25 +84,31 @@ func (bsg BoardSummaryGenerator) GenerateBoardSummary(ctx context.Context, todos
 func buildPrompt(todos []domain.Todo, today string) string {
 	todosJSON := buildTodosJSON(todos)
 
-	prompt := fmt.Sprintf(`Generate a short, user-facing board summary.
+	prompt := fmt.Sprintf(`You are categorizing todos by DATE ONLY using strict mathematical comparison.
 
-Today (for calculations): %s
+TODAY'S DATE: %s
 
-Definitions:
-- overdue: due_date < Today AND status != DONE
-- near_deadline: due_date within the next 7 days (inclusive) AND status != DONE
-- priority order for completion: overdue first, then near_deadline, then remaining OPEN ordered by earliest due_date (null due_date goes last)
+DATE MATH RULES (use simple string comparison YYYY-MM-DD):
+- overdue: due_date < %s AND status = OPEN
+- near_deadline: due_date >= %s AND due_date <= %s AND status = OPEN
+- future: due_date > %s AND status = OPEN
+- done: status = DONE (NEVER include in overdue, near_deadline, future, or next_up)
 
-Requirements:
-1) Count todos per status (include every status present).
-2) Recommend up to 5 todos to complete next, in priority order.
-3) List overdue and near-deadline todos (titles only).
-4) Summary must be user-friendly, concise, and non-technical.
+IGNORE ALL TITLE KEYWORDS: "urgent", "important", "ASAP", "critical", "priority" are IRRELEVANT.
 
-Todos:
-%s
+TODAY = %s
+TODAY+7 = %s
 
-Return ONLY this JSON schema:
+STRICT EXAMPLE (TODAY = %s):
+- Due 2026-01-20 < 2026-01-21? YES → overdue ✓
+- Due 2026-01-21 < 2026-01-21? NO → NOT overdue
+- Due 2026-01-21 >= 2026-01-21? YES → near_deadline ✓
+- Due 2026-01-21 <= 2026-01-28? YES → near_deadline ✓
+- Due 2026-01-23 >= 2026-01-21? YES AND Due 2026-01-23 <= 2026-01-28? YES → near_deadline ✓
+- Due 2026-01-29 > 2026-01-28? YES → future ✓
+
+OUTPUT REQUIREMENTS:
+Return ONLY valid JSON (no markdown, no code blocks, no extra text):
 {
   "counts": { "OPEN": number, "DONE": number },
   "next_up": [ { "title": string, "reason": string } ],
@@ -108,14 +117,36 @@ Return ONLY this JSON schema:
   "summary": string
 }
 
-Rules:
-- next_up: maximum 10 items, ordered by priority. Never include DONE todos.
-- overdue and near_deadline: titles only. Never include DONE todos.
-- summary: exactly 1 short sentence, friendly and encouraging.
-- Do not include IDs or technical language.
-- Output JSON only.`, today, todosJSON)
+OUTPUT RULES:
+- "counts": Count OPEN and DONE statuses
+- "next_up": ONLY OPEN todos. Order: [overdue (oldest first), near_deadline (earliest first), future (earliest first)]. Max 10. Reason: "overdue", "due within 7 days", or "upcoming"
+- "overdue": ONLY OPEN todos with due_date < %s. Sort by most overdue first
+- "near_deadline": ONLY OPEN todos with %s <= due_date <= %s. Sort by due_date ascending
+- "summary": 1 friendly sentence
+- Output ONLY the JSON object.
+
+Todos JSON INPUT:
+%s`,
+		today,
+		today,
+		today,
+		addDays(today, 7),
+		addDays(today, 7),
+		today,
+		addDays(today, 7),
+		today,
+		today,
+		today,
+		addDays(today, 7),
+		todosJSON)
 
 	return prompt
+}
+
+// addDays adds days to a date string in YYYY-MM-DD format
+func addDays(dateStr string, days int) string {
+	t, _ := time.Parse("2006-01-02", dateStr)
+	return t.AddDate(0, 0, days).Format("2006-01-02")
 }
 
 // buildTodosJSON creates the todos JSON for the prompt.
@@ -173,24 +204,27 @@ func parseResponse(response string) (domain.BoardSummary, error) {
 	}, nil
 }
 
+func ptr[T any](v T) *T {
+	return &v
+}
+
 // InitBoardSummaryGenerator is the initializer for BoardSummaryGenerator.
 type InitBoardSummaryGenerator struct {
 	HttpClient   *http.Client               `resolve:""`
 	TimeProvider domain.CurrentTimeProvider `resolve:""`
-	Host         string                     `config:"DOCKER_MODEL_HOST"`
-	Model        string                     `config:"DOCKER_MODEL" default:"ai/mistral"`
-
-	ModelAPIKey string `config:"DOCKER_MODEL_API_KEY" default:"none"`
+	LLMHost      string                     `config:"LLM_MODEL_HOST"`
+	LLMModel     string                     `config:"LLM_MODEL" default:"ai/gpt-oss"`
+	LLMAPIKey    string                     `config:"LLM_MODEL_API_KEY" default:"none"`
 }
 
 // Initialize registers the BoardSummaryGenerator in the dependency container.
 func (i InitBoardSummaryGenerator) Initialize(ctx context.Context) (context.Context, error) {
-	client, err := NewDockerModelAPIClient(i.Host, i.ModelAPIKey, i.HttpClient)
+	client, err := NewDockerModelAPIClient(i.LLMHost, i.LLMAPIKey, i.HttpClient)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to create DockerModelAPI client: %w", err)
 	}
 
-	generator := NewBoardSummaryGenerator(i.TimeProvider, client, i.Model)
+	generator := NewBoardSummaryGenerator(i.TimeProvider, client, i.LLMModel)
 	depend.Register[domain.BoardSummaryGenerator](generator)
 
 	return ctx, nil

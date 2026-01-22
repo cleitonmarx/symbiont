@@ -116,7 +116,7 @@ func setTestEnvVars() func() {
 	os.Setenv("PUBSUB_PROJECT_ID", "local-dev")
 	os.Setenv("PUBSUB_TOPIC_ID", "Todo")
 	os.Setenv("PUBSUB_SUBSCRIPTION_ID", "todo_summary_generator")
-	os.Setenv("DOCKER_MODEL_HOST", "http://localhost:12434")
+	os.Setenv("LLM_MODEL_HOST", "http://localhost:12434")
 
 	return func() {
 		// Unset the environment variables after the test.
@@ -133,6 +133,6 @@ func setTestEnvVars() func() {
 		os.Unsetenv("PUBSUB_PROJECT_ID")
 		os.Unsetenv("PUBSUB_TOPIC_ID")
 		os.Unsetenv("PUBSUB_SUBSCRIPTION_ID")
-		os.Unsetenv("DOCKER_MODEL_HOST")
+		os.Unsetenv("LLM_MODEL_HOST")
 	}
 }

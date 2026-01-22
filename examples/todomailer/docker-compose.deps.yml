@@ -65,4 +65,4 @@ services:
 
 models:
   llm:
-    model: ai/mistral
+    model: ai/gpt-oss:latest
