@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain"
+	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/tracing"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/usecases"
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -240,9 +241,7 @@ func (api *TodoMailerApp) Run(ctx context.Context) error {
 		Middlewares: []MiddlewareFunc{
 			otelhttp.NewMiddleware(
 				"todomailer-api",
-				otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
-					return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
-				}),
+				otelhttp.WithSpanNameFormatter(tracing.SpanNameFormatter),
 			)},
 	})
 
