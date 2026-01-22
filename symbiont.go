@@ -241,7 +241,7 @@ func runSafe(ctx context.Context, rs runnableSpecs) (err error) {
 	}()
 	err = rs.executor.Run(ctx)
 	if err != nil {
-		err = NewError(err, rs.original.Run)
+		err = NewError(err, rs.original)
 	}
 	return err
 }
