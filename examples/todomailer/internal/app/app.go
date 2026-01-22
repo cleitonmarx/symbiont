@@ -27,6 +27,7 @@ func NewTodoMailerApp(initializers ...symbiont.Initializer) *symbiont.App {
 		Initialize(
 			&log.InitLogger{},
 			&tracing.InitOpenTelemetry{},
+			&tracing.InitHttpClient{},
 			&config.InitVaultProvider{},
 			&postgres.InitDB{},
 			&postgres.InitTodoRepository{},

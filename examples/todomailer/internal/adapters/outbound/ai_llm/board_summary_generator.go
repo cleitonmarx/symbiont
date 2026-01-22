@@ -10,6 +10,7 @@ import (
 
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain"
+	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/tracing"
 	"github.com/google/uuid"
 )
 
@@ -29,6 +30,9 @@ func NewBoardSummaryGenerator(client *DockerModelAPIClient, model string) *Board
 
 // GenerateBoardSummary generates a board summary from todos using the LLM.
 func (bsg *BoardSummaryGenerator) GenerateBoardSummary(ctx context.Context, todos []domain.Todo) (domain.BoardSummary, error) {
+	spanCtx, span := tracing.Start(ctx)
+	defer span.End()
+
 	prompt := buildPrompt(todos)
 
 	req := ChatRequest{
@@ -46,18 +50,20 @@ func (bsg *BoardSummaryGenerator) GenerateBoardSummary(ctx context.Context, todo
 		},
 	}
 
-	resp, err := bsg.client.Chat(ctx, req)
-	if err != nil {
+	resp, err := bsg.client.Chat(spanCtx, req)
+	if tracing.RecordErrorAndStatus(span, err) {
 		return domain.BoardSummary{}, fmt.Errorf("failed to generate summary: %w", err)
 	}
 
 	if len(resp.Choices) == 0 {
-		return domain.BoardSummary{}, fmt.Errorf("no response from LLM")
+		err := fmt.Errorf("llm: no choices in response")
+		tracing.RecordErrorAndStatus(span, err)
+		return domain.BoardSummary{}, err
 	}
 
 	content := resp.Choices[0].Message.Content
 	summary, err := parseResponse(content)
-	if err != nil {
+	if tracing.RecordErrorAndStatus(span, err) {
 		return domain.BoardSummary{}, fmt.Errorf("failed to parse LLM response: %w", err)
 	}
 
@@ -169,13 +175,15 @@ func parseResponse(response string) (domain.BoardSummary, error) {
 
 // InitBoardSummaryGenerator is the initializer for BoardSummaryGenerator.
 type InitBoardSummaryGenerator struct {
-	Host  string `config:"DOCKER_MODEL_HOST"`
-	Model string `config:"DOCKER_MODEL" default:"ai/mistral"`
+	Host        string       `config:"DOCKER_MODEL_HOST"`
+	Model       string       `config:"DOCKER_MODEL" default:"ai/mistral"`
+	HttpClient  *http.Client `resolve:""`
+	ModelAPIKey string       `config:"DOCKER_MODEL_API_KEY" default:"none"`
 }
 
 // Initialize registers the BoardSummaryGenerator in the dependency container.
 func (i *InitBoardSummaryGenerator) Initialize(ctx context.Context) (context.Context, error) {
-	client, err := NewDockerModelAPIClient(i.Host, "", http.DefaultClient)
+	client, err := NewDockerModelAPIClient(i.Host, i.ModelAPIKey, i.HttpClient)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to create DockerModelAPI client: %w", err)
 	}

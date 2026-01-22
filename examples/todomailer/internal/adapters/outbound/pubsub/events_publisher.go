@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"cloud.google.com/go/pubsub/v2"
+	pubsubV2 "cloud.google.com/go/pubsub/v2"
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/tracing"
@@ -14,12 +14,12 @@ import (
 
 // TodoEventPublisher implements domain.TodoEventPublisher using Google Cloud Pub/Sub.
 type TodoEventPublisher struct {
-	client  *pubsub.Client
+	client  *pubsubV2.Client
 	topicID string
 }
 
 // NewTodoEventPublisher creates a new TodoEventPublisher instance.
-func NewTodoEventPublisher(client *pubsub.Client, topicID string) *TodoEventPublisher {
+func NewTodoEventPublisher(client *pubsubV2.Client, topicID string) *TodoEventPublisher {
 	return &TodoEventPublisher{
 		client:  client,
 		topicID: topicID,
@@ -32,11 +32,11 @@ func (p *TodoEventPublisher) PublishEvent(ctx context.Context, event domain.Todo
 	defer span.End()
 
 	eventData, err := json.Marshal(event)
-	if err != nil {
+	if tracing.RecordErrorAndStatus(span, err) {
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
-	result := p.client.Publisher(p.topicID).Publish(spanCtx, &pubsub.Message{
+	result := p.client.Publisher(p.topicID).Publish(spanCtx, &pubsubV2.Message{
 		Data: eventData,
 		Attributes: map[string]string{
 			"event_type": string(event.Type),
@@ -46,7 +46,7 @@ func (p *TodoEventPublisher) PublishEvent(ctx context.Context, event domain.Todo
 
 	// Block until the result is returned
 	_, err = result.Get(spanCtx)
-	if err != nil {
+	if tracing.RecordErrorAndStatus(span, err) {
 		return fmt.Errorf("failed to publish event: %w", err)
 	}
 
@@ -56,17 +56,17 @@ func (p *TodoEventPublisher) PublishEvent(ctx context.Context, event domain.Todo
 type InitClient struct {
 	Logger    *log.Logger `resolve:""`
 	ProjectID string      `config:"PUBSUB_PROJECT_ID"`
-	client    *pubsub.Client
+	client    *pubsubV2.Client
 }
 
 func (i *InitClient) Initialize(ctx context.Context) (context.Context, error) {
-	client, err := pubsub.NewClient(ctx, i.ProjectID)
+	client, err := pubsubV2.NewClient(ctx, i.ProjectID)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to create pubsub client: %w", err)
 	}
 	i.client = client
 
-	depend.Register[*pubsub.Client](client)
+	depend.Register(client)
 
 	return ctx, nil
 }
@@ -79,15 +79,14 @@ func (i *InitClient) Close() {
 
 // InitTodoEventPublisher is the initializer for TodoEventPublisher.
 type InitTodoEventPublisher struct {
-	Logger    *log.Logger    `resolve:""`
-	ProjectID string         `config:"PUBSUB_PROJECT_ID"`
-	TopicID   string         `config:"PUBSUB_TOPIC_ID" default:"todo-events"`
-	Client    *pubsub.Client `resolve:""`
+	Logger    *log.Logger      `resolve:""`
+	ProjectID string           `config:"PUBSUB_PROJECT_ID"`
+	TopicID   string           `config:"PUBSUB_TOPIC_ID" default:"todo-events"`
+	Client    *pubsubV2.Client `resolve:""`
 }
 
 // Initialize registers the TodoEventPublisher in the dependency container.
 func (i *InitTodoEventPublisher) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[domain.TodoEventPublisher](NewTodoEventPublisher(i.Client, i.TopicID))
-
 	return ctx, nil
 }

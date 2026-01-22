@@ -7,6 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cleitonmarx/symbiont/depend"
+	"github.com/hashicorp/go-retryablehttp"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -121,4 +124,23 @@ func newTracerProvider(ctx context.Context) (*sdktrace.TracerProvider, sdktrace.
 		sdktrace.WithResource(res),
 	)
 	return tracerProvider, otlpExporter, nil
+}
+
+// InitHttpClient initializes an HTTP client instrumented with OpenTelemetry
+// and with retry capabilities.
+type InitHttpClient struct {
+}
+
+func (i *InitHttpClient) Initialize(ctx context.Context) (context.Context, error) {
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryWaitMax = 10 * time.Second
+	retryClient.RetryMax = 3
+
+	stdClient := retryClient.StandardClient()
+	stdClient.Transport = otelhttp.NewTransport(
+		stdClient.Transport,
+	)
+
+	depend.Register(stdClient)
+	return ctx, nil
 }
