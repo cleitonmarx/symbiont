@@ -1,13 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTodos, createTodo, updateTodo } from '../services/api';
-import type { Todo, CreateTodoRequest, UpdateTodoRequest, TodoStatus } from '../types';
+import { getTodos, createTodo, updateTodo, getBoardSummary } from '../services/api';
+import type { Todo, CreateTodoRequest, UpdateTodoRequest, TodoStatus, BoardSummary } from '../types';
 import { useState, useEffect } from 'react';
 
-export const useTodos = () => {
+interface UseTodosReturn {
+  todos: Todo[];
+  loading: boolean;
+  error: string | null;
+  addTodo: (title: string, due_date: string) => void;
+  completeTodo: (id: string, status: TodoStatus) => void;
+  updateTodoTitle: (id: string, title: string, due_date: string) => void;
+  boardSummary: BoardSummary | null;
+  statusFilter: TodoStatus | 'ALL';
+  setStatusFilter: (status: TodoStatus | 'ALL') => void;
+  page: number;
+  previousPage: number | null;
+  nextPage: number | null;
+  goToPage: (page: number) => void;
+}
+
+export const useTodos = (): UseTodosReturn => {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilterState] = useState<TodoStatus | 'ALL'>('ALL');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [mutationError, setMutationError] = useState<string | null>(null);
+  const [boardSummary, setBoardSummary] = useState<BoardSummary | null>(null);
 
   // Reset page to 1 whenever status filter changes
   useEffect(() => {
@@ -77,6 +94,24 @@ export const useTodos = () => {
     },
   });
 
+  const fetchBoardSummary = async () => {
+    try {
+      const summary = await getBoardSummary();
+      setBoardSummary(summary);
+    } catch (err) {
+      console.error('Failed to fetch board summary:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchBoardSummary();
+    const interval = setInterval(() => {
+      fetchBoardSummary();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return {
     todos,
     loading,
@@ -93,5 +128,6 @@ export const useTodos = () => {
     previousPage,
     nextPage,
     goToPage: setCurrentPage,
+    boardSummary,
   };
 };

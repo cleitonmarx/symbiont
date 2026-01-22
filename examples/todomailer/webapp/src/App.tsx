@@ -6,9 +6,11 @@ import { useTodos } from './hooks/useTodos';
 const App: React.FC = () => {
   const { 
     todos, 
+    boardSummary,
     loading, 
     error,
     createTodo, 
+    completeTodo,
     updateTodo,
     updateTitle,
     statusFilter,
@@ -34,20 +36,27 @@ const App: React.FC = () => {
               <strong>Error:</strong> {error}
             </div>
           )}
-          <TodoList 
-            todos={todos} 
-            loading={loading}
-            error={null}
-            onUpdateTodo={updateTodo}
-            onUpdateTitle={updateTitle}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            currentPage={page}
-            previousPage={previousPage}
-            nextPage={nextPage}
-            onPreviousPage={() => previousPage !== null && goToPage(previousPage)}
-            onNextPage={() => nextPage !== null && goToPage(nextPage)}
-          />
+          {loading ? (
+            <div className="loading">Loading...</div>
+          ) : (
+            <TodoList 
+              todos={todos} 
+              boardSummary={boardSummary}
+              onComplete={completeTodo}
+              onUpdate={updateTodo}
+              loading={loading}
+              error={null}
+              onUpdateTodo={updateTodo}
+              onUpdateTitle={updateTitle}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              currentPage={page}
+              previousPage={previousPage}
+              nextPage={nextPage}
+              onPreviousPage={() => previousPage !== null && goToPage(previousPage)}
+              onNextPage={() => nextPage !== null && goToPage(nextPage)}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -1,36 +1,6 @@
 # Todo Completion Email Demo UI
 
-This project is a developer-friendly UI for the Todo Completion Email Demo API. It is built using React and TypeScript, and it provides a simple interface for managing todos, including creating, updating, and listing them with their email delivery statuses.
-
-## Project Structure
-
-```
-webapp
-├── src
-│   ├── main.tsx               # Entry point of the application
-│   ├── App.tsx                # Main application component with routing
-│   ├── vite-env.d.ts          # TypeScript definitions for Vite environment variables
-│   ├── components              # Contains reusable components
-│   │   ├── TodoList.tsx       # Component to display the list of todos
-│   │   ├── TodoItem.tsx       # Component for individual todo items
-│   │   ├── CreateTodoForm.tsx # Form for creating new todos
-│   │   └── ErrorMessage.tsx    # Component for displaying error messages
-│   ├── services                # API client setup
-│   │   └── api.ts             # Functions for interacting with the API
-│   ├── types                   # TypeScript types and interfaces
-│   │   └── index.ts           # Definitions for todos and API responses
-│   ├── hooks                   # Custom hooks
-│   │   └── useTodos.ts        # Hook for fetching and managing todos
-│   └── styles                  # Global styles
-│       └── index.css          # CSS styles for the application
-├── public                      # Static assets (currently empty)
-├── index.html                 # Main HTML file
-├── package.json               # Project metadata and dependencies
-├── tsconfig.json              # TypeScript configuration
-├── tsconfig.node.json         # Node.js specific TypeScript configuration
-├── vite.config.ts             # Vite configuration
-└── README.md                  # Project documentation
-```
+This project is a developer-friendly UI for the Todo Completion Email Demo API. It is built using React and TypeScript, and it provides a simple interface for managing todos, including creating, updating, and listing them with their email delivery statuses. The application also displays an AI-generated board summary that provides insights into your todo list.
 
 ## Getting Started
 
@@ -48,7 +18,7 @@ To run the application locally, follow these steps:
    ```
 
 3. **Set the API base URL**:
-   Update the API base URL in the `src/services/api.ts` file to point to your Todo Completion Email Demo API.
+   The API base URL is configured via the `VITE_API_BASE_URL` environment variable. By default, it points to `http://localhost:8080`.
 
 4. **Run the application**:
    ```bash
@@ -56,16 +26,28 @@ To run the application locally, follow these steps:
    ```
 
 5. **Open your browser**:
-   Navigate to `http://localhost:3000` to view the application.
+   Navigate to `http://localhost:5173` to view the application.
+
+## Features
+
+- **Create Todos**: Add new todos with titles and due dates
+- **Manage Todos**: Update todo titles or mark them as complete
+- **Email Status Tracking**: Monitor the delivery status of completion emails
+- **AI-Generated Board Summary**: Get insights into your todo board with AI-generated summaries, including:
+  - Total count of open and completed todos
+  - Next up items with reasons
+  - Overdue tasks
+  - Tasks near deadline
 
 ## Demo Script
 
-To test the application, you can use the following demo script:
+To test the application, follow these steps:
 
-1. Create a new todo by entering a title in the "Create Todo" form and clicking "Add Todo".
-2. View the list of todos and their statuses.
-3. Update a todo by clicking on the "Complete" or "Rename" buttons next to each todo.
-4. Observe the email delivery status updates as you complete todos.
+1. Create a new todo by entering a title and due date in the form and clicking "Add Todo"
+2. View the list of todos and their statuses
+3. Update a todo by clicking the "Complete" or "Rename" buttons next to each todo
+4. Observe the email delivery status updates as you complete todos
+5. Check the Board Summary at the top of the list for AI-generated insights (if available)
 
 ## License
 
