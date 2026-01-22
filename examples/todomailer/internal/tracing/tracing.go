@@ -2,7 +2,9 @@ package tracing
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"net/http"
 	"runtime"
 	"strings"
 	"time"
@@ -20,11 +22,15 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const name = "go.opentelemetry.io/otel/example/todomailer"
-
 var (
-	tracer = otel.Tracer(name)
+	tracer = otel.Tracer("")
 )
+
+// SpanNameFormatter formats span names for HTTP requests.
+// It uses the HTTP method and URL path as the span name.
+func SpanNameFormatter(_ string, r *http.Request) string {
+	return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
+}
 
 // Start a new span with the global tracer.
 func Start(ctx context.Context, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
@@ -53,9 +59,9 @@ func getCallerName(skip int) string {
 		return "unknown"
 	}
 
-	parts := strings.Split(fn.Name()+"()", "/")
+	parts := strings.Split(fn.Name(), "/")
 
-	return parts[len(parts)-1]
+	return strings.ReplaceAll(parts[len(parts)-1], ".", "::")
 }
 
 // InitOpenTelemetry is a component that sets up OpenTelemetry tracing.
@@ -135,10 +141,12 @@ func (i *InitHttpClient) Initialize(ctx context.Context) (context.Context, error
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryWaitMax = 10 * time.Second
 	retryClient.RetryMax = 3
+	retryClient.Logger = nil
 
 	stdClient := retryClient.StandardClient()
 	stdClient.Transport = otelhttp.NewTransport(
 		stdClient.Transport,
+		otelhttp.WithSpanNameFormatter(SpanNameFormatter),
 	)
 
 	depend.Register(stdClient)
