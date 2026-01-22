@@ -47,7 +47,7 @@ func NewTodoRepository(db *sql.DB) *TodoRepository {
 
 // ListTodos lists todos with pagination and optional filters.
 func (tr *TodoRepository) ListTodos(ctx context.Context, page int, pageSize int, opts ...domain.ListTodoOptions) ([]domain.Todo, bool, error) {
-	_, span := tracing.Start(ctx, trace.WithAttributes(
+	spanCtx, span := tracing.Start(ctx, trace.WithAttributes(
 		attribute.Int("page", page),
 		attribute.Int("pageSize", pageSize),
 	))
@@ -74,7 +74,7 @@ func (tr *TodoRepository) ListTodos(ctx context.Context, page int, pageSize int,
 		qry = qry.Where(squirrel.Eq{"email_status": params.EmailStatuses})
 	}
 
-	rows, err := qry.QueryContext(ctx)
+	rows, err := qry.QueryContext(spanCtx)
 	if tracing.RecordErrorAndStatus(span, err) {
 		return nil, false, err
 	}
