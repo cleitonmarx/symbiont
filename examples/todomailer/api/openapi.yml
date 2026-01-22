@@ -7,10 +7,6 @@ info:
     only when a todo is completed. The API never calls the email provider directly.
     A background worker delivers emails and updates per-todo email delivery status.
 
-servers:
-  - url: http://localhost:8080
-    description: Local development server
-
 tags:
   - name: Todos
     description: Todo creation, updates, and listing (includes email delivery status).
