@@ -46,5 +46,5 @@ type BoardSummaryGenerator interface {
 // BoardSummaryRepository defines the interface for storing and retrieving board summaries.
 type BoardSummaryRepository interface {
 	StoreSummary(ctx context.Context, summary BoardSummary) error
-	GetLatestSummary(ctx context.Context) (BoardSummary, error)
+	GetLatestSummary(ctx context.Context) (BoardSummary, bool, error)
 }

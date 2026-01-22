@@ -32,6 +32,7 @@ func NewTodoMailerApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&postgres.InitTodoRepository{},
 			&postgres.InitBoardSummaryRepository{},
 			&time.InitTimeService{},
+			&pubsub.InitClient{},
 			&pubsub.InitTodoEventPublisher{},
 			&email.InitEmailSender{},
 			&aillm.InitBoardSummaryGenerator{},
@@ -45,6 +46,7 @@ func NewTodoMailerApp(initializers ...symbiont.Initializer) *symbiont.App {
 		Host(
 			&http.TodoMailerApp{},
 			&worker.TodoEmailSender{},
+			&worker.TodoEventSubscriber{},
 		)
 }
 

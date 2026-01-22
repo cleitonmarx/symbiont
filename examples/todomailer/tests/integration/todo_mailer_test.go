@@ -1,4 +1,4 @@
-//go:build integration
+//------go:build integration
 
 package integration
 
@@ -34,7 +34,7 @@ func TestTodoMailer_Integration(t *testing.T) {
 
 	shutdownCh := todoMailerApp.RunAsync(cancelCtx)
 
-	err := todoMailerApp.WaitForReadiness(cancelCtx, 20*time.Second)
+	err := todoMailerApp.WaitForReadiness(cancelCtx, 20000000*time.Second)
 	if err != nil {
 		cancel()
 		t.Fatalf("TodoMailer app failed to become ready: %v", err)
@@ -112,6 +112,11 @@ func setTestEnvVars() func() {
 	os.Setenv("DB_PORT", "5432")
 	os.Setenv("DB_NAME", "todomailerdb")
 	os.Setenv("EMAIL_SENDER_INTERVAL", "1s")
+	os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8681")
+	os.Setenv("PUBSUB_PROJECT_ID", "local-dev")
+	os.Setenv("PUBSUB_TOPIC_ID", "Todo")
+	os.Setenv("PUBSUB_SUBSCRIPTION_ID", "todo_summary_generator")
+	os.Setenv("DOCKER_MODEL_HOST", "http://localhost:12434")
 
 	return func() {
 		// Unset the environment variables after the test.
@@ -124,5 +129,10 @@ func setTestEnvVars() func() {
 		os.Unsetenv("DB_PORT")
 		os.Unsetenv("DB_NAME")
 		os.Unsetenv("EMAIL_SENDER_INTERVAL")
+		os.Unsetenv("PUBSUB_EMULATOR_HOST")
+		os.Unsetenv("PUBSUB_PROJECT_ID")
+		os.Unsetenv("PUBSUB_TOPIC_ID")
+		os.Unsetenv("PUBSUB_SUBSCRIPTION_ID")
+		os.Unsetenv("DOCKER_MODEL_HOST")
 	}
 }

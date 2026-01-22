@@ -175,7 +175,7 @@ func (api *TodoMailerApp) UpdateTodo(w http.ResponseWriter, r *http.Request, tod
 }
 
 func (api *TodoMailerApp) GetBoardSummary(w http.ResponseWriter, r *http.Request) {
-	summary, err := api.GetBoardSummaryUseCase.Query(r.Context())
+	summary, found, err := api.GetBoardSummaryUseCase.Query(r.Context())
 	if err != nil {
 		errResp := ErrorResp{}
 		errResp.Error.Code = INTERNALERROR
@@ -183,6 +183,16 @@ func (api *TodoMailerApp) GetBoardSummary(w http.ResponseWriter, r *http.Request
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(errResp)
+		return
+	}
+	if !found {
+		errResp := ErrorResp{}
+		errResp.Error.Code = NOTFOUND
+		errResp.Error.Message = "board summary not found"
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
 		_ = json.NewEncoder(w).Encode(errResp)
 		return
 	}

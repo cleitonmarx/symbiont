@@ -80,7 +80,7 @@ func (bsr *BoardSummaryRepository) StoreSummary(ctx context.Context, summary dom
 }
 
 // GetLatestSummary retrieves the most recently generated board summary.
-func (bsr *BoardSummaryRepository) GetLatestSummary(ctx context.Context) (domain.BoardSummary, error) {
+func (bsr *BoardSummaryRepository) GetLatestSummary(ctx context.Context) (domain.BoardSummary, bool, error) {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
@@ -105,18 +105,18 @@ func (bsr *BoardSummaryRepository) GetLatestSummary(ctx context.Context) (domain
 
 	if tracing.RecordErrorAndStatus(span, err) {
 		if err == sql.ErrNoRows {
-			return domain.BoardSummary{}, fmt.Errorf("no board summary found")
+			return domain.BoardSummary{}, false, nil
 		}
-		return domain.BoardSummary{}, err
+		return domain.BoardSummary{}, false, err
 	}
 
 	// Unmarshal the JSON content
 	err = json.Unmarshal(contentJSON, &summary.Content)
 	if tracing.RecordErrorAndStatus(span, err) {
-		return domain.BoardSummary{}, fmt.Errorf("failed to unmarshal summary content: %w", err)
+		return domain.BoardSummary{}, false, fmt.Errorf("failed to unmarshal summary content: %w", err)
 	}
 
-	return summary, nil
+	return summary, true, nil
 }
 
 // InitBoardSummaryRepository is a Symbiont initializer for BoardSummaryRepository.

@@ -9,7 +9,7 @@ import (
 )
 
 type GetBoardSummary interface {
-	Query(ctx context.Context) (domain.BoardSummary, error)
+	Query(ctx context.Context) (domain.BoardSummary, bool, error)
 }
 
 type GetBoardSummaryImpl struct {
@@ -22,16 +22,16 @@ func NewGetBoardSummaryImpl(r domain.BoardSummaryRepository) GetBoardSummaryImpl
 	}
 }
 
-func (gbs GetBoardSummaryImpl) Query(ctx context.Context) (domain.BoardSummary, error) {
+func (gbs GetBoardSummaryImpl) Query(ctx context.Context) (domain.BoardSummary, bool, error) {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
-	summary, err := gbs.summaryRepo.GetLatestSummary(spanCtx)
+	summary, found, err := gbs.summaryRepo.GetLatestSummary(spanCtx)
 	if tracing.RecordErrorAndStatus(span, err) {
-		return domain.BoardSummary{}, err
+		return domain.BoardSummary{}, false, err
 	}
 
-	return summary, nil
+	return summary, found, nil
 }
 
 type InitGetBoardSummary struct {

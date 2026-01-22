@@ -53,22 +53,24 @@ func TestGetBoardSummaryImpl_Query(t *testing.T) {
 	tests := map[string]struct {
 		setExpectations func(summaryRepo *domain_mocks.MockBoardSummaryRepository)
 		expectedSummary domain.BoardSummary
+		expectedFound   bool
 		expectedErr     error
 	}{
 		"success": {
 			setExpectations: func(summaryRepo *domain_mocks.MockBoardSummaryRepository) {
 				summaryRepo.EXPECT().GetLatestSummary(
 					mock.Anything,
-				).Return(boardSummary, nil)
+				).Return(boardSummary, true, nil)
 			},
 			expectedSummary: boardSummary,
+			expectedFound:   true,
 			expectedErr:     nil,
 		},
 		"repository-error": {
 			setExpectations: func(summaryRepo *domain_mocks.MockBoardSummaryRepository) {
 				summaryRepo.EXPECT().GetLatestSummary(
 					mock.Anything,
-				).Return(domain.BoardSummary{}, errors.New("database error"))
+				).Return(domain.BoardSummary{}, false, errors.New("database error"))
 			},
 			expectedSummary: domain.BoardSummary{},
 			expectedErr:     errors.New("database error"),
@@ -77,7 +79,7 @@ func TestGetBoardSummaryImpl_Query(t *testing.T) {
 			setExpectations: func(summaryRepo *domain_mocks.MockBoardSummaryRepository) {
 				summaryRepo.EXPECT().GetLatestSummary(
 					mock.Anything,
-				).Return(domain.BoardSummary{}, nil)
+				).Return(domain.BoardSummary{}, false, nil)
 			},
 			expectedSummary: domain.BoardSummary{},
 			expectedErr:     nil,
@@ -94,14 +96,14 @@ func TestGetBoardSummaryImpl_Query(t *testing.T) {
 
 			gbs := NewGetBoardSummaryImpl(summaryRepo)
 
-			got, gotErr := gbs.Query(context.Background())
+			got, found, gotErr := gbs.Query(context.Background())
 			assert.Equal(t, tt.expectedErr, gotErr)
-			if tt.expectedErr == nil {
-				assert.Equal(t, tt.expectedSummary.ID, got.ID)
-				assert.Equal(t, tt.expectedSummary.Content.Counts.Open, got.Content.Counts.Open)
-				assert.Equal(t, tt.expectedSummary.Content.Counts.Done, got.Content.Counts.Done)
-				assert.Equal(t, tt.expectedSummary.Content.Summary, got.Content.Summary)
-			}
+			assert.Equal(t, tt.expectedSummary.ID, got.ID)
+			assert.Equal(t, tt.expectedSummary.Content.Counts.Open, got.Content.Counts.Open)
+			assert.Equal(t, tt.expectedSummary.Content.Counts.Done, got.Content.Counts.Done)
+			assert.Equal(t, tt.expectedSummary.Content.Summary, got.Content.Summary)
+			assert.Equal(t, tt.expectedFound, found)
+
 		})
 	}
 }

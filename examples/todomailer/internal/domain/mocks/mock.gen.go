@@ -323,7 +323,7 @@ func (_m *MockBoardSummaryRepository) EXPECT() *MockBoardSummaryRepository_Expec
 }
 
 // GetLatestSummary provides a mock function for the type MockBoardSummaryRepository
-func (_mock *MockBoardSummaryRepository) GetLatestSummary(ctx context.Context) (domain.BoardSummary, error) {
+func (_mock *MockBoardSummaryRepository) GetLatestSummary(ctx context.Context) (domain.BoardSummary, bool, error) {
 	ret := _mock.Called(ctx)
 
 	if len(ret) == 0 {
@@ -331,8 +331,9 @@ func (_mock *MockBoardSummaryRepository) GetLatestSummary(ctx context.Context) (
 	}
 
 	var r0 domain.BoardSummary
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) (domain.BoardSummary, error)); ok {
+	var r1 bool
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (domain.BoardSummary, bool, error)); ok {
 		return returnFunc(ctx)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context) domain.BoardSummary); ok {
@@ -340,12 +341,17 @@ func (_mock *MockBoardSummaryRepository) GetLatestSummary(ctx context.Context) (
 	} else {
 		r0 = ret.Get(0).(domain.BoardSummary)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context) bool); ok {
 		r1 = returnFunc(ctx)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(bool)
 	}
-	return r0, r1
+	if returnFunc, ok := ret.Get(2).(func(context.Context) error); ok {
+		r2 = returnFunc(ctx)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
 }
 
 // MockBoardSummaryRepository_GetLatestSummary_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLatestSummary'
@@ -372,12 +378,12 @@ func (_c *MockBoardSummaryRepository_GetLatestSummary_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *MockBoardSummaryRepository_GetLatestSummary_Call) Return(boardSummary domain.BoardSummary, err error) *MockBoardSummaryRepository_GetLatestSummary_Call {
-	_c.Call.Return(boardSummary, err)
+func (_c *MockBoardSummaryRepository_GetLatestSummary_Call) Return(boardSummary domain.BoardSummary, b bool, err error) *MockBoardSummaryRepository_GetLatestSummary_Call {
+	_c.Call.Return(boardSummary, b, err)
 	return _c
 }
 
-func (_c *MockBoardSummaryRepository_GetLatestSummary_Call) RunAndReturn(run func(ctx context.Context) (domain.BoardSummary, error)) *MockBoardSummaryRepository_GetLatestSummary_Call {
+func (_c *MockBoardSummaryRepository_GetLatestSummary_Call) RunAndReturn(run func(ctx context.Context) (domain.BoardSummary, bool, error)) *MockBoardSummaryRepository_GetLatestSummary_Call {
 	_c.Call.Return(run)
 	return _c
 }

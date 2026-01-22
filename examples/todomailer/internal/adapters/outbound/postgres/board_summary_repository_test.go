@@ -156,6 +156,7 @@ func TestBoardSummaryRepository_GetLatestSummary(t *testing.T) {
 	tests := map[string]struct {
 		setExpectations func(mock sqlmock.Sqlmock)
 		expectedSummary domain.BoardSummary
+		expectedFound   bool
 		shouldError     bool
 	}{
 		"success": {
@@ -172,6 +173,7 @@ func TestBoardSummaryRepository_GetLatestSummary(t *testing.T) {
 					WillReturnRows(rows)
 			},
 			expectedSummary: summary,
+			expectedFound:   true,
 			shouldError:     false,
 		},
 		"not-found": {
@@ -180,7 +182,8 @@ func TestBoardSummaryRepository_GetLatestSummary(t *testing.T) {
 					WillReturnError(sql.ErrNoRows)
 			},
 			expectedSummary: domain.BoardSummary{},
-			shouldError:     true,
+			expectedFound:   false,
+			shouldError:     false,
 		},
 		"database-error": {
 			setExpectations: func(mock sqlmock.Sqlmock) {
@@ -188,6 +191,7 @@ func TestBoardSummaryRepository_GetLatestSummary(t *testing.T) {
 					WillReturnError(sql.ErrConnDone)
 			},
 			expectedSummary: domain.BoardSummary{},
+			expectedFound:   false,
 			shouldError:     true,
 		},
 		"unmarshal-error": {
@@ -204,6 +208,7 @@ func TestBoardSummaryRepository_GetLatestSummary(t *testing.T) {
 					WillReturnRows(rows)
 			},
 			expectedSummary: domain.BoardSummary{},
+			expectedFound:   false,
 			shouldError:     true,
 		},
 	}
@@ -217,12 +222,13 @@ func TestBoardSummaryRepository_GetLatestSummary(t *testing.T) {
 			tt.setExpectations(mock)
 
 			repo := NewBoardSummaryRepository(db)
-			got, gotErr := repo.GetLatestSummary(context.Background())
+			got, found, gotErr := repo.GetLatestSummary(context.Background())
 
 			if tt.shouldError {
 				assert.Error(t, gotErr)
 			} else {
 				assert.NoError(t, gotErr)
+				assert.Equal(t, tt.expectedFound, found)
 				assert.Equal(t, tt.expectedSummary.ID, got.ID)
 				assert.Equal(t, tt.expectedSummary.Model, got.Model)
 				assert.Equal(t, tt.expectedSummary.Content.Counts, got.Content.Counts)
