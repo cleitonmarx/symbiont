@@ -17,18 +17,16 @@ type CreateTodo interface {
 
 // CreateTodoImpl is the implementation of the CreateTodo use case.
 type CreateTodoImpl struct {
-	todoRepo     domain.TodoRepository
+	uow          domain.UnitOfWork
 	timeProvider domain.CurrentTimeProvider
-	publisher    domain.TodoEventPublisher
 	createUUID   func() uuid.UUID
 }
 
 // NewCreateTodoImpl creates a new instance of CreateTodoImpl.
-func NewCreateTodoImpl(todoRepo domain.TodoRepository, timeProvider domain.CurrentTimeProvider, publisher domain.TodoEventPublisher) CreateTodoImpl {
+func NewCreateTodoImpl(uow domain.UnitOfWork, timeProvider domain.CurrentTimeProvider) CreateTodoImpl {
 	return CreateTodoImpl{
-		todoRepo:     todoRepo,
+		uow:          uow,
 		timeProvider: timeProvider,
-		publisher:    publisher,
 		createUUID:   uuid.New,
 	}
 }
@@ -53,16 +51,19 @@ func (cti CreateTodoImpl) Execute(ctx context.Context, title string, dueDate tim
 		UpdatedAt:   now,
 	}
 
-	err := cti.todoRepo.CreateTodo(spanCtx, todo)
-	if tracing.RecordErrorAndStatus(span, err) {
-		return domain.Todo{}, err
-	}
+	if err := cti.uow.Execute(spanCtx, func(uow domain.UnitOfWork) error {
+		err := uow.Todo().CreateTodo(spanCtx, todo)
+		if err != nil {
+			return err
+		}
 
-	err = cti.publisher.PublishEvent(spanCtx, domain.TodoEvent{
-		Type:   domain.TodoEventType_TODO_CREATED,
-		TodoID: todo.ID,
-	})
-	if tracing.RecordErrorAndStatus(span, err) {
+		err = uow.Publisher().PublishEvent(spanCtx, domain.TodoEvent{
+			Type:      domain.TodoEventType_TODO_CREATED,
+			TodoID:    todo.ID,
+			CreatedAt: now,
+		})
+		return err
+	}); tracing.RecordErrorAndStatus(span, err) {
 		return domain.Todo{}, err
 	}
 
@@ -85,13 +86,12 @@ func validateCreateTodoInputParams(title string, dueDate time.Time, today time.T
 
 // InitCreateTodo initializes the CreateTodo use case and registers it in the dependency container.
 type InitCreateTodo struct {
-	Repo        domain.TodoRepository      `resolve:""`
+	Uow         domain.UnitOfWork          `resolve:""`
 	TimeService domain.CurrentTimeProvider `resolve:""`
-	Publisher   domain.TodoEventPublisher  `resolve:""`
 }
 
 // Initialize initializes the CreateTodoImpl use case and registers it in the dependency container.
 func (ict InitCreateTodo) Initialize(ctx context.Context) (context.Context, error) {
-	depend.Register[CreateTodo](NewCreateTodoImpl(ict.Repo, ict.TimeService, ict.Publisher))
+	depend.Register[CreateTodo](NewCreateTodoImpl(ict.Uow, ict.TimeService))
 	return ctx, nil
 }

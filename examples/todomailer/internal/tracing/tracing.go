@@ -45,6 +45,7 @@ func RecordErrorAndStatus(span trace.Span, err error) bool {
 		span.SetStatus(codes.Error, err.Error())
 		return true
 	}
+	span.SetStatus(codes.Ok, "OK")
 	return false
 }
 

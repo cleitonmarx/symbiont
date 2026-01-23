@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -17,8 +18,9 @@ const (
 
 // TodoEvent represents a domain event in the system.
 type TodoEvent struct {
-	Type   TodoEventType
-	TodoID uuid.UUID
+	Type      TodoEventType
+	TodoID    uuid.UUID
+	CreatedAt time.Time
 }
 
 // TodoEventPublisher defines the interface for publishing todo events.

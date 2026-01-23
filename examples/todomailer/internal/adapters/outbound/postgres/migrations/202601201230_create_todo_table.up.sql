@@ -28,5 +28,18 @@ CREATE TABLE board_summary (
     source_version BIGINT NOT NULL
 );
 
--- Ensure there is only one summary per board (single-board demo)
--- You can use a fixed UUID like '00000000-0000-0000-0000-000000000001'
+
+CREATE TABLE outbox_events (
+    id                 UUID PRIMARY KEY,
+    todo_id            UUID NOT NULL,
+    payload            JSONB NOT NULL,
+    status             TEXT NOT NULL DEFAULT 'PENDING',
+    retry_count        INTEGER NOT NULL DEFAULT 0,
+    max_retries        INTEGER NOT NULL DEFAULT 3,
+    last_error         TEXT,
+    created_at         TIMESTAMPTZ NOT NULL
+);
+
+-- Index for unprocessed events (ordered by creation time for FIFO processing)
+CREATE INDEX IF NOT EXISTS idx_outbox_pending ON outbox_events(status, created_at ASC);
+

@@ -30,11 +30,12 @@ func NewTodoMailerApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&tracing.InitHttpClient{},
 			&config.InitVaultProvider{},
 			&postgres.InitDB{},
+			&postgres.InitUnitOfWork{},
 			&postgres.InitTodoRepository{},
 			&postgres.InitBoardSummaryRepository{},
 			&time.InitCurrentTimeProvider{},
 			&pubsub.InitClient{},
-			&pubsub.InitTodoEventPublisher{},
+			//&pubsub.InitTodoEventPublisher{},
 			&email.InitEmailSender{},
 			&llm.InitBoardSummaryGenerator{},
 			&usecases.InitListTodos{},
@@ -48,6 +49,7 @@ func NewTodoMailerApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&http.TodoMailerServer{},
 			&worker.TodoEmailSender{},
 			&worker.TodoEventSubscriber{},
+			&worker.OutboxPublisher{},
 		)
 }
 

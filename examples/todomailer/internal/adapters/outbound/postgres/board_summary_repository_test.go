@@ -103,7 +103,7 @@ func TestBoardSummaryRepository_StoreSummary(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			require.NoError(t, err)
-			defer db.Close()
+			defer db.Close() // nolint:errcheck
 
 			tt.setExpectations(mock)
 
@@ -217,7 +217,7 @@ func TestBoardSummaryRepository_GetLatestSummary(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			require.NoError(t, err)
-			defer db.Close()
+			defer db.Close() // nolint:errcheck
 
 			tt.setExpectations(mock)
 

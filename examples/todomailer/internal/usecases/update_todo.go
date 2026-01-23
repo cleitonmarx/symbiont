@@ -16,17 +16,15 @@ type UpdateTodo interface {
 
 // UpdateTodoImpl is the implementation of the UpdateTodo use case.
 type UpdateTodoImpl struct {
-	todoRepo     domain.TodoRepository      `resolve:""`
+	uow          domain.UnitOfWork          `resolve:""`
 	timeProvider domain.CurrentTimeProvider `resolve:""`
-	publisher    domain.TodoEventPublisher  `resolve:""`
 }
 
 // NewUpdateTodoImpl creates a new instance of UpdateTodoImpl.
-func NewUpdateTodoImpl(todoRepo domain.TodoRepository, timeProvider domain.CurrentTimeProvider, publisher domain.TodoEventPublisher) UpdateTodoImpl {
+func NewUpdateTodoImpl(uow domain.UnitOfWork, timeProvider domain.CurrentTimeProvider) UpdateTodoImpl {
 	return UpdateTodoImpl{
-		todoRepo:     todoRepo,
+		uow:          uow,
 		timeProvider: timeProvider,
-		publisher:    publisher,
 	}
 }
 
@@ -39,34 +37,39 @@ func (uti UpdateTodoImpl) Execute(ctx context.Context, id uuid.UUID, title *stri
 	if err := validateUpdateTodoInputParams(title, status, dueDate, now); tracing.RecordErrorAndStatus(span, err) {
 		return domain.Todo{}, err
 	}
+	var todo domain.Todo
+	err := uti.uow.Execute(spanCtx, func(uow domain.UnitOfWork) error {
+		td, err := uow.Todo().GetTodo(spanCtx, id)
+		if err != nil {
+			return err
+		}
 
-	todo, err := uti.todoRepo.GetTodo(spanCtx, id)
-	if tracing.RecordErrorAndStatus(span, err) {
-		return domain.Todo{}, err
-	}
+		if title != nil {
+			td.Title = *title
+		}
 
-	if title != nil {
-		todo.Title = *title
-	}
+		if status != nil {
+			td.Status = *status
+		}
+		if dueDate != nil {
+			td.DueDate = *dueDate
+		}
 
-	if status != nil {
-		todo.Status = *status
-	}
-	if dueDate != nil {
-		todo.DueDate = *dueDate
-	}
+		td.UpdatedAt = now
 
-	todo.UpdatedAt = now
+		err = uow.Todo().UpdateTodo(spanCtx, td)
+		if err != nil {
+			return err
+		}
 
-	err = uti.todoRepo.UpdateTodo(spanCtx, todo)
-	if tracing.RecordErrorAndStatus(span, err) {
-		return domain.Todo{}, err
-	}
+		todo = td
 
-	err = uti.publisher.PublishEvent(spanCtx, domain.TodoEvent{
-		Type:   domain.TodoEventType_TODO_UPDATED,
-		TodoID: todo.ID,
+		return uow.Publisher().PublishEvent(spanCtx, domain.TodoEvent{
+			Type:   domain.TodoEventType_TODO_UPDATED,
+			TodoID: todo.ID,
+		})
 	})
+
 	if tracing.RecordErrorAndStatus(span, err) {
 		return domain.Todo{}, err
 	}
@@ -101,13 +104,12 @@ func validateUpdateTodoInputParams(title *string, status *domain.TodoStatus, due
 
 // InitUpdateTodo initializes the UpdateTodo use case and registers it in the dependency container.
 type InitUpdateTodo struct {
-	Repo        domain.TodoRepository      `resolve:""`
+	Uow         domain.UnitOfWork          `resolve:""`
 	TimeService domain.CurrentTimeProvider `resolve:""`
-	Publisher   domain.TodoEventPublisher  `resolve:""`
 }
 
 // Initialize initializes the UpdateTodoImpl use case.
 func (iut InitUpdateTodo) Initialize(ctx context.Context) (context.Context, error) {
-	depend.Register[UpdateTodo](NewUpdateTodoImpl(iut.Repo, iut.TimeService, iut.Publisher))
+	depend.Register[UpdateTodo](NewUpdateTodoImpl(iut.Uow, iut.TimeService))
 	return ctx, nil
 }

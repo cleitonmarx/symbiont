@@ -78,7 +78,7 @@ func TestTodoRepository_CreateTodo(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			assert.NoError(t, err)
-			defer db.Close()
+			defer db.Close() // nolint:errcheck
 
 			tt.setExpectations(mock)
 
@@ -159,7 +159,7 @@ func TestTodoRepository_GetTodo(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			assert.NoError(t, err)
-			defer db.Close()
+			defer db.Close() // nolint:errcheck
 
 			tt.setExpectations(mock)
 
@@ -239,7 +239,7 @@ func TestTodoRepository_UpdateTodo(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			assert.NoError(t, err)
-			defer db.Close()
+			defer db.Close() // nolint:errcheck
 
 			tt.setExpectations(mock)
 
@@ -537,7 +537,7 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			assert.NoError(t, err)
-			defer db.Close()
+			defer db.Close() // nolint:errcheck
 
 			tt.setExpectations(mock)
 

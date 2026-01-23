@@ -11,7 +11,6 @@ import (
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
@@ -72,11 +71,6 @@ func (di *InitDB) runMigrations() error {
 	driver, err := postgres.WithInstance(di.db, &postgres.Config{})
 	if err != nil {
 		return fmt.Errorf("failed to create postgres driver: %w", err)
-	}
-
-	source, err = iofs.New(migrationsFS, "migrations")
-	if err != nil {
-		return fmt.Errorf("failed to create migration source: %w", err)
 	}
 
 	m, err := migrate.NewWithInstance("iofs", source, "postgres", driver)

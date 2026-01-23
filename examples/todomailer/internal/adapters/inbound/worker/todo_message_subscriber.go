@@ -60,7 +60,6 @@ func (s TodoEventSubscriber) Run(ctx context.Context) error {
 
 		case msg := <-eventCh:
 			batch = append(batch, msg)
-
 			if len(batch) >= s.BatchSize {
 				s.flush(ctx, batch)
 				batch = nil

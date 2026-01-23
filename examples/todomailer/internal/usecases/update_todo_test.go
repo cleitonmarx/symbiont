@@ -25,7 +25,7 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		setExpectations func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher)
+		setExpectations func(uow *domain_mocks.MockUnitOfWork, timeProvider *domain_mocks.MockCurrentTimeProvider)
 		id              uuid.UUID
 		title           *string
 		status          *domain.TodoStatus
@@ -37,12 +37,24 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 			id:     fixedUUID,
 			title:  &todo.Title,
 			status: &todo.Status,
-			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher) {
+			setExpectations: func(uow *domain_mocks.MockUnitOfWork, timeProvider *domain_mocks.MockCurrentTimeProvider) {
 				timeProvider.EXPECT().Now().Return(fixedTime)
+				repo := domain_mocks.NewMockTodoRepository(t)
+				publisher := domain_mocks.NewMockTodoEventPublisher(t)
+
+				uow.EXPECT().Todo().Return(repo)
+				uow.EXPECT().Publisher().Return(publisher)
+				uow.EXPECT().
+					Execute(mock.Anything, mock.Anything).
+					RunAndReturn(func(ctx context.Context, fn func(_ domain.UnitOfWork) error) error {
+						return fn(uow)
+					})
+
 				repo.EXPECT().GetTodo(mock.Anything, fixedUUID).Return(todo, nil)
 				repo.EXPECT().UpdateTodo(mock.Anything, mock.MatchedBy(func(t domain.Todo) bool {
-					return t.ID == fixedUUID && t.Title == todo.Title && t.UpdatedAt == fixedTime
+					return t.ID == fixedUUID && t.Title == todo.Title && t.UpdatedAt.Equal(fixedTime)
 				})).Return(nil)
+
 				publisher.EXPECT().PublishEvent(
 					mock.Anything,
 					domain.TodoEvent{
@@ -56,19 +68,38 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 		},
 		"todo-not-found": {
 			id: fixedUUID,
-			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher) {
+			setExpectations: func(uow *domain_mocks.MockUnitOfWork, timeProvider *domain_mocks.MockCurrentTimeProvider) {
 				timeProvider.EXPECT().Now().Return(fixedTime)
+
+				repo := domain_mocks.NewMockTodoRepository(t)
 				repo.EXPECT().GetTodo(mock.Anything, fixedUUID).Return(domain.Todo{}, errors.New("not found"))
+
+				uow.EXPECT().Todo().Return(repo)
+				uow.EXPECT().
+					Execute(mock.Anything, mock.Anything).
+					RunAndReturn(func(ctx context.Context, fn func(_ domain.UnitOfWork) error) error {
+						return fn(uow)
+					})
+
 			},
 			expectedTodo: domain.Todo{},
 			expectedErr:  errors.New("not found"),
 		},
 		"repository-error": {
 			id: fixedUUID,
-			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher) {
+			setExpectations: func(uow *domain_mocks.MockUnitOfWork, timeProvider *domain_mocks.MockCurrentTimeProvider) {
 				timeProvider.EXPECT().Now().Return(fixedTime)
+				repo := domain_mocks.NewMockTodoRepository(t)
 				repo.EXPECT().GetTodo(mock.Anything, fixedUUID).Return(todo, nil)
 				repo.EXPECT().UpdateTodo(mock.Anything, mock.Anything).Return(errors.New("database error"))
+
+				uow.EXPECT().Todo().Return(repo)
+				uow.EXPECT().
+					Execute(mock.Anything, mock.Anything).
+					RunAndReturn(func(ctx context.Context, fn func(_ domain.UnitOfWork) error) error {
+						return fn(uow)
+					})
+
 			},
 			expectedTodo: domain.Todo{},
 			expectedErr:  errors.New("database error"),
@@ -77,14 +108,13 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			repo := domain_mocks.NewMockTodoRepository(t)
+			uow := domain_mocks.NewMockUnitOfWork(t)
 			timeProvider := domain_mocks.NewMockCurrentTimeProvider(t)
-			publisher := domain_mocks.NewMockTodoEventPublisher(t)
 			if tt.setExpectations != nil {
-				tt.setExpectations(repo, timeProvider, publisher)
+				tt.setExpectations(uow, timeProvider)
 			}
 
-			uti := NewUpdateTodoImpl(repo, timeProvider, publisher)
+			uti := NewUpdateTodoImpl(uow, timeProvider)
 
 			got, gotErr := uti.Execute(context.Background(), tt.id, tt.title, tt.status, tt.dueDate)
 			assert.Equal(t, tt.expectedErr, gotErr)

@@ -33,15 +33,13 @@ var (
 
 // TodoRepository is an in-memory implementation of domain.Repository for Todos.
 type TodoRepository struct {
-	db    *sql.DB
-	pqsql squirrel.StatementBuilderType
+	sb squirrel.StatementBuilderType
 }
 
 // NewTodoRepository creates a new instance of TodoRepository.
-func NewTodoRepository(db *sql.DB) TodoRepository {
+func NewTodoRepository(br squirrel.BaseRunner) TodoRepository {
 	return TodoRepository{
-		db:    db,
-		pqsql: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar).RunWith(db),
+		sb: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar).RunWith(br),
 	}
 }
 
@@ -53,7 +51,7 @@ func (tr TodoRepository) ListTodos(ctx context.Context, page int, pageSize int, 
 	))
 	defer span.End()
 
-	qry := tr.pqsql.
+	qry := tr.sb.
 		Select(
 			todoFields...,
 		).From("todos").
@@ -78,7 +76,7 @@ func (tr TodoRepository) ListTodos(ctx context.Context, page int, pageSize int, 
 	if tracing.RecordErrorAndStatus(span, err) {
 		return nil, false, err
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	var todos []domain.Todo
 	for rows.Next() {
@@ -117,7 +115,7 @@ func (tr TodoRepository) CreateTodo(ctx context.Context, todo domain.Todo) error
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
-	_, err := tr.pqsql.
+	_, err := tr.sb.
 		Insert("todos").
 		Columns(
 			todoFields...,
@@ -148,7 +146,7 @@ func (tr TodoRepository) UpdateTodo(ctx context.Context, todo domain.Todo) error
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
-	_, err := tr.pqsql.
+	_, err := tr.sb.
 		Update("todos").
 		Set("title", todo.Title).
 		Set("status", todo.Status).
@@ -173,7 +171,7 @@ func (tr TodoRepository) GetTodo(ctx context.Context, id uuid.UUID) (domain.Todo
 	defer span.End()
 
 	var todo domain.Todo
-	err := tr.pqsql.
+	err := tr.sb.
 		Select(
 			todoFields...,
 		).

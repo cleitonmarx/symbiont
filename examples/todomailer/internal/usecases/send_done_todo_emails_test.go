@@ -77,7 +77,7 @@ func TestSendDoneTodoEmailsImpl_Execute(t *testing.T) {
 					return t.Title == "Todo 1" &&
 						t.EmailStatus == domain.EmailStatus_FAILED &&
 						t.EmailAttempts == 1 &&
-						t.UpdatedAt == fixedTime
+						t.UpdatedAt.Equal(fixedTime)
 				})).Return(nil)
 			},
 		},

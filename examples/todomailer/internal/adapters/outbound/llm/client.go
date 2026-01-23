@@ -129,7 +129,7 @@ func (c DockerModelAPIClient) Chat(ctx context.Context, req ChatRequest) (*ChatR
 	if err != nil {
 		return nil, fmt.Errorf("llm: http do: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	respBody, readErr := io.ReadAll(resp.Body)
 	if readErr != nil {

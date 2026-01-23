@@ -43,7 +43,7 @@ func (bsg BoardSummaryGenerator) GenerateBoardSummary(ctx context.Context, todos
 		Model:       bsg.model,
 		Stream:      false,
 		Temperature: common.Ptr[float64](0),
-		TopP:        common.Ptr[float64](0.1),
+		TopP:        common.Ptr(0.1),
 		Messages: []ChatMessage{
 			{
 				Role:    "system",
