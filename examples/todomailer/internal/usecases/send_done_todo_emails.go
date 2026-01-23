@@ -9,6 +9,7 @@ import (
 )
 
 // CompletedTodoEmailQueue is a channel type for sending processed domain.Todo items.
+// It is used in integration tests to verify email sending.
 type CompletedTodoEmailQueue chan domain.Todo
 
 // SendDoneTodoEmails is the use case interface for sending emails for done todos.

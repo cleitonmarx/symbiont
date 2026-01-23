@@ -59,19 +59,19 @@ type InitClient struct {
 	client    *pubsubV2.Client
 }
 
-func (i InitClient) Initialize(ctx context.Context) (context.Context, error) {
+func (i *InitClient) Initialize(ctx context.Context) (context.Context, error) {
 	client, err := pubsubV2.NewClient(ctx, i.ProjectID)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to create pubsub client: %w", err)
 	}
 	i.client = client
 
-	depend.Register(client)
+	depend.Register(i.client)
 
 	return ctx, nil
 }
 
-func (i InitClient) Close() {
+func (i *InitClient) Close() {
 	if err := i.client.Close(); err != nil {
 		i.Logger.Printf("InitClient:failed to close pubsub client: %v", err)
 	}

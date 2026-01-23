@@ -1,4 +1,4 @@
-//go:build integration
+//----go:build integration
 
 package integration
 
@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/cleitonmarx/symbiont/depend"
-	httpapi "github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/inbound/http"
+	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/inbound/http/openapi"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/app"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/usecases"
@@ -19,15 +19,32 @@ import (
 )
 
 func TestTodoMailer_Integration(t *testing.T) {
-	cleanupEnv := setTestEnvVars()
-	defer cleanupEnv()
-
 	todoMailerApp := app.NewTodoMailerApp(
+		&initEnvVars{
+			envVars: map[string]string{
+				"VAULT_ADDR":                  "http://localhost:8200",
+				"VAULT_TOKEN":                 "root-token",
+				"VAULT_MOUNT_PATH":            "secret",
+				"VAULT_SECRET_PATH":           "todomailer",
+				"OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4318",
+				"DB_HOST":                     "localhost",
+				"DB_PORT":                     "5432",
+				"DB_NAME":                     "todomailerdb",
+				"EMAIL_SENDER_INTERVAL":       "1s",
+				"PUBSUB_EMULATOR_HOST":        "localhost:8681",
+				"PUBSUB_PROJECT_ID":           "local-dev",
+				"PUBSUB_TOPIC_ID":             "Todo",
+				"PUBSUB_SUBSCRIPTION_ID":      "todo_summary_generator",
+				"LLM_MODEL_HOST":              "http://localhost:12434",
+			},
+		},
 		&InitDockerCompose{},
 	)
 
 	queue := make(usecases.CompletedTodoEmailQueue, 5)
+	summaryQueue := make(usecases.CompletedSummaryQueue, 5)
 	depend.Register(queue)
+	depend.Register(summaryQueue)
 
 	cancelCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -40,12 +57,12 @@ func TestTodoMailer_Integration(t *testing.T) {
 		t.Fatalf("TodoMailer app failed to become ready: %v", err)
 	}
 
-	apiCli, err := httpapi.NewClientWithResponses("http://localhost:8080")
+	apiCli, err := openapi.NewClientWithResponses("http://localhost:8080")
 	assert.NoError(t, err, "failed to create TodoMailer API client")
 
 	t.Run("create-todos", func(t *testing.T) {
 		for i := range 5 {
-			createResp, err := apiCli.CreateTodoWithResponse(cancelCtx, httpapi.CreateTodoJSONRequestBody{
+			createResp, err := apiCli.CreateTodoWithResponse(cancelCtx, openapi.CreateTodoJSONRequestBody{
 				Title:   fmt.Sprintf("Test Todo %d", i+1),
 				DueDate: types.Date{Time: time.Now().Add(24 * time.Hour)},
 			})
@@ -54,9 +71,9 @@ func TestTodoMailer_Integration(t *testing.T) {
 		}
 	})
 
-	var todos []httpapi.Todo
+	var todos []openapi.Todo
 	t.Run("list-created-todos", func(t *testing.T) {
-		resp, err := apiCli.ListTodosWithResponse(cancelCtx, &httpapi.ListTodosParams{
+		resp, err := apiCli.ListTodosWithResponse(cancelCtx, &openapi.ListTodosParams{
 			Page:     1,
 			Pagesize: 10,
 		})
@@ -69,14 +86,14 @@ func TestTodoMailer_Integration(t *testing.T) {
 	})
 
 	t.Run("update-todos-and-check-emails", func(t *testing.T) {
-		statusDone := httpapi.DONE
+		statusDone := openapi.DONE
 		for _, todo := range todos {
-			updateResp, err := apiCli.UpdateTodoWithResponse(cancelCtx, todo.Id, httpapi.UpdateTodoJSONRequestBody{
+			updateResp, err := apiCli.UpdateTodoWithResponse(cancelCtx, todo.Id, openapi.UpdateTodoJSONRequestBody{
 				Status: &statusDone,
 			})
 			assert.NoError(t, err, "failed to call UpdateTodo endpoint")
 			assert.NotNil(t, updateResp.JSON200, "expected non-nil response for UpdateTodo")
-			assert.Equal(t, httpapi.DONE, updateResp.JSON200.Status, "expected todo status to be 'completed'")
+			assert.Equal(t, openapi.DONE, updateResp.JSON200.Status, "expected todo status to be 'completed'")
 			select {
 			case emailedTodo := <-queue:
 				assert.Equal(t, todo.Id, types.UUID(emailedTodo.ID), "expected emailed todo ID to match updated todo ID")
@@ -87,6 +104,21 @@ func TestTodoMailer_Integration(t *testing.T) {
 		}
 	})
 
+	t.Run("check-board-summary-generated", func(t *testing.T) {
+		select {
+		case summary := <-summaryQueue:
+			assert.True(
+				t,
+				summary.Content.Counts.Done >= 1 ||
+					summary.Content.Counts.Open >= 1,
+				"expected board summary to have at least one done or open todo",
+			)
+		case <-time.After(20 * time.Second):
+			t.Fatalf("Timed out waiting for board summary in queue")
+		}
+	})
+
+	// Shutdown the app
 	cancel()
 
 	select {
@@ -101,38 +133,19 @@ func TestTodoMailer_Integration(t *testing.T) {
 	}
 }
 
-func setTestEnvVars() func() {
-	// Set any necessary environment variables for the integration tests here.
-	os.Setenv("VAULT_ADDR", "http://localhost:8200")
-	os.Setenv("VAULT_TOKEN", "root-token")
-	os.Setenv("VAULT_MOUNT_PATH", "secret")
-	os.Setenv("VAULT_SECRET_PATH", "todomailer")
-	os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
-	os.Setenv("DB_HOST", "localhost")
-	os.Setenv("DB_PORT", "5432")
-	os.Setenv("DB_NAME", "todomailerdb")
-	os.Setenv("EMAIL_SENDER_INTERVAL", "1s")
-	os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8681")
-	os.Setenv("PUBSUB_PROJECT_ID", "local-dev")
-	os.Setenv("PUBSUB_TOPIC_ID", "Todo")
-	os.Setenv("PUBSUB_SUBSCRIPTION_ID", "todo_summary_generator")
-	os.Setenv("LLM_MODEL_HOST", "http://localhost:12434")
+type initEnvVars struct {
+	envVars map[string]string
+}
 
-	return func() {
-		// Unset the environment variables after the test.
-		os.Unsetenv("VAULT_ADDR")
-		os.Unsetenv("VAULT_TOKEN")
-		os.Unsetenv("VAULT_MOUNT_PATH")
-		os.Unsetenv("VAULT_SECRET_PATH")
-		os.Unsetenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-		os.Unsetenv("DB_HOST")
-		os.Unsetenv("DB_PORT")
-		os.Unsetenv("DB_NAME")
-		os.Unsetenv("EMAIL_SENDER_INTERVAL")
-		os.Unsetenv("PUBSUB_EMULATOR_HOST")
-		os.Unsetenv("PUBSUB_PROJECT_ID")
-		os.Unsetenv("PUBSUB_TOPIC_ID")
-		os.Unsetenv("PUBSUB_SUBSCRIPTION_ID")
-		os.Unsetenv("LLM_MODEL_HOST")
+func (i *initEnvVars) Initialize(ctx context.Context) (context.Context, error) {
+	for key, value := range i.envVars {
+		os.Setenv(key, value)
+	}
+	return ctx, nil
+}
+
+func (i *initEnvVars) Close() {
+	for key := range i.envVars {
+		os.Unsetenv(key)
 	}
 }

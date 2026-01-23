@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub/v2"
-
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/usecases"
 )
 

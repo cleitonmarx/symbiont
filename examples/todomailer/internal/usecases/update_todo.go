@@ -83,7 +83,7 @@ func validateUpdateTodoInputParams(title *string, status *domain.TodoStatus, due
 	}
 
 	if dueDate != nil {
-		if dueDate.Before(now.Add(-48 * time.Hour)) {
+		if dueDate.Truncate(24 * time.Hour).Before(now.Add(-48 * time.Hour).Truncate(24 * time.Hour)) {
 			err := domain.NewValidationErr("due_date cannot be in the past 2 days")
 			return err
 		}

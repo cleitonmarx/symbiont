@@ -176,7 +176,7 @@ func TestGenerateBoardSummaryImpl_Execute(t *testing.T) {
 				tt.setExpectations(generator, summaryRepo, todoRepo)
 			}
 
-			gbs := NewGenerateBoardSummaryImpl(generator, summaryRepo, todoRepo)
+			gbs := NewGenerateBoardSummaryImpl(generator, summaryRepo, todoRepo, nil)
 
 			err := gbs.Execute(context.Background())
 			assert.Equal(t, tt.expectedErr, err)
