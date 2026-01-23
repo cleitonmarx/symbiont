@@ -10,10 +10,10 @@ import (
 )
 
 func TestEnvVarProvider_Get(t *testing.T) {
-	os.Setenv("EXISTING_KEY", "some_value")
+	os.Setenv("EXISTING_KEY", "some_value") //nolint:errcheck
 
 	t.Cleanup(func() {
-		os.Unsetenv("EXISTING_KEY")
+		os.Unsetenv("EXISTING_KEY") //nolint:errcheck
 	})
 
 	tests := map[string]struct {
