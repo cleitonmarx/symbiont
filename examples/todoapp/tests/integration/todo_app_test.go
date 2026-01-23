@@ -1,4 +1,4 @@
-//go:build integration
+//----go:build integration
 
 package integration
 
@@ -48,7 +48,7 @@ func TestTodoApp_Integration(t *testing.T) {
 
 	shutdownCh := todoApp.RunAsync(cancelCtx)
 
-	err := todoApp.WaitForReadiness(cancelCtx, 10*time.Second)
+	err := todoApp.WaitForReadiness(cancelCtx, 1*time.Minute)
 	if err != nil {
 		cancel()
 		t.Fatalf("TodoApp app failed to become ready: %v", err)

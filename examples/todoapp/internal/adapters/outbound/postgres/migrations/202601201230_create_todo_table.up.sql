@@ -23,7 +23,10 @@ CREATE TABLE board_summary (
 
 CREATE TABLE outbox_events (
     id                 UUID PRIMARY KEY,
-    todo_id            UUID NOT NULL,
+    entity_type      TEXT NOT NULL,
+    entity_id        UUID NOT NULL,
+    topic            TEXT NOT NULL,
+    event_type       TEXT NOT NULL,
     payload            JSONB NOT NULL,
     status             TEXT NOT NULL DEFAULT 'PENDING',
     retry_count        INTEGER NOT NULL DEFAULT 0,
