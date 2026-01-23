@@ -1,8 +1,16 @@
 <div align="center">
-	<img src="assets/symbiont-logo.png" style="width: 90%;">
+	<img src="assets/symbiont-logo.png" style="width: 45%;">
 </div>
 
+---
+# Symbiont
 
+Symbiont is a lightweight **application host** for Go.
+
+It provides a structured way to initialize dependencies, start long-lived services,
+and coordinate application shutdown within a single, testable lifecycle.
+
+---
 # Symbiont
 
 Symbiont is a lightweight **application host** for Go.
