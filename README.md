@@ -1,5 +1,5 @@
 <div align="center">
-	<img src="assets/logo.png" style="width: 40%;">
+	<img src="assets/symbiont-logo.png" style="width: 90%;">
 </div>
 
 
