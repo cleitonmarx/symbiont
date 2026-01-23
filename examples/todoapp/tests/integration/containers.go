@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/testcontainers/testcontainers-go/modules/compose"
@@ -9,6 +10,7 @@ import (
 )
 
 type InitDockerCompose struct {
+	Logger  *log.Logger `resolve:""`
 	compose *compose.DockerCompose
 }
 
@@ -38,11 +40,16 @@ func (i InitDockerCompose) Close() {
 		cancelCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		i.compose.Down(
+		err := i.compose.Down(
 			cancelCtx,
 			compose.RemoveOrphans(true),
 			compose.RemoveVolumes(true),
 			compose.RemoveImages(compose.RemoveImagesLocal),
 		)
+		if err != nil {
+			i.Logger.Printf("failed to stop docker compose: %v", err)
+		} else {
+			i.Logger.Printf("docker compose stopped successfully")
+		}
 	}
 }
