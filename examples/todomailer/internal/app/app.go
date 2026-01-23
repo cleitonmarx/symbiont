@@ -7,9 +7,9 @@ import (
 	"github.com/cleitonmarx/symbiont"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/inbound/http"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/inbound/worker"
-	aillm "github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/ai_llm"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/config"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/email"
+	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/llm"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/log"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/postgres"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/outbound/pubsub"
@@ -36,7 +36,7 @@ func NewTodoMailerApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&pubsub.InitClient{},
 			&pubsub.InitTodoEventPublisher{},
 			&email.InitEmailSender{},
-			&aillm.InitBoardSummaryGenerator{},
+			&llm.InitBoardSummaryGenerator{},
 			&usecases.InitListTodos{},
 			&usecases.InitCreateTodo{},
 			&usecases.InitUpdateTodo{},

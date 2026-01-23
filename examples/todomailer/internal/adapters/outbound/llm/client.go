@@ -4,7 +4,7 @@
 // It intentionally ignores any non-standard fields such as "reasoning_content"
 // and returns the assistant "content" (which may itself be JSON if you prompt
 // the model to output JSON).
-package aillm
+package llm
 
 import (
 	"bytes"

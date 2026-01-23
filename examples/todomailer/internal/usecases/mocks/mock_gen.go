@@ -218,7 +218,7 @@ func (_m *MockGetBoardSummary) EXPECT() *MockGetBoardSummary_Expecter {
 }
 
 // Query provides a mock function for the type MockGetBoardSummary
-func (_mock *MockGetBoardSummary) Query(ctx context.Context) (domain.BoardSummary, bool, error) {
+func (_mock *MockGetBoardSummary) Query(ctx context.Context) (domain.BoardSummary, error) {
 	ret := _mock.Called(ctx)
 
 	if len(ret) == 0 {
@@ -226,9 +226,8 @@ func (_mock *MockGetBoardSummary) Query(ctx context.Context) (domain.BoardSummar
 	}
 
 	var r0 domain.BoardSummary
-	var r1 bool
-	var r2 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) (domain.BoardSummary, bool, error)); ok {
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (domain.BoardSummary, error)); ok {
 		return returnFunc(ctx)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context) domain.BoardSummary); ok {
@@ -236,17 +235,12 @@ func (_mock *MockGetBoardSummary) Query(ctx context.Context) (domain.BoardSummar
 	} else {
 		r0 = ret.Get(0).(domain.BoardSummary)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context) bool); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
 		r1 = returnFunc(ctx)
 	} else {
-		r1 = ret.Get(1).(bool)
+		r1 = ret.Error(1)
 	}
-	if returnFunc, ok := ret.Get(2).(func(context.Context) error); ok {
-		r2 = returnFunc(ctx)
-	} else {
-		r2 = ret.Error(2)
-	}
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockGetBoardSummary_Query_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Query'
@@ -273,12 +267,12 @@ func (_c *MockGetBoardSummary_Query_Call) Run(run func(ctx context.Context)) *Mo
 	return _c
 }
 
-func (_c *MockGetBoardSummary_Query_Call) Return(boardSummary domain.BoardSummary, b bool, err error) *MockGetBoardSummary_Query_Call {
-	_c.Call.Return(boardSummary, b, err)
+func (_c *MockGetBoardSummary_Query_Call) Return(boardSummary domain.BoardSummary, err error) *MockGetBoardSummary_Query_Call {
+	_c.Call.Return(boardSummary, err)
 	return _c
 }
 
-func (_c *MockGetBoardSummary_Query_Call) RunAndReturn(run func(ctx context.Context) (domain.BoardSummary, bool, error)) *MockGetBoardSummary_Query_Call {
+func (_c *MockGetBoardSummary_Query_Call) RunAndReturn(run func(ctx context.Context) (domain.BoardSummary, error)) *MockGetBoardSummary_Query_Call {
 	_c.Call.Return(run)
 	return _c
 }

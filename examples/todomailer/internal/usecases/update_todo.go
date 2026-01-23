@@ -35,6 +35,11 @@ func (uti UpdateTodoImpl) Execute(ctx context.Context, id uuid.UUID, title *stri
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
+	now := uti.timeProvider.Now()
+	if err := validateUpdateTodoInputParams(title, status, dueDate, now); tracing.RecordErrorAndStatus(span, err) {
+		return domain.Todo{}, err
+	}
+
 	todo, err := uti.todoRepo.GetTodo(spanCtx, id)
 	if tracing.RecordErrorAndStatus(span, err) {
 		return domain.Todo{}, err
@@ -51,7 +56,7 @@ func (uti UpdateTodoImpl) Execute(ctx context.Context, id uuid.UUID, title *stri
 		todo.DueDate = *dueDate
 	}
 
-	todo.UpdatedAt = uti.timeProvider.Now()
+	todo.UpdatedAt = now
 
 	err = uti.todoRepo.UpdateTodo(spanCtx, todo)
 	if tracing.RecordErrorAndStatus(span, err) {
@@ -67,6 +72,31 @@ func (uti UpdateTodoImpl) Execute(ctx context.Context, id uuid.UUID, title *stri
 	}
 
 	return todo, nil
+}
+
+func validateUpdateTodoInputParams(title *string, status *domain.TodoStatus, dueDate *time.Time, now time.Time) error {
+	if title != nil {
+		if len(*title) < 3 || len(*title) > 200 {
+			err := domain.NewValidationErr("title must be between 3 and 200 characters")
+			return err
+		}
+	}
+
+	if dueDate != nil {
+		if dueDate.Before(now.Add(-48 * time.Hour)) {
+			err := domain.NewValidationErr("due_date cannot be in the past 2 days")
+			return err
+		}
+	}
+
+	if status != nil {
+		if *status != domain.TodoStatus_OPEN && *status != domain.TodoStatus_DONE {
+			err := domain.NewValidationErr("invalid status value")
+			return err
+		}
+	}
+
+	return nil
 }
 
 // InitUpdateTodo initializes the UpdateTodo use case and registers it in the dependency container.

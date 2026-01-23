@@ -57,6 +57,7 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 		"todo-not-found": {
 			id: fixedUUID,
 			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher) {
+				timeProvider.EXPECT().Now().Return(fixedTime)
 				repo.EXPECT().GetTodo(mock.Anything, fixedUUID).Return(domain.Todo{}, errors.New("not found"))
 			},
 			expectedTodo: domain.Todo{},

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/adapters/inbound/http/openapi"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/tracing"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/usecases"
@@ -35,9 +36,9 @@ type TodoMailerServer struct {
 	GetBoardSummaryUseCase usecases.GetBoardSummary `resolve:""`
 }
 
-func (api TodoMailerServer) ListTodos(w http.ResponseWriter, r *http.Request, params ListTodosParams) {
-	resp := ListTodosResp{
-		Items: []Todo{},
+func (api TodoMailerServer) ListTodos(w http.ResponseWriter, r *http.Request, params openapi.ListTodosParams) {
+	resp := openapi.ListTodosResp{
+		Items: []openapi.Todo{},
 		Page:  params.Page,
 	}
 	var queryParams []domain.ListTodoOptions
@@ -47,23 +48,12 @@ func (api TodoMailerServer) ListTodos(w http.ResponseWriter, r *http.Request, pa
 
 	todos, hasMore, err := api.ListTodosUseCase.Query(r.Context(), params.Page, params.Pagesize, queryParams...)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to list todos: %v", err), http.StatusInternalServerError)
+		respondError(w, toOpenAPIError(err))
 		return
 	}
 
 	for _, t := range todos {
-		resp.Items = append(resp.Items, Todo{
-			Id:              openapi_types.UUID(t.ID),
-			Title:           t.Title,
-			CreatedAt:       t.CreatedAt,
-			EmailAttempts:   t.EmailAttempts,
-			EmailLastError:  t.EmailLastError,
-			EmailProviderId: t.EmailProviderID,
-			EmailStatus:     EmailStatus(t.EmailStatus),
-			Status:          TodoStatus(t.Status),
-			DueDate:         openapi_types.Date{Time: t.DueDate},
-			UpdatedAt:       t.UpdatedAt,
-		})
+		resp.Items = append(resp.Items, toOpenAPITodo(t))
 	}
 	if hasMore {
 		nextPage := params.Page + 1
@@ -74,69 +64,50 @@ func (api TodoMailerServer) ListTodos(w http.ResponseWriter, r *http.Request, pa
 		resp.PreviousPage = &prevPage
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(resp)
+	respondJSON(w, http.StatusOK, resp)
 }
 
 func (api TodoMailerServer) CreateTodo(w http.ResponseWriter, r *http.Request) {
-	var req CreateTodoJSONRequestBody
+	var req openapi.CreateTodoJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errResp := ErrorResp{}
-		errResp.Error.Code = BADREQUEST
+		errResp := openapi.ErrorResp{}
+		errResp.Error.Code = openapi.BADREQUEST
 		errResp.Error.Message = fmt.Sprintf("invalid request body: %v", err)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(errResp)
+		respondError(w, errResp)
 		return
 	}
 
 	todo, err := api.CreateTodoUseCase.Execute(r.Context(), req.Title, req.DueDate.Time)
 	if err != nil {
-		errResp := ErrorResp{}
-		errResp.Error.Code = INTERNALERROR
-		errResp.Error.Message = fmt.Sprintf("failed to create todo: %v", err)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(errResp)
+		respondError(w, toOpenAPIError(err))
 		return
 	}
 
-	resp := Todo{
-		Id:              openapi_types.UUID(todo.ID),
-		Title:           todo.Title,
-		CreatedAt:       todo.CreatedAt,
-		EmailAttempts:   todo.EmailAttempts,
-		EmailLastError:  todo.EmailLastError,
-		EmailProviderId: todo.EmailProviderID,
-		EmailStatus:     EmailStatus(todo.EmailStatus),
-		Status:          TodoStatus(todo.Status),
-		DueDate:         openapi_types.Date{Time: todo.DueDate},
-		UpdatedAt:       todo.UpdatedAt,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(resp)
+	respondJSON(w, http.StatusCreated, toOpenAPITodo(todo))
 }
 func (api TodoMailerServer) UpdateTodo(w http.ResponseWriter, r *http.Request, todoId openapi_types.UUID) {
-	var req UpdateTodoJSONRequestBody
+	var req openapi.UpdateTodoJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errResp := ErrorResp{}
-		errResp.Error.Code = BADREQUEST
+		errResp := openapi.ErrorResp{}
+		errResp.Error.Code = openapi.BADREQUEST
 		errResp.Error.Message = fmt.Sprintf("invalid request body: %v", err)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(errResp)
+		respondError(w, errResp)
 		return
 	}
 
 	var dueDate *time.Time
 	if req.DueDate != nil {
 		dueDate = &req.DueDate.Time
+	}
+	if req.Status != nil && *req.Status != openapi.DONE && *req.Status != openapi.OPEN {
+		errResp := openapi.ErrorResp{}
+		errResp.Error.Code = openapi.BADREQUEST
+		errResp.Error.Message = fmt.Sprintf("invalid request body: unknown TodoStatus value: %s", *req.Status)
+
+		respondError(w, errResp)
+		return
 	}
 
 	todo, err := api.UpdateTodoUseCase.Execute(
@@ -147,78 +118,38 @@ func (api TodoMailerServer) UpdateTodo(w http.ResponseWriter, r *http.Request, t
 		dueDate,
 	)
 	if err != nil {
-		errResp := ErrorResp{}
-		errResp.Error.Code = INTERNALERROR
-		errResp.Error.Message = fmt.Sprintf("failed to update todo: %v", err)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(errResp)
+		respondError(w, toOpenAPIError(err))
 		return
 	}
 
-	resp := Todo{
-		Id:              openapi_types.UUID(todo.ID),
-		Title:           todo.Title,
-		CreatedAt:       todo.CreatedAt,
-		EmailAttempts:   todo.EmailAttempts,
-		EmailLastError:  todo.EmailLastError,
-		EmailProviderId: todo.EmailProviderID,
-		EmailStatus:     EmailStatus(todo.EmailStatus),
-		Status:          TodoStatus(todo.Status),
-		DueDate:         openapi_types.Date{Time: todo.DueDate},
-		UpdatedAt:       todo.UpdatedAt,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(resp)
+	respondJSON(w, http.StatusOK, toOpenAPITodo(todo))
 }
 
 func (api TodoMailerServer) GetBoardSummary(w http.ResponseWriter, r *http.Request) {
-	summary, found, err := api.GetBoardSummaryUseCase.Query(r.Context())
+	summary, err := api.GetBoardSummaryUseCase.Query(r.Context())
 	if err != nil {
-		errResp := ErrorResp{}
-		errResp.Error.Code = INTERNALERROR
-		errResp.Error.Message = fmt.Sprintf("failed to get board summary: %v", err)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(errResp)
-		return
-	}
-	if !found {
-		errResp := ErrorResp{}
-		errResp.Error.Code = NOTFOUND
-		errResp.Error.Message = "board summary not found"
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		_ = json.NewEncoder(w).Encode(errResp)
+		respondError(w, toOpenAPIError(err))
 		return
 	}
 
-	resp := BoardSummary{
-		Counts: TodoStatusCounts{
+	resp := openapi.BoardSummary{
+		Counts: openapi.TodoStatusCounts{
 			DONE: summary.Content.Counts.Done,
 			OPEN: summary.Content.Counts.Open,
 		},
 		NearDeadline: summary.Content.NearDeadline,
-		NextUp:       []NextUpTodoItem{},
+		NextUp:       []openapi.NextUpTodoItem{},
 		Overdue:      summary.Content.Overdue,
 		Summary:      summary.Content.Summary,
 	}
 	for _, item := range summary.Content.NextUp {
-		resp.NextUp = append(resp.NextUp, NextUpTodoItem{
+		resp.NextUp = append(resp.NextUp, openapi.NextUpTodoItem{
 			Title:  item.Title,
 			Reason: item.Reason,
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(resp)
-
+	respondJSON(w, http.StatusOK, resp)
 }
 
 //go:embed webappdist/*
@@ -226,6 +157,7 @@ var embedFS embed.FS
 
 // Run starts the HTTP server for the TodoMailerServer.
 func (api TodoMailerServer) Run(ctx context.Context) error {
+
 	mux := http.NewServeMux()
 
 	// Serve webapp static files
@@ -236,9 +168,9 @@ func (api TodoMailerServer) Run(ctx context.Context) error {
 	mux.Handle("/", http.FileServerFS(sub))
 
 	// get an `http.Handler` that we can use
-	h := HandlerWithOptions(api, StdHTTPServerOptions{
+	h := openapi.HandlerWithOptions(api, openapi.StdHTTPServerOptions{
 		BaseRouter: mux,
-		Middlewares: []MiddlewareFunc{
+		Middlewares: []openapi.MiddlewareFunc{
 			otelhttp.NewMiddleware(
 				"todomailer-api",
 				otelhttp.WithSpanNameFormatter(tracing.SpanNameFormatter),
@@ -259,7 +191,9 @@ func (api TodoMailerServer) Run(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		api.Logger.Print("TodoMailerServer: Shutting down")
-		return s.Shutdown(ctx)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return s.Shutdown(shutdownCtx)
 	case err := <-errCh:
 		return err
 	}
@@ -279,4 +213,21 @@ func (api TodoMailerServer) IsReady(ctx context.Context) error {
 	return nil
 }
 
-var _ ServerInterface = (*TodoMailerServer)(nil)
+func respondJSON(w http.ResponseWriter, statusCode int, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func respondError(w http.ResponseWriter, err openapi.ErrorResp) {
+	statusCode := http.StatusInternalServerError
+	switch err.Error.Code {
+	case openapi.BADREQUEST:
+		statusCode = http.StatusBadRequest
+	case openapi.NOTFOUND:
+		statusCode = http.StatusNotFound
+	}
+	respondJSON(w, statusCode, err)
+}
+
+var _ openapi.ServerInterface = (*TodoMailerServer)(nil)

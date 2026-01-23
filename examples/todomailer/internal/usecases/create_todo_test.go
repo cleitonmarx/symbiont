@@ -59,24 +59,28 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 			expectedErr:  nil,
 		},
 		"validation-error-short-title": {
-			title:           "Hi",
-			dueDate:         fixedTime,
-			setExpectations: nil,
-			expectedTodo:    domain.Todo{},
-			expectedErr:     domain.NewValidationErr("title must be between 3 and 200 characters"),
+			title:   "Hi",
+			dueDate: fixedTime,
+			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher) {
+				timeProvider.EXPECT().Now().Return(fixedTime)
+			},
+			expectedTodo: domain.Todo{},
+			expectedErr:  domain.NewValidationErr("title must be between 3 and 200 characters"),
 		},
 		"validation-error-long-title": {
 			title: func() string {
 				longTitle := ""
-				for i := 0; i < 201; i++ {
+				for range 201 {
 					longTitle += "a"
 				}
 				return longTitle
 			}(),
-			dueDate:         fixedTime,
-			setExpectations: nil,
-			expectedTodo:    domain.Todo{},
-			expectedErr:     domain.NewValidationErr("title must be between 3 and 200 characters"),
+			dueDate: fixedTime,
+			setExpectations: func(repo *domain_mocks.MockTodoRepository, timeProvider *domain_mocks.MockCurrentTimeProvider, publisher *domain_mocks.MockTodoEventPublisher) {
+				timeProvider.EXPECT().Now().Return(fixedTime)
+			},
+			expectedTodo: domain.Todo{},
+			expectedErr:  domain.NewValidationErr("title must be between 3 and 200 characters"),
 		},
 		"repository-error": {
 			title:   "My new todo",

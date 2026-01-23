@@ -140,7 +140,7 @@ type InitHttpClient struct {
 func (i InitHttpClient) Initialize(ctx context.Context) (context.Context, error) {
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryWaitMax = 10 * time.Second
-	retryClient.RetryMax = 3
+	retryClient.RetryMax = 10
 	retryClient.Logger = nil
 
 	stdClient := retryClient.StandardClient()

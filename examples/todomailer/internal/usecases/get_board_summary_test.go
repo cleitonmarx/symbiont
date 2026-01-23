@@ -53,7 +53,6 @@ func TestGetBoardSummaryImpl_Query(t *testing.T) {
 	tests := map[string]struct {
 		setExpectations func(summaryRepo *domain_mocks.MockBoardSummaryRepository)
 		expectedSummary domain.BoardSummary
-		expectedFound   bool
 		expectedErr     error
 	}{
 		"success": {
@@ -63,7 +62,6 @@ func TestGetBoardSummaryImpl_Query(t *testing.T) {
 				).Return(boardSummary, true, nil)
 			},
 			expectedSummary: boardSummary,
-			expectedFound:   true,
 			expectedErr:     nil,
 		},
 		"repository-error": {
@@ -82,7 +80,7 @@ func TestGetBoardSummaryImpl_Query(t *testing.T) {
 				).Return(domain.BoardSummary{}, false, nil)
 			},
 			expectedSummary: domain.BoardSummary{},
-			expectedErr:     nil,
+			expectedErr:     domain.NewNotFoundErr("board summary not found"),
 		},
 	}
 
@@ -96,13 +94,12 @@ func TestGetBoardSummaryImpl_Query(t *testing.T) {
 
 			gbs := NewGetBoardSummaryImpl(summaryRepo)
 
-			got, found, gotErr := gbs.Query(context.Background())
+			got, gotErr := gbs.Query(context.Background())
 			assert.Equal(t, tt.expectedErr, gotErr)
 			assert.Equal(t, tt.expectedSummary.ID, got.ID)
 			assert.Equal(t, tt.expectedSummary.Content.Counts.Open, got.Content.Counts.Open)
 			assert.Equal(t, tt.expectedSummary.Content.Counts.Done, got.Content.Counts.Done)
 			assert.Equal(t, tt.expectedSummary.Content.Summary, got.Content.Summary)
-			assert.Equal(t, tt.expectedFound, found)
 
 		})
 	}

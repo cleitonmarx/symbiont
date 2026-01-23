@@ -1,4 +1,4 @@
-package aillm
+package llm
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cleitonmarx/symbiont/depend"
+	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/common"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todomailer/internal/tracing"
 	"github.com/google/uuid"
@@ -41,8 +42,8 @@ func (bsg BoardSummaryGenerator) GenerateBoardSummary(ctx context.Context, todos
 	req := ChatRequest{
 		Model:       bsg.model,
 		Stream:      false,
-		Temperature: ptr[float64](0),
-		TopP:        ptr[float64](0.1),
+		Temperature: common.Ptr[float64](0),
+		TopP:        common.Ptr[float64](0.1),
 		Messages: []ChatMessage{
 			{
 				Role:    "system",
@@ -202,10 +203,6 @@ func parseResponse(response string) (domain.BoardSummary, error) {
 	return domain.BoardSummary{
 		Content: content,
 	}, nil
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }
 
 // InitBoardSummaryGenerator is the initializer for BoardSummaryGenerator.

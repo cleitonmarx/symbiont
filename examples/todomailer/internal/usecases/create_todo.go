@@ -38,13 +38,11 @@ func (cti CreateTodoImpl) Execute(ctx context.Context, title string, dueDate tim
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
-	if len(title) < 3 || len(title) > 200 {
-		err := domain.NewValidationErr("title must be between 3 and 200 characters")
-		tracing.RecordErrorAndStatus(span, err)
+	now := cti.timeProvider.Now()
+	if err := validateCreateTodoInputParams(title, dueDate, now); tracing.RecordErrorAndStatus(span, err) {
 		return domain.Todo{}, err
 	}
 
-	now := cti.timeProvider.Now()
 	todo := domain.Todo{
 		ID:          cti.createUUID(),
 		Title:       title,
@@ -64,12 +62,25 @@ func (cti CreateTodoImpl) Execute(ctx context.Context, title string, dueDate tim
 		Type:   domain.TodoEventType_TODO_CREATED,
 		TodoID: todo.ID,
 	})
-
 	if tracing.RecordErrorAndStatus(span, err) {
 		return domain.Todo{}, err
 	}
 
 	return todo, nil
+}
+
+func validateCreateTodoInputParams(title string, dueDate time.Time, today time.Time) error {
+	if len(title) < 3 || len(title) > 200 {
+		err := domain.NewValidationErr("title must be between 3 and 200 characters")
+		return err
+	}
+
+	if dueDate.Before(today.Add(-48 * time.Hour)) {
+		err := domain.NewValidationErr("due_date cannot be in the past 2 days")
+		return err
+	}
+
+	return nil
 }
 
 // InitCreateTodo initializes the CreateTodo use case and registers it in the dependency container.
