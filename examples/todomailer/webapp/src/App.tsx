@@ -24,7 +24,10 @@ const App: React.FC = () => {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Todo Mailer</h1>
+        <div className="header-content">
+          <img src="/symbiont-icon.png" alt="Todo Mailer Logo" className="header-logo" />
+          <h1>Todo Mailer</h1>
+        </div>
       </header>
       <div className="app-main">
         <div className="sidebar-toolbar">
