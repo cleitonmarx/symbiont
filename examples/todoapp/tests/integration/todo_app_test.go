@@ -107,6 +107,23 @@ func TestTodoApp_Integration(t *testing.T) {
 		}
 	})
 
+	t.Run("delete-todos", func(t *testing.T) {
+		for _, todo := range todos {
+			deleteResp, err := apiCli.DeleteTodoWithResponse(cancelCtx, todo.Id)
+			assert.NoError(t, err, "failed to call DeleteTodo endpoint")
+			assert.Equal(t, 204, deleteResp.StatusCode(), "expected 204 No Content response for DeleteTodo")
+		}
+
+		// Verify todos are deleted
+		listResp, err := apiCli.ListTodosWithResponse(cancelCtx, &openapi.ListTodosParams{
+			Page:     1,
+			Pagesize: 10,
+		})
+		assert.NoError(t, err, "failed to call ListTodos endpoint after deletions")
+		assert.NotNil(t, listResp.JSON200, "expected non-nil response for ListTodos after deletions")
+		assert.Equal(t, 0, len(listResp.JSON200.Items), "expected 0 todos in the list after deletions")
+	})
+
 	// Shutdown the app
 	cancel()
 

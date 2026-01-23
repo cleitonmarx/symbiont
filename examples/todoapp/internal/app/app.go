@@ -38,6 +38,7 @@ func NewTodoApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&usecases.InitListTodos{},
 			&usecases.InitCreateTodo{},
 			&usecases.InitUpdateTodo{},
+			&usecases.InitDeleteTodo{},
 			&usecases.InitGenerateBoardSummary{},
 			&usecases.InitGetBoardSummary{},
 		).

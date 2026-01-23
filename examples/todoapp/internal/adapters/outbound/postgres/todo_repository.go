@@ -145,6 +145,22 @@ func (tr TodoRepository) UpdateTodo(ctx context.Context, todo domain.Todo) error
 	return nil
 }
 
+// DeleteTodo deletes a todo by its ID.
+func (tr TodoRepository) DeleteTodo(ctx context.Context, id uuid.UUID) error {
+	spanCtx, span := tracing.Start(ctx)
+	defer span.End()
+
+	_, err := tr.sb.
+		Delete("todos").
+		Where(squirrel.Eq{"id": id}).
+		ExecContext(spanCtx)
+
+	if tracing.RecordErrorAndStatus(span, err) {
+		return err
+	}
+	return nil
+}
+
 // GetTodo retrieves a todo by its ID.
 func (tr TodoRepository) GetTodo(ctx context.Context, id uuid.UUID) (domain.Todo, error) {
 	spanCtx, span := tracing.Start(ctx)

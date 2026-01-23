@@ -722,6 +722,63 @@ func (_c *MockTodoRepository_CreateTodo_Call) RunAndReturn(run func(ctx context.
 	return _c
 }
 
+// DeleteTodo provides a mock function for the type MockTodoRepository
+func (_mock *MockTodoRepository) DeleteTodo(ctx context.Context, id uuid.UUID) error {
+	ret := _mock.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteTodo")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockTodoRepository_DeleteTodo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteTodo'
+type MockTodoRepository_DeleteTodo_Call struct {
+	*mock.Call
+}
+
+// DeleteTodo is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id uuid.UUID
+func (_e *MockTodoRepository_Expecter) DeleteTodo(ctx interface{}, id interface{}) *MockTodoRepository_DeleteTodo_Call {
+	return &MockTodoRepository_DeleteTodo_Call{Call: _e.mock.On("DeleteTodo", ctx, id)}
+}
+
+func (_c *MockTodoRepository_DeleteTodo_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockTodoRepository_DeleteTodo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTodoRepository_DeleteTodo_Call) Return(err error) *MockTodoRepository_DeleteTodo_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockTodoRepository_DeleteTodo_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) error) *MockTodoRepository_DeleteTodo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetTodo provides a mock function for the type MockTodoRepository
 func (_mock *MockTodoRepository) GetTodo(ctx context.Context, id uuid.UUID) (domain.Todo, error) {
 	ret := _mock.Called(ctx, id)

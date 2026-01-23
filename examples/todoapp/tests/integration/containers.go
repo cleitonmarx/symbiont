@@ -10,7 +10,6 @@ import (
 )
 
 type InitDockerCompose struct {
-	Logger  *log.Logger `resolve:""`
 	compose *compose.DockerCompose
 }
 
@@ -47,9 +46,7 @@ func (i InitDockerCompose) Close() {
 			compose.RemoveImages(compose.RemoveImagesLocal),
 		)
 		if err != nil {
-			i.Logger.Printf("failed to stop docker compose: %v", err)
-		} else {
-			i.Logger.Printf("docker compose stopped successfully")
+			log.Printf("failed to stop docker compose: %v", err)
 		}
 	}
 }

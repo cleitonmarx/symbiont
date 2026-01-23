@@ -53,6 +53,9 @@ type TodoRepository interface {
 	// UpdateTodo updates an existing todo item identified by id with the provided fields.
 	UpdateTodo(ctx context.Context, todo Todo) error
 
+	// DeleteTodo removes a todo item identified by id from the data store.
+	DeleteTodo(ctx context.Context, id uuid.UUID) error
+
 	// GetTodo retrieves a todo item by its unique identifier.
 	GetTodo(ctx context.Context, id uuid.UUID) (Todo, error)
 }

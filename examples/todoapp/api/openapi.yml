@@ -178,6 +178,25 @@ paths:
           $ref: '#/components/responses/BadRequest'
         "404":
           $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Todos]
+      operationId: deleteTodo
+      summary: Delete a todo
+      description: >
+        Deletes a todo by its ID.
+      parameters:
+        - in: path
+          name: todo_id
+          required: true
+          description: Todo identifier (UUID).
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Todo deleted successfully. No content.
+        "404":
+          $ref: '#/components/responses/NotFound'
   
   /api/v1/board/summary:
     get:

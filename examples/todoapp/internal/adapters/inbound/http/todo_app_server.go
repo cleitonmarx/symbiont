@@ -33,6 +33,7 @@ type TodoAppServer struct {
 	ListTodosUseCase       usecases.ListTodos       `resolve:""`
 	CreateTodoUseCase      usecases.CreateTodo      `resolve:""`
 	UpdateTodoUseCase      usecases.UpdateTodo      `resolve:""`
+	DeleteTodoUseCase      usecases.DeleteTodo      `resolve:""`
 	GetBoardSummaryUseCase usecases.GetBoardSummary `resolve:""`
 }
 
@@ -123,6 +124,16 @@ func (api TodoAppServer) UpdateTodo(w http.ResponseWriter, r *http.Request, todo
 	}
 
 	respondJSON(w, http.StatusOK, toOpenAPITodo(todo))
+}
+
+func (api TodoAppServer) DeleteTodo(w http.ResponseWriter, r *http.Request, todoId openapi_types.UUID) {
+	err := api.DeleteTodoUseCase.Execute(r.Context(), uuid.UUID(todoId))
+	if err != nil {
+		respondError(w, toOpenAPIError(err))
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (api TodoAppServer) GetBoardSummary(w http.ResponseWriter, r *http.Request) {

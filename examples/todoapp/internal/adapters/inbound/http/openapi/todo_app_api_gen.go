@@ -412,6 +412,9 @@ type ClientInterface interface {
 
 	CreateTodo(ctx context.Context, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteTodo request
+	DeleteTodo(ctx context.Context, todoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UpdateTodoWithBody request with any body
 	UpdateTodoWithBody(ctx context.Context, todoId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -456,6 +459,18 @@ func (c *Client) CreateTodoWithBody(ctx context.Context, contentType string, bod
 
 func (c *Client) CreateTodo(ctx context.Context, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateTodoRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteTodo(ctx context.Context, todoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTodoRequest(c.Server, todoId)
 	if err != nil {
 		return nil, err
 	}
@@ -630,6 +645,40 @@ func NewCreateTodoRequestWithBody(server string, contentType string, body io.Rea
 	return req, nil
 }
 
+// NewDeleteTodoRequest generates requests for DeleteTodo
+func NewDeleteTodoRequest(server string, todoId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "todo_id", runtime.ParamLocationPath, todoId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/todos/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewUpdateTodoRequest calls the generic UpdateTodo builder with application/json body
 func NewUpdateTodoRequest(server string, todoId openapi_types.UUID, body UpdateTodoJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -731,6 +780,9 @@ type ClientWithResponsesInterface interface {
 
 	CreateTodoWithResponse(ctx context.Context, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
 
+	// DeleteTodoWithResponse request
+	DeleteTodoWithResponse(ctx context.Context, todoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTodoResponse, error)
+
 	// UpdateTodoWithBodyWithResponse request with any body
 	UpdateTodoWithBodyWithResponse(ctx context.Context, todoId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
 
@@ -805,6 +857,28 @@ func (r CreateTodoResponse) StatusCode() int {
 	return 0
 }
 
+type DeleteTodoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON404      *NotFound
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTodoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTodoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type UpdateTodoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -862,6 +936,15 @@ func (c *ClientWithResponses) CreateTodoWithResponse(ctx context.Context, body C
 		return nil, err
 	}
 	return ParseCreateTodoResponse(rsp)
+}
+
+// DeleteTodoWithResponse request returning *DeleteTodoResponse
+func (c *ClientWithResponses) DeleteTodoWithResponse(ctx context.Context, todoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTodoResponse, error) {
+	rsp, err := c.DeleteTodo(ctx, todoId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTodoResponse(rsp)
 }
 
 // UpdateTodoWithBodyWithResponse request with arbitrary body returning *UpdateTodoResponse
@@ -973,6 +1056,32 @@ func ParseCreateTodoResponse(rsp *http.Response) (*CreateTodoResponse, error) {
 	return response, nil
 }
 
+// ParseDeleteTodoResponse parses an HTTP response from a DeleteTodoWithResponse call
+func ParseDeleteTodoResponse(rsp *http.Response) (*DeleteTodoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTodoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseUpdateTodoResponse parses an HTTP response from a UpdateTodoWithResponse call
 func ParseUpdateTodoResponse(rsp *http.Response) (*UpdateTodoResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1024,6 +1133,9 @@ type ServerInterface interface {
 	// Create a todo
 	// (POST /api/v1/todos)
 	CreateTodo(w http.ResponseWriter, r *http.Request)
+	// Delete a todo
+	// (DELETE /api/v1/todos/{todo_id})
+	DeleteTodo(w http.ResponseWriter, r *http.Request, todoId openapi_types.UUID)
 	// Update a todo
 	// (PATCH /api/v1/todos/{todo_id})
 	UpdateTodo(w http.ResponseWriter, r *http.Request, todoId openapi_types.UUID)
@@ -1114,6 +1226,31 @@ func (siw *ServerInterfaceWrapper) CreateTodo(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateTodo(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteTodo operation middleware
+func (siw *ServerInterfaceWrapper) DeleteTodo(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "todo_id" -------------
+	var todoId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "todo_id", r.PathValue("todo_id"), &todoId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "todo_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteTodo(w, r, todoId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1271,6 +1408,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/board/summary", wrapper.GetBoardSummary)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/todos", wrapper.ListTodos)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/todos", wrapper.CreateTodo)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/todos/{todo_id}", wrapper.DeleteTodo)
 	m.HandleFunc("PATCH "+options.BaseURL+"/api/v1/todos/{todo_id}", wrapper.UpdateTodo)
 
 	return m
