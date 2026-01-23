@@ -183,7 +183,7 @@ func TestTodoRepository_UpdateTodo(t *testing.T) {
 		"success": {
 			todo: todo,
 			setExpectations: func(mock sqlmock.Sqlmock) {
-				mock.ExpectExec("UPDATE todos SET title = $1, status = $2, email_status = $3, email_attempts = $4, email_last_error = $5, email_provider_id = $6, due_date = $7, updated_at = $8 WHERE id = $9").
+				mock.ExpectExec("UPDATE todos SET title = $1, status = $2, due_date = $3, updated_at = $4 WHERE id = $5").
 					WithArgs(
 						todo.Title,
 						todo.Status,
@@ -198,7 +198,7 @@ func TestTodoRepository_UpdateTodo(t *testing.T) {
 		"database-error": {
 			todo: todo,
 			setExpectations: func(mock sqlmock.Sqlmock) {
-				mock.ExpectExec("UPDATE todos SET title = $1, status = $2, email_status = $3, email_attempts = $4, email_last_error = $5, email_provider_id = $6, due_date = $7, updated_at = $8 WHERE id = $9").
+				mock.ExpectExec("UPDATE todos SET title = $1, status = $2, due_date = $3, updated_at = $4 WHERE id = $5").
 					WithArgs(
 						todo.Title,
 						todo.Status,
@@ -279,7 +279,7 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 			page:     1,
 			pageSize: 10,
 			setExpectations: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery("SELECT id, title, status, email_status, email_attempts, email_last_error, email_provider_id, due_date, created_at, updated_at FROM todos ORDER BY created_at DESC LIMIT 11 OFFSET 0").
+				mock.ExpectQuery("SELECT id, title, status, due_date, created_at, updated_at FROM todos ORDER BY created_at DESC LIMIT 11 OFFSET 0").
 					WillReturnError(errors.New("database error"))
 			},
 			expectedTodos:   nil,
@@ -352,7 +352,7 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 			pageSize: 10,
 			setExpectations: func(mock sqlmock.Sqlmock) {
 				rows := sqlmock.NewRows(todoFields)
-				mock.ExpectQuery("SELECT id, title, status, email_status, email_attempts, email_last_error, email_provider_id, due_date, created_at, updated_at FROM todos ORDER BY created_at DESC LIMIT 11 OFFSET 0").
+				mock.ExpectQuery("SELECT id, title, status, due_date, created_at, updated_at FROM todos ORDER BY created_at DESC LIMIT 11 OFFSET 0").
 					WillReturnRows(rows)
 			},
 			expectedTodos:   nil,

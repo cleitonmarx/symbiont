@@ -60,8 +60,9 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 				publisher.EXPECT().PublishEvent(
 					mock.Anything,
 					domain.TodoEvent{
-						Type:   domain.TodoEventType_TODO_CREATED,
-						TodoID: fixedUUID(),
+						Type:      domain.TodoEventType_TODO_CREATED,
+						TodoID:    fixedUUID(),
+						CreatedAt: fixedTime,
 					},
 				).Return(nil)
 			},

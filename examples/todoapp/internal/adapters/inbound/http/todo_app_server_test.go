@@ -44,7 +44,7 @@ var (
 	}
 )
 
-func TestTodoMailerServer_CreateTodo(t *testing.T) {
+func TestTodoAppServer_CreateTodo(t *testing.T) {
 	tests := map[string]struct {
 		requestBody    []byte
 		setupMocks     func(*mocks.MockCreateTodo)
@@ -119,7 +119,7 @@ func TestTodoMailerServer_CreateTodo(t *testing.T) {
 				tt.setupMocks(mockCreateTodo)
 			}
 
-			server := &TodoMailerServer{
+			server := &TodoAppServer{
 				CreateTodoUseCase: mockCreateTodo,
 			}
 
@@ -152,7 +152,7 @@ func TestTodoMailerServer_CreateTodo(t *testing.T) {
 	}
 }
 
-func TestTodoMailerServer_ListTodos(t *testing.T) {
+func TestTodoAppServer_ListTodos(t *testing.T) {
 	tests := map[string]struct {
 		page           int
 		pageSize       int
@@ -254,7 +254,7 @@ func TestTodoMailerServer_ListTodos(t *testing.T) {
 			mockListTodos := mocks.NewMockListTodos(t)
 			tt.setupMocks(mockListTodos)
 
-			server := &TodoMailerServer{
+			server := &TodoAppServer{
 				ListTodosUseCase: mockListTodos,
 			}
 
@@ -294,7 +294,7 @@ func TestTodoMailerServer_ListTodos(t *testing.T) {
 	}
 }
 
-func TestTodoMailerServer_UpdateTodo(t *testing.T) {
+func TestTodoAppServer_UpdateTodo(t *testing.T) {
 	tests := map[string]struct {
 		todoID         string
 		requestBody    []byte
@@ -384,7 +384,7 @@ func TestTodoMailerServer_UpdateTodo(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			mockUpdateTodo := mocks.NewMockUpdateTodo(t)
 			tt.setupMocks(mockUpdateTodo)
-			server := &TodoMailerServer{
+			server := &TodoAppServer{
 				UpdateTodoUseCase: mockUpdateTodo,
 			}
 
@@ -412,7 +412,7 @@ func TestTodoMailerServer_UpdateTodo(t *testing.T) {
 
 }
 
-func TestTodoMailerServer_GetBoardSummary(t *testing.T) {
+func TestTodoAppServer_GetBoardSummary(t *testing.T) {
 	fixedUUID := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
 	generatedAt := time.Date(2026, 1, 22, 10, 30, 0, 0, time.UTC)
 
@@ -498,7 +498,7 @@ func TestTodoMailerServer_GetBoardSummary(t *testing.T) {
 			mockGetBoardSummary := mocks.NewMockGetBoardSummary(t)
 			tt.setupMocks(mockGetBoardSummary)
 
-			server := &TodoMailerServer{
+			server := &TodoAppServer{
 				GetBoardSummaryUseCase: mockGetBoardSummary,
 			}
 
@@ -528,11 +528,11 @@ func TestTodoMailerServer_GetBoardSummary(t *testing.T) {
 	}
 }
 
-func TestTodoMailerServer_Run(t *testing.T) {
+func TestTodoAppServer_Run(t *testing.T) {
 	cancelCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	server := &TodoMailerServer{
+	server := &TodoAppServer{
 		Port:   12345,
 		Logger: log.Default(),
 	}

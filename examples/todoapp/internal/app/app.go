@@ -19,8 +19,8 @@ import (
 	"github.com/cleitonmarx/symbiont/introspection/mermaid"
 )
 
-// NewTodoMailerApp creates and returns a new instance of the TodoMailer application.
-func NewTodoMailerApp(initializers ...symbiont.Initializer) *symbiont.App {
+// NewTodoApp creates and returns a new instance of the TodoApp application.
+func NewTodoApp(initializers ...symbiont.Initializer) *symbiont.App {
 	return symbiont.NewApp().
 		Initialize(initializers...).
 		Initialize(
@@ -42,7 +42,7 @@ func NewTodoMailerApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&usecases.InitGetBoardSummary{},
 		).
 		Host(
-			&http.TodoMailerServer{},
+			&http.TodoAppServer{},
 			&worker.TodoEventSubscriber{},
 			&worker.OutboxPublisher{},
 		)
@@ -59,7 +59,7 @@ func (i ReportLoggerIntrospector) Introspect(ctx context.Context, r introspectio
 	if err != nil {
 		return err
 	}
-	i.Logger.Println("=== TODOMAILER INTROSPECTION REPORT ===")
+	i.Logger.Println("=== TODOAPP INTROSPECTION REPORT ===")
 	i.Logger.Println(string(b))
 	i.Logger.Println("=== MERMAID GRAPH ===")
 	i.Logger.Println(mermaid.GenerateIntrospectionGraph(r))

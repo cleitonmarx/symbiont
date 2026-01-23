@@ -19,7 +19,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-// TodoMailerServer is the HTTP server adapter for the TodoMailer application.
+// TodoAppServer is the HTTP server adapter for the TodoApp application.
 //
 // It implements the OpenAPI-generated ServerInterface and serves both the REST API
 // endpoints and the embedded web application static files. The server is instrumented
@@ -27,7 +27,7 @@ import (
 // or configuration providers through the symbiont framework.
 //
 // Dependencies are automatically resolved and injected at initialization time.
-type TodoMailerServer struct {
+type TodoAppServer struct {
 	Port                   int                      `config:"HTTP_PORT" default:"8080"`
 	Logger                 *log.Logger              `resolve:""`
 	ListTodosUseCase       usecases.ListTodos       `resolve:""`
@@ -36,7 +36,7 @@ type TodoMailerServer struct {
 	GetBoardSummaryUseCase usecases.GetBoardSummary `resolve:""`
 }
 
-func (api TodoMailerServer) ListTodos(w http.ResponseWriter, r *http.Request, params openapi.ListTodosParams) {
+func (api TodoAppServer) ListTodos(w http.ResponseWriter, r *http.Request, params openapi.ListTodosParams) {
 	resp := openapi.ListTodosResp{
 		Items: []openapi.Todo{},
 		Page:  params.Page,
@@ -67,7 +67,7 @@ func (api TodoMailerServer) ListTodos(w http.ResponseWriter, r *http.Request, pa
 	respondJSON(w, http.StatusOK, resp)
 }
 
-func (api TodoMailerServer) CreateTodo(w http.ResponseWriter, r *http.Request) {
+func (api TodoAppServer) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var req openapi.CreateTodoJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errResp := openapi.ErrorResp{}
@@ -86,7 +86,7 @@ func (api TodoMailerServer) CreateTodo(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, http.StatusCreated, toOpenAPITodo(todo))
 }
-func (api TodoMailerServer) UpdateTodo(w http.ResponseWriter, r *http.Request, todoId openapi_types.UUID) {
+func (api TodoAppServer) UpdateTodo(w http.ResponseWriter, r *http.Request, todoId openapi_types.UUID) {
 	var req openapi.UpdateTodoJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errResp := openapi.ErrorResp{}
@@ -125,7 +125,7 @@ func (api TodoMailerServer) UpdateTodo(w http.ResponseWriter, r *http.Request, t
 	respondJSON(w, http.StatusOK, toOpenAPITodo(todo))
 }
 
-func (api TodoMailerServer) GetBoardSummary(w http.ResponseWriter, r *http.Request) {
+func (api TodoAppServer) GetBoardSummary(w http.ResponseWriter, r *http.Request) {
 	summary, err := api.GetBoardSummaryUseCase.Query(r.Context())
 	if err != nil {
 		respondError(w, toOpenAPIError(err))
@@ -155,8 +155,8 @@ func (api TodoMailerServer) GetBoardSummary(w http.ResponseWriter, r *http.Reque
 //go:embed webappdist/*
 var embedFS embed.FS
 
-// Run starts the HTTP server for the TodoMailerServer.
-func (api TodoMailerServer) Run(ctx context.Context) error {
+// Run starts the HTTP server for the TodoAppServer.
+func (api TodoAppServer) Run(ctx context.Context) error {
 
 	mux := http.NewServeMux()
 
@@ -184,13 +184,13 @@ func (api TodoMailerServer) Run(ctx context.Context) error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		api.Logger.Printf("TodoMailerServer: Listening on port %d", api.Port)
+		api.Logger.Printf("TodoAppServer: Listening on port %d", api.Port)
 		errCh <- s.ListenAndServe()
 	}()
 
 	select {
 	case <-ctx.Done():
-		api.Logger.Print("TodoMailerServer: Shutting down")
+		api.Logger.Print("TodoAppServer: Shutting down")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		return s.Shutdown(shutdownCtx)
@@ -199,8 +199,8 @@ func (api TodoMailerServer) Run(ctx context.Context) error {
 	}
 }
 
-// IsReady checks if the TodoMailerServer is ready by performing a health check.
-func (api TodoMailerServer) IsReady(ctx context.Context) error {
+// IsReady checks if the TodoAppServer is ready by performing a health check.
+func (api TodoAppServer) IsReady(ctx context.Context) error {
 	resp, err := http.Get(fmt.Sprintf("http://:%d", api.Port))
 	if err != nil {
 		return err
@@ -230,4 +230,4 @@ func respondError(w http.ResponseWriter, err openapi.ErrorResp) {
 	respondJSON(w, statusCode, err)
 }
 
-var _ openapi.ServerInterface = (*TodoMailerServer)(nil)
+var _ openapi.ServerInterface = (*TodoAppServer)(nil)

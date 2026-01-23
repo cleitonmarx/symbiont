@@ -1,4 +1,4 @@
-//----go:build integration
+//go:build integration
 
 package integration
 
@@ -17,8 +17,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTodoMailer_Integration(t *testing.T) {
-	todoMailerApp := app.NewTodoMailerApp(
+func TestTodoApp_Integration(t *testing.T) {
+	todoApp := app.NewTodoApp(
 		&initEnvVars{
 			envVars: map[string]string{
 				"VAULT_ADDR":                  "http://localhost:8200",
@@ -46,17 +46,16 @@ func TestTodoMailer_Integration(t *testing.T) {
 	cancelCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	shutdownCh := todoMailerApp.RunAsync(cancelCtx)
+	shutdownCh := todoApp.RunAsync(cancelCtx)
 
-	err := todoMailerApp.WaitForReadiness(cancelCtx, 20000000*time.Second)
+	err := todoApp.WaitForReadiness(cancelCtx, 10*time.Second)
 	if err != nil {
 		cancel()
-		t.Fatalf("TodoMailer app failed to become ready: %v", err)
+		t.Fatalf("TodoApp app failed to become ready: %v", err)
 	}
 
 	apiCli, err := openapi.NewClientWithResponses("http://localhost:8080")
-	assert.NoError(t, err, "failed to create TodoMailer API client")
-
+	assert.NoError(t, err, "failed to create TodoApp API client")
 	t.Run("create-todos", func(t *testing.T) {
 		for i := range 5 {
 			createResp, err := apiCli.CreateTodoWithResponse(cancelCtx, openapi.CreateTodoJSONRequestBody{
