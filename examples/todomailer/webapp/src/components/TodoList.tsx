@@ -4,20 +4,20 @@ import TodoItem from './TodoItem';
 import { BoardSummary } from './BoardSummary';
 import { BoardSummary as BoardSummaryType } from '../services/api';
 
-interface TodoListProps {
+export interface TodoListProps {
   todos: Todo[];
-  boardSummary: BoardSummaryType | null;
-  loading: boolean;
-  error: string | null;
-  onUpdateTodo: (id: string, status: TodoStatus) => void;
-  onUpdateTitle: (id: string, title: string) => void;
+  boardSummary: any;
+  onComplete: (id: string, status: TodoStatus) => void;
+  onUpdateTitle: (id: string, title: string, due_date: string) => void;
   statusFilter: TodoStatus | 'ALL';
   onStatusFilterChange: (status: TodoStatus | 'ALL') => void;
-  currentPage?: number;
-  previousPage?: number | null;
-  nextPage?: number | null;
+  currentPage: number;
+  previousPage: number | null;
+  nextPage: number | null;
   onPreviousPage: () => void;
   onNextPage: () => void;
+  loading: boolean;
+  error: string | null;
 }
 
 const TodoList: React.FC<TodoListProps> = ({
@@ -25,7 +25,6 @@ const TodoList: React.FC<TodoListProps> = ({
   boardSummary,
   loading,
   error,
-  onUpdateTodo,
   onUpdateTitle,
   statusFilter,
   onStatusFilterChange,
@@ -34,6 +33,7 @@ const TodoList: React.FC<TodoListProps> = ({
   nextPage,
   onPreviousPage,
   onNextPage,
+  onComplete,
 }) => {
   return (
     <div className="todo-list-container">
@@ -90,7 +90,7 @@ const TodoList: React.FC<TodoListProps> = ({
                 <TodoItem
                   key={todo.id}
                   todo={todo}
-                  onUpdateTodo={onUpdateTodo}
+                  onComplete={onComplete}
                   onUpdateTitle={onUpdateTitle}
                 />
               ))}

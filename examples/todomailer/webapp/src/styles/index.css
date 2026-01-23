@@ -580,8 +580,6 @@ button:disabled {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-md);
-  padding-top: var(--spacing-md);
-  border-top: 1px solid var(--sb-border);
   font-size: 0.875rem;
 }
 
@@ -649,7 +647,6 @@ button:disabled {
   align-items: center;
   gap: var(--spacing-md);
   padding: var(--spacing-sm) 0;
-  margin-bottom: var(--spacing-md);
   border-bottom: 1px solid var(--sb-border);
 }
 

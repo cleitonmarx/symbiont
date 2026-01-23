@@ -46,10 +46,6 @@ const App: React.FC = () => {
               todos={todos} 
               boardSummary={boardSummary}
               onComplete={completeTodo}
-              onUpdate={updateTodo}
-              loading={loading}
-              error={null}
-              onUpdateTodo={updateTodo}
               onUpdateTitle={updateTitle}
               statusFilter={statusFilter}
               onStatusFilterChange={setStatusFilter}
@@ -58,6 +54,8 @@ const App: React.FC = () => {
               nextPage={nextPage}
               onPreviousPage={() => previousPage !== null && goToPage(previousPage)}
               onNextPage={() => nextPage !== null && goToPage(nextPage)}
+              loading={loading}
+              error={null}
             />
           )}
         </div>

@@ -1,16 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getTodos, createTodo, updateTodo, getBoardSummary } from '../services/api';
-import type { Todo, CreateTodoRequest, UpdateTodoRequest, TodoStatus, BoardSummary } from '../types';
+import type { Todo, CreateTodoRequest, UpdateTodoRequest, TodoStatus } from '../types';
 import { useState, useEffect } from 'react';
 
 interface UseTodosReturn {
   todos: Todo[];
   loading: boolean;
   error: string | null;
-  addTodo: (title: string, due_date: string) => void;
+  createTodo: (title: string, due_date: string) => void;
   completeTodo: (id: string, status: TodoStatus) => void;
-  updateTodoTitle: (id: string, title: string, due_date: string) => void;
-  boardSummary: BoardSummary | null;
+  updateTodo: (id: string, status: TodoStatus) => void;
+  updateTitle: (id: string, title: string, due_date: string) => void;
+  boardSummary: any;
   statusFilter: TodoStatus | 'ALL';
   setStatusFilter: (status: TodoStatus | 'ALL') => void;
   page: number;
@@ -24,7 +25,7 @@ export const useTodos = (): UseTodosReturn => {
   const [statusFilter, setStatusFilterState] = useState<TodoStatus | 'ALL'>('ALL');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [mutationError, setMutationError] = useState<string | null>(null);
-  const [boardSummary, setBoardSummary] = useState<BoardSummary | null>(null);
+  const [boardSummary, setBoardSummary] = useState<any>(null);
 
   // Reset page to 1 whenever status filter changes
   useEffect(() => {
@@ -48,9 +49,9 @@ export const useTodos = (): UseTodosReturn => {
   });
 
   const todos = response?.items || [];
-  const page = response?.page;
-  const previousPage = response?.previous_page;
-  const nextPage = response?.next_page;
+  const page = response?.page ?? 1;
+  const previousPage = response?.previous_page ?? null;
+  const nextPage = response?.next_page ?? null;
 
   const errorMessage = error 
     ? error instanceof Error 
@@ -117,11 +118,12 @@ export const useTodos = (): UseTodosReturn => {
     loading,
     error: errorMessage,
     createTodo: (title: string, due_date: string) => createMutation.mutate({ title, due_date }),
+    completeTodo: (id: string, status: TodoStatus) => 
+      updateStatusMutation.mutate({ id, status }),
     updateTodo: (id: string, status: TodoStatus) => 
       updateStatusMutation.mutate({ id, status }),
     updateTitle: (id: string, title: string, due_date: string) => 
       updateTitleMutation.mutate({ id, title, due_date }),
-    refetch,
     statusFilter,
     setStatusFilter: setStatusFilterState,
     page,

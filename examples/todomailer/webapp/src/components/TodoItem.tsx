@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
 import type { Todo, TodoStatus } from '../types';
 
-interface TodoItemProps {
+export interface TodoItemProps {
   todo: Todo;
-  onUpdateTodo: (id: string, status: TodoStatus) => void;
+  onComplete: (id: string, status: TodoStatus) => void;
   onUpdateTitle: (id: string, title: string, due_date: string) => void;
 }
 
-const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdateTodo, onUpdateTitle }) => {
+const TodoItem: React.FC<TodoItemProps> = ({ todo, onComplete, onUpdateTitle }) => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const [editDueDate, setEditDueDate] = useState(todo.due_date);
 
   const formatDate = (dateString: string) => {
-    // Parse ISO datetime string correctly
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       month: 'short',
@@ -25,7 +24,6 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdateTodo, onUpdateTitle }
   };
 
   const formatDueDate = (dateString: string) => {
-    // Parse as local date to avoid timezone issues
     const [year, month, day] = dateString.split('-').map(Number);
     const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('en-US', { 
@@ -46,7 +44,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdateTodo, onUpdateTitle }
   };
 
   const markAsDone = () => {
-    onUpdateTodo(todo.id, 'DONE');
+    onComplete(todo.id, 'DONE');
   };
 
   const handleSaveEdit = () => {
@@ -66,7 +64,6 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdateTodo, onUpdateTitle }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Parse as local date to avoid timezone issues
     const [year, month, day] = todo.due_date.split('-').map(Number);
     const dueDate = new Date(year, month - 1, day);
     dueDate.setHours(0, 0, 0, 0);
@@ -96,34 +93,6 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdateTodo, onUpdateTitle }
               {formatDueDate(todo.due_date)}
             </span>
           </div>
-
-          <div className="todo-info-row">
-            <span className="todo-label">Email Status:</span>
-            <span className={`status-badge email-${todo.email_status.toLowerCase()}`}>
-              {todo.email_status}
-            </span>
-          </div>
-
-          {todo.email_attempts > 0 && (
-            <div className="todo-info-row">
-              <span className="todo-label">Attempts:</span>
-              <span>{todo.email_attempts}</span>
-            </div>
-          )}
-
-          {todo.email_last_error && (
-            <div className="todo-info-row error-row">
-              <span className="todo-label">Error:</span>
-              <span className="error-text">{todo.email_last_error}</span>
-            </div>
-          )}
-
-          {todo.email_provider_id && (
-            <div className="todo-info-row">
-              <span className="todo-label">Provider ID:</span>
-              <span className="provider-id">{todo.email_provider_id}</span>
-            </div>
-          )}
 
           <div className="todo-dates">
             <div className="date-item">
