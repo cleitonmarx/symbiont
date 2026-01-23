@@ -18,7 +18,6 @@ import (
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/usecases/mocks"
 	"github.com/google/uuid"
-	"github.com/oapi-codegen/runtime/types"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -55,7 +54,7 @@ func TestTodoAppServer_CreateTodo(t *testing.T) {
 		"success": {
 			requestBody: serializeJSON(t, openapi.CreateTodoJSONRequestBody{
 				Title:   "Buy groceries",
-				DueDate: types.Date{Time: dueDate},
+				DueDate: openapi_types.Date{Time: dueDate},
 			}),
 			setupMocks: func(m *mocks.MockCreateTodo) {
 				m.EXPECT().
@@ -66,7 +65,7 @@ func TestTodoAppServer_CreateTodo(t *testing.T) {
 		},
 		"bad-request": {
 			requestBody: serializeJSON(t, openapi.CreateTodoJSONRequestBody{
-				DueDate: types.Date{Time: dueDate},
+				DueDate: openapi_types.Date{Time: dueDate},
 			}),
 			setupMocks: func(m *mocks.MockCreateTodo) {
 				m.EXPECT().
@@ -95,7 +94,7 @@ func TestTodoAppServer_CreateTodo(t *testing.T) {
 		"internal-server-error": {
 			requestBody: serializeJSON(t, openapi.CreateTodoJSONRequestBody{
 				Title:   "Test todo",
-				DueDate: types.Date{Time: time.Time{}},
+				DueDate: openapi_types.Date{Time: time.Time{}},
 			}),
 			setupMocks: func(m *mocks.MockCreateTodo) {
 				m.EXPECT().
@@ -308,7 +307,7 @@ func TestTodoAppServer_UpdateTodo(t *testing.T) {
 			requestBody: serializeJSON(t, openapi.UpdateTodoJSONRequestBody{
 				Title:   common.Ptr("Buy groceries"),
 				Status:  common.Ptr(openapi.DONE),
-				DueDate: &types.Date{Time: dueDate},
+				DueDate: &openapi_types.Date{Time: dueDate},
 			}),
 			setupMocks: func(m *mocks.MockUpdateTodo) {
 				m.EXPECT().
