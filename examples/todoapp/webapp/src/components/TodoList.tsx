@@ -2,7 +2,6 @@ import React from 'react';
 import type { Todo, TodoStatus } from '../types';
 import TodoItem from './TodoItem';
 import { BoardSummary } from './BoardSummary';
-import { BoardSummary as BoardSummaryType } from '../services/api';
 
 export interface TodoListProps {
   todos: Todo[];

@@ -11,7 +11,6 @@ const App: React.FC = () => {
     error,
     createTodo, 
     completeTodo,
-    updateTodo,
     updateTitle,
     statusFilter,
     setStatusFilter,
@@ -25,8 +24,8 @@ const App: React.FC = () => {
     <div className="app">
       <header className="app-header">
         <div className="header-content">
-          <img src="/symbiont-icon.png" alt="Todo Mailer Logo" className="header-logo" />
-          <h1>Todo Mailer</h1>
+          <img src="/symbiont-icon.png" alt="Todo App Logo" className="header-logo" />
+          <h1>Todo App</h1>
         </div>
       </header>
       <div className="app-main">

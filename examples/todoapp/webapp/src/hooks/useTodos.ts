@@ -44,7 +44,6 @@ export const useTodos = (): UseTodosReturn => {
       currentPage,
       6 // You can adjust this value as needed
     ),
-    refetchInterval: 5000,
     retry: 1,
   });
 
