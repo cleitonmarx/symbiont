@@ -11,14 +11,6 @@ It provides a structured way to initialize dependencies, start long-lived servic
 and coordinate application shutdown within a single, testable lifecycle.
 
 ---
-# Symbiont
-
-Symbiont is a lightweight **application host** for Go.
-
-It provides a structured way to initialize dependencies, start long-lived services,
-and coordinate application shutdown within a single, testable lifecycle.
-
----
 
 ## Why Symbiont Exists
 
