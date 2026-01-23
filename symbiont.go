@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"sync/atomic"
 	"syscall"
 
 	"github.com/cleitonmarx/symbiont/config"
@@ -36,6 +37,7 @@ type App struct {
 	runnableSpecsList []runnableSpecs
 	introspector      Introspector
 	errCh             chan error
+	isRunning         atomic.Bool
 }
 
 // NewApp creates a new application with no initializers or runnables.
@@ -178,6 +180,8 @@ func (a *App) runWithContext(ctx context.Context) error {
 			})
 		}(rs)
 	}
+
+	a.isRunning.Store(true)
 
 	return errGroup.Wait()
 }

@@ -48,18 +48,22 @@ func (a *App) WaitForReadiness(ctx context.Context, timeout time.Duration) error
 	var lastFailing any
 
 	for {
-		// check all
-		allReady := true
-		for _, c := range a.runnableSpecsList {
-			if err := c.readyChecker.IsReady(waitCtx); err != nil {
-				lastErr = err
-				lastFailing = c.original
-				allReady = false
-				break
+
+		// If the app is already running, check all ready checkers once.
+		if a.isRunning.Load() {
+			// check all
+			allReady := true
+			for _, c := range a.runnableSpecsList {
+				if err := c.readyChecker.IsReady(waitCtx); err != nil {
+					lastErr = err
+					lastFailing = c.original
+					allReady = false
+					break
+				}
 			}
-		}
-		if allReady {
-			return nil
+			if allReady {
+				return nil
+			}
 		}
 
 		select {
