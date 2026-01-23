@@ -7,6 +7,7 @@ export interface Todo {
   id: string;
   title: string;
   status: TodoStatus;
+  due_date: string;
   email_status: EmailStatus;
   email_attempts: number;
   email_last_error: string | null;

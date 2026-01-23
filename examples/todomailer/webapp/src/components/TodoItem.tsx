@@ -71,6 +71,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdateTodo, onUpdateTitle }
     const dueDate = new Date(year, month - 1, day);
     dueDate.setHours(0, 0, 0, 0);
 
+    if (todo.status === 'DONE') return '#000000'; // black - task is done
     if (dueDate < today) return '#E74C3C'; // red - overdue
     if (dueDate.getTime() === today.getTime()) return '#FFB84D'; // yellow - due today
     return '#4A9DD4'; // blue - due in future
