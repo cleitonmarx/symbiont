@@ -6,7 +6,7 @@ import (
 
 	"github.com/cleitonmarx/symbiont"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/http"
-	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/worker"
+	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/workers"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/outbound/config"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/outbound/llm"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/outbound/log"
@@ -43,8 +43,8 @@ func NewTodoApp(initializers ...symbiont.Initializer) *symbiont.App {
 		).
 		Host(
 			&http.TodoAppServer{},
-			&worker.TodoEventSubscriber{},
-			&worker.OutboxPublisher{},
+			&workers.TodoEventSubscriber{},
+			&workers.OutboxPublisher{},
 		)
 }
 
