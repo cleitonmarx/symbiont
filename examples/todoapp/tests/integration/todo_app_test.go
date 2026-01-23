@@ -145,13 +145,13 @@ type initEnvVars struct {
 
 func (i *initEnvVars) Initialize(ctx context.Context) (context.Context, error) {
 	for key, value := range i.envVars {
-		os.Setenv(key, value)
+		os.Setenv(key, value) //nolint:errcheck
 	}
 	return ctx, nil
 }
 
 func (i *initEnvVars) Close() {
 	for key := range i.envVars {
-		os.Unsetenv(key)
+		os.Unsetenv(key) //nolint:errcheck
 	}
 }
