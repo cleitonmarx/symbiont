@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Todo, CreateTodoRequest, UpdateTodoRequest, ListTodosResponse } from '../types';
+import type { Todo, CreateTodoRequest, UpdateTodoRequest, ListTodosResponse, TodoStatus } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -65,6 +65,10 @@ export const updateTodo = async (id: string, request: UpdateTodoRequest): Promis
   return response.data;
 };
 
+export const deleteTodo = async (id: string): Promise<void> => {
+  await apiClient.delete(`/api/v1/todos/${id}`);
+};
+
 export interface BoardSummary {
   counts: {
     OPEN: number;
@@ -91,3 +95,5 @@ export const getBoardSummary = async (): Promise<BoardSummary | null> => {
     return null;
   }
 };
+
+export type { TodoStatus, Todo, ListTodosResponse };

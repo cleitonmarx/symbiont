@@ -10,8 +10,8 @@ const App: React.FC = () => {
     loading, 
     error,
     createTodo, 
-    completeTodo,
-    updateTitle,
+    updateTodo,
+    deleteTodo,
     statusFilter,
     setStatusFilter,
     page,
@@ -44,8 +44,8 @@ const App: React.FC = () => {
             <TodoList 
               todos={todos} 
               boardSummary={boardSummary}
-              onComplete={completeTodo}
-              onUpdateTitle={updateTitle}
+              onUpdate={updateTodo}
+              onDelete={deleteTodo}
               statusFilter={statusFilter}
               onStatusFilterChange={setStatusFilter}
               currentPage={page}

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTodos, createTodo, updateTodo, getBoardSummary } from '../services/api';
-import type { Todo, CreateTodoRequest, UpdateTodoRequest, TodoStatus } from '../types';
+import { getTodos, createTodo, updateTodo, getBoardSummary, deleteTodo as deleteTodoApi } from '../services/api';
+import type { Todo, CreateTodoRequest, TodoStatus } from '../types';
 import { useState, useEffect } from 'react';
 
 interface UseTodosReturn {
@@ -8,9 +8,7 @@ interface UseTodosReturn {
   loading: boolean;
   error: string | null;
   createTodo: (title: string, due_date: string) => void;
-  completeTodo: (id: string, status: TodoStatus) => void;
-  updateTodo: (id: string, status: TodoStatus) => void;
-  updateTitle: (id: string, title: string, due_date: string) => void;
+  updateTodo: (id: string, status?: TodoStatus, title?: string, due_date?: string) => void;
   boardSummary: any;
   statusFilter: TodoStatus | 'ALL';
   setStatusFilter: (status: TodoStatus | 'ALL') => void;
@@ -18,6 +16,7 @@ interface UseTodosReturn {
   previousPage: number | null;
   nextPage: number | null;
   goToPage: (page: number) => void;
+  deleteTodo: (id: string) => void;
 }
 
 export const useTodos = (): UseTodosReturn => {
@@ -112,23 +111,36 @@ export const useTodos = (): UseTodosReturn => {
     return () => clearInterval(interval);
   }, []);
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteTodoApi(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
+    },
+    onError: (err: Error) => {
+      setMutationError(err.message);
+    },
+  });
+
   return {
     todos,
+    boardSummary,
     loading,
     error: errorMessage,
-    createTodo: (title: string, due_date: string) => createMutation.mutate({ title, due_date }),
-    completeTodo: (id: string, status: TodoStatus) => 
-      updateStatusMutation.mutate({ id, status }),
-    updateTodo: (id: string, status: TodoStatus) => 
-      updateStatusMutation.mutate({ id, status }),
-    updateTitle: (id: string, title: string, due_date: string) => 
-      updateTitleMutation.mutate({ id, title, due_date }),
+    createTodo: (title: string, due_date: string) => 
+      createMutation.mutate({ title, due_date }),
+    updateTodo: (id: string, status?: TodoStatus, title?: string, due_date?: string) => {
+      if (status !== undefined) {
+        updateStatusMutation.mutate({ id, status });
+      } else if (title !== undefined && due_date !== undefined) {
+        updateTitleMutation.mutate({ id, title, due_date });
+      }
+    },
+    deleteTodo: (id: string) => deleteMutation.mutate(id),
     statusFilter,
     setStatusFilter: setStatusFilterState,
     page,
     previousPage,
     nextPage,
     goToPage: setCurrentPage,
-    boardSummary,
   };
 };

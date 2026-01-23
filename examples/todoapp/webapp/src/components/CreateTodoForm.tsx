@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface CreateTodoFormProps {
   onCreateTodo: (title: string, due_date: string) => void;
@@ -7,7 +7,11 @@ interface CreateTodoFormProps {
 const CreateTodoForm: React.FC<CreateTodoFormProps> = ({ onCreateTodo }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState('');
-  const [due_date, setDueDate] = useState('');
+  const [due_date, setDueDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const getMinDate = () => {
     const yesterday = new Date();
@@ -24,16 +28,42 @@ const CreateTodoForm: React.FC<CreateTodoFormProps> = ({ onCreateTodo }) => {
     if (title.trim() && due_date) {
       onCreateTodo(title.trim(), due_date);
       setTitle('');
-      setDueDate('');
+      setDueDate(() => {
+        const today = new Date();
+        return today.toISOString().split('T')[0];
+      });
       setIsOpen(false);
     }
   };
 
   const handleCancel = () => {
     setTitle('');
-    setDueDate('');
+    setDueDate(() => {
+      const today = new Date();
+      return today.toISOString().split('T')[0];
+    });
     setIsOpen(false);
   };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && title.trim() && due_date) {
+      onCreateTodo(title.trim(), due_date);
+      setTitle('');
+      setDueDate(() => {
+        const today = new Date();
+        return today.toISOString().split('T')[0];
+      });
+      setIsOpen(false);
+    } else if (e.key === 'Escape') {
+      handleCancel();
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && titleInputRef.current) {
+      titleInputRef.current.focus();
+    }
+  }, [isOpen]);
 
   return (
     <>
@@ -61,7 +91,8 @@ const CreateTodoForm: React.FC<CreateTodoFormProps> = ({ onCreateTodo }) => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Enter todo title..."
-                  autoFocus
+                  ref={titleInputRef}
+                  onKeyDown={handleKeyDown}
                 />
               </div>
               <div className="form-group">
@@ -72,6 +103,7 @@ const CreateTodoForm: React.FC<CreateTodoFormProps> = ({ onCreateTodo }) => {
                   value={due_date}
                   onChange={(e) => setDueDate(e.target.value)}
                   min={getMinDate()}
+                  onKeyDown={handleKeyDown}
                 />
               </div>
             </div>

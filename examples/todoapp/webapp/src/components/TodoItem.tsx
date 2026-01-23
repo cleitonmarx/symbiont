@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import type { Todo, TodoStatus } from '../types';
+import type { TodoStatus, Todo } from '../types';
 
-export interface TodoItemProps {
+interface TodoItemProps {
   todo: Todo;
-  onComplete: (id: string, status: TodoStatus) => void;
-  onUpdateTitle: (id: string, title: string, due_date: string) => void;
+  onUpdate: (id: string, status?: TodoStatus, title?: string, due_date?: string) => void;
+  onDelete: (id: string) => void;
 }
 
-const TodoItem: React.FC<TodoItemProps> = ({ todo, onComplete, onUpdateTitle }) => {
+const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdate, onDelete }) => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const [editDueDate, setEditDueDate] = useState(todo.due_date);
@@ -44,13 +44,11 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onComplete, onUpdateTitle }) 
   };
 
   const markAsDone = () => {
-    onComplete(todo.id, 'DONE');
+    onUpdate(todo.id, todo.status === 'DONE' ? 'OPEN' : 'DONE');
   };
 
   const handleSaveEdit = () => {
-    if (editTitle.trim() && editDueDate && (editTitle !== todo.title || editDueDate !== todo.due_date)) {
-      onUpdateTitle(todo.id, editTitle.trim(), editDueDate);
-    }
+    onUpdate(todo.id, undefined, editTitle, editDueDate);
     setIsEditOpen(false);
   };
 
@@ -106,22 +104,36 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onComplete, onUpdateTitle }) 
           </div>
         </div>
 
-        {todo.status === 'OPEN' && (
-          <div className="todo-card-footer">
-            <button
-              className="btn-primary"
-              onClick={markAsDone}
-            >
-              ✓ Mark Done
-            </button>
-            <button
-              className="btn-secondary"
-              onClick={() => setIsEditOpen(true)}
-            >
-              ✏️ Edit
-            </button>
-          </div>
-        )}
+        <div className="todo-card-footer">
+          {todo.status === 'OPEN' && (
+            <>
+              <button
+                className="btn-primary btn-icon"
+                onClick={markAsDone}
+                title="Mark as complete"
+                aria-label="Mark as complete"
+              >
+                ✓
+              </button>
+              <button
+                className="btn-secondary btn-icon"
+                onClick={() => setIsEditOpen(true)}
+                title="Edit todo"
+                aria-label="Edit todo"
+              >
+                ✏️
+              </button>
+            </>
+          )}
+          <button
+            className="btn-danger btn-icon"
+            onClick={() => onDelete(todo.id)}
+            title="Delete todo"
+            aria-label="Delete todo"
+          >
+            🗑️
+          </button>
+        </div>
       </div>
 
       {/* Edit Modal */}

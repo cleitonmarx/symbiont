@@ -294,12 +294,13 @@ button.btn-success:hover:not(:disabled) {
 }
 
 button.btn-danger {
-  background: var(--sb-danger);
-  color: white;
+  background-color: #e74c3c;
+  color: #fff;
+  border: none;
 }
 
 button.btn-danger:hover:not(:disabled) {
-  background: #C0392B;
+  background-color: #c0392b;
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
@@ -600,13 +601,31 @@ button:disabled {
 
 .todo-card-footer {
   display: flex;
-  gap: var(--spacing-md);
-  padding-top: var(--spacing-md);
-  border-top: 1px solid var(--sb-border);
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
 }
 
-.todo-card-footer button {
-  flex: 1;
+.btn-icon {
+  min-width: unset;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.btn-danger.btn-icon {
+  background-color: transparent;
+  border: 1px solid #e74c3c;
+  color: #e74c3c;
+}
+
+.btn-danger.btn-icon:hover {
+  background-color: #e74c3c;
+  color: white;
 }
 
 /* Pagination */

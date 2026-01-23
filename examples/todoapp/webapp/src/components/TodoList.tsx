@@ -1,13 +1,14 @@
 import React from 'react';
-import type { Todo, TodoStatus } from '../types';
+import type { TodoStatus } from '../types';
+import type { Todo, BoardSummary } from '../services/api';
 import TodoItem from './TodoItem';
-import { BoardSummary } from './BoardSummary';
+import { BoardSummary as BoardSummaryCard } from './BoardSummary';
 
-export interface TodoListProps {
+interface TodoListProps {
   todos: Todo[];
-  boardSummary: any;
-  onComplete: (id: string, status: TodoStatus) => void;
-  onUpdateTitle: (id: string, title: string, due_date: string) => void;
+  boardSummary: BoardSummary | null;
+  onUpdate: (id: string, status?: TodoStatus, title?: string, due_date?: string) => void;
+  onDelete: (id: string) => void;
   statusFilter: TodoStatus | 'ALL';
   onStatusFilterChange: (status: TodoStatus | 'ALL') => void;
   currentPage: number;
@@ -19,12 +20,12 @@ export interface TodoListProps {
   error: string | null;
 }
 
-const TodoList: React.FC<TodoListProps> = ({
+export const TodoList: React.FC<TodoListProps> = ({
   todos,
   boardSummary,
   loading,
   error,
-  onUpdateTitle,
+  onUpdate,
   statusFilter,
   onStatusFilterChange,
   currentPage,
@@ -32,11 +33,11 @@ const TodoList: React.FC<TodoListProps> = ({
   nextPage,
   onPreviousPage,
   onNextPage,
-  onComplete,
+  onDelete,
 }) => {
   return (
     <div className="todo-list-container">
-      {boardSummary && <BoardSummary data={boardSummary} />}
+      {boardSummary && <BoardSummaryCard data={boardSummary} />}
       <div className="todo-list">
         <div className="todo-list-header">
           <div>
@@ -89,8 +90,8 @@ const TodoList: React.FC<TodoListProps> = ({
                 <TodoItem
                   key={todo.id}
                   todo={todo}
-                  onComplete={onComplete}
-                  onUpdateTitle={onUpdateTitle}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
                 />
               ))}
             </div>
