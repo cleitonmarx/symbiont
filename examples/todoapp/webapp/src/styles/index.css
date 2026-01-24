@@ -42,15 +42,41 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--sb-bg);
+  background: var(--sb-bg);
   color: var(--sb-text);
-  line-height: 1.6;
+  overflow-x: hidden;
 }
 
 .app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.chat-toggle-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  z-index: 1000;
+}
+
+.chat-toggle-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+}
+
+.chat-toggle-btn:active {
+  transform: scale(0.95);
 }
 
 /* Header */
@@ -85,6 +111,7 @@ body {
   display: flex;
   flex: 1;
   gap: 0;
+  min-height: 0;
 }
 
 /* Sidebar Toolbar */
@@ -124,11 +151,8 @@ body {
 /* Main Content Area */
 .content-area {
   flex: 1;
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-  padding: var(--spacing-xl);
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Modal Overlay */
@@ -697,12 +721,6 @@ button:disabled {
     flex-direction: row;
     border-right: none;
     border-bottom: 1px solid var(--sb-border);
-    justify-content: center;
-  }
-
-  .content-area {
-    padding: var(--spacing-md);
-  }
 
   .modal-dialog {
     width: 95%;
@@ -721,10 +739,14 @@ button:disabled {
   .pagination {
     flex-direction: column;
     gap: var(--spacing-md);
-  }
+  }    justify-content: center;
 
   .pagination-buttons {
     width: 100%;
+  } padding: var(--spacing-md);
+  }
+  .pagination-buttons button {
+    flex: 1;
   }
 
   .pagination-buttons button {

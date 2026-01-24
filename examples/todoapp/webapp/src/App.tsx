@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import CreateTodoForm from './components/CreateTodoForm';
 import TodoList from './components/TodoList';
 import { useTodos } from './hooks/useTodos';
+import Chat from './components/Chat';
 
 const App: React.FC = () => {
+  const [isChatOpen, setIsChatOpen] = useState(false); // start hidden by default
   const { 
     todos, 
     boardSummary,
@@ -58,7 +60,15 @@ const App: React.FC = () => {
             />
           )}
         </div>
+        {isChatOpen && <Chat />}
       </div>
+      <button
+        className="chat-toggle-btn"
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        title={isChatOpen ? 'Hide chat' : 'Show chat'}
+      >
+        {isChatOpen ? '✕' : '💬'}
+      </button>
     </div>
   );
 };

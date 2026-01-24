@@ -96,4 +96,23 @@ export const getBoardSummary = async (): Promise<BoardSummary | null> => {
   }
 };
 
+// Function to stream chat responses
+export const streamChat = async (message: string) => {
+  const response = await apiClient.post('/api/v1/chat', { message });
+  return response.data;
+};
+
+// Function to fetch chat history
+export const fetchChatMessages = async (page: number, pageSize: number) => {
+  const response = await apiClient.get('/api/v1/chat/messages', {
+    params: { page, pagesize: pageSize },
+  });
+  return response.data;
+};
+
+// Function to clear chat history
+export const clearChatMessages = async () => {
+  await apiClient.delete('/api/v1/chat/messages');
+};
+
 export type { TodoStatus, Todo, ListTodosResponse };
