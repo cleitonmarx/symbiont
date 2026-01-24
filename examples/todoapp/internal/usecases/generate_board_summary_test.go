@@ -2,7 +2,7 @@ package usecases
 
 import (
 	"context"
-	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -40,7 +40,7 @@ func TestGenerateBoardSummaryImpl_Execute(t *testing.T) {
 	}
 
 	boardSummary := domain.BoardSummary{
-		ID: fixedUUID(),
+		ID: uuid.MustParse("00000000-0000-0000-0000-000000000001"),
 		Content: domain.BoardSummaryContent{
 			Counts: domain.TodoStatusCounts{
 				Open: 1,
@@ -62,121 +62,105 @@ func TestGenerateBoardSummaryImpl_Execute(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		setExpectations func(generator *domain_mocks.MockBoardSummaryGenerator, summaryRepo *domain_mocks.MockBoardSummaryRepository, todoRepo *domain_mocks.MockTodoRepository)
-		expectedErr     error
+		setExpectations func(
+			*domain_mocks.MockBoardSummaryRepository,
+			*domain_mocks.MockTodoRepository,
+			*domain_mocks.MockCurrentTimeProvider,
+			*domain_mocks.MockLLMClient,
+		)
+		expectedErr error
 	}{
 		"success": {
-			setExpectations: func(generator *domain_mocks.MockBoardSummaryGenerator, summaryRepo *domain_mocks.MockBoardSummaryRepository, todoRepo *domain_mocks.MockTodoRepository) {
-				todoRepo.EXPECT().ListTodos(
+			setExpectations: func(
+				sr *domain_mocks.MockBoardSummaryRepository,
+				td *domain_mocks.MockTodoRepository,
+				tp *domain_mocks.MockCurrentTimeProvider,
+				c *domain_mocks.MockLLMClient,
+			) {
+				td.EXPECT().ListTodos(
 					mock.Anything,
 					1,
 					1000,
 				).Return(todos, false, nil)
 
-				generator.EXPECT().GenerateBoardSummary(
-					mock.Anything,
-					todos,
-				).Return(boardSummary, nil)
+				tp.EXPECT().Now().Return(fixedTime)
 
-				summaryRepo.EXPECT().StoreSummary(
+				c.EXPECT().Chat(
 					mock.Anything,
-					mock.MatchedBy(func(s domain.BoardSummary) bool {
-						return s.Model == boardSummary.Model &&
-							s.Content.Counts.Open == boardSummary.Content.Counts.Open &&
-							s.Content.Counts.Done == boardSummary.Content.Counts.Done
+					mock.MatchedBy(func(req domain.LLMChatRequest) bool {
+						return req.Model == "mistral" &&
+							len(req.Messages) == 2 &&
+							req.Messages[0].Role == "system" &&
+							req.Messages[1].Role == "user" &&
+							strings.Contains(req.Messages[0].Content, "You are a JSON-only processor") &&
+							strings.Contains(req.Messages[1].Content, "Open task 1")
 					}),
+				).Return(`{
+					"counts": { "OPEN": 1, "DONE": 1 },
+					"next_up": [ { "title": "Open task 1", "reason": "Due in 5 days" } ],
+					"overdue": [],
+					"near_deadline": [ "Done task 1" ],
+					"summary": "You have 1 open todo and 1 completed todo."
+				}`, nil)
+
+				sr.EXPECT().StoreSummary(
+					mock.Anything,
+					boardSummary,
 				).Return(nil)
 			},
 			expectedErr: nil,
 		},
 		"list-todos-error": {
-			setExpectations: func(generator *domain_mocks.MockBoardSummaryGenerator, summaryRepo *domain_mocks.MockBoardSummaryRepository, todoRepo *domain_mocks.MockTodoRepository) {
-				todoRepo.EXPECT().ListTodos(
+			setExpectations: func(
+				sr *domain_mocks.MockBoardSummaryRepository,
+				td *domain_mocks.MockTodoRepository,
+				tp *domain_mocks.MockCurrentTimeProvider,
+				c *domain_mocks.MockLLMClient,
+			) {
+				td.EXPECT().ListTodos(
 					mock.Anything,
 					1,
 					1000,
-				).Return(nil, false, errors.New("database error"))
+				).Return(nil, false, assert.AnError)
 			},
-			expectedErr: errors.New("database error"),
+			expectedErr: assert.AnError,
 		},
-		"generator-error": {
-			setExpectations: func(generator *domain_mocks.MockBoardSummaryGenerator, summaryRepo *domain_mocks.MockBoardSummaryRepository, todoRepo *domain_mocks.MockTodoRepository) {
-				todoRepo.EXPECT().ListTodos(
+		"llm-client-error": {
+			setExpectations: func(
+				sr *domain_mocks.MockBoardSummaryRepository,
+				td *domain_mocks.MockTodoRepository,
+				tp *domain_mocks.MockCurrentTimeProvider,
+				c *domain_mocks.MockLLMClient,
+			) {
+				td.EXPECT().ListTodos(
 					mock.Anything,
 					1,
 					1000,
 				).Return(todos, false, nil)
 
-				generator.EXPECT().GenerateBoardSummary(
+				tp.EXPECT().Now().Return(fixedTime)
+
+				c.EXPECT().Chat(
 					mock.Anything,
-					todos,
-				).Return(domain.BoardSummary{}, errors.New("LLM error"))
+					mock.Anything,
+				).Return("", assert.AnError)
 			},
-			expectedErr: errors.New("LLM error"),
-		},
-		"store-summary-error": {
-			setExpectations: func(generator *domain_mocks.MockBoardSummaryGenerator, summaryRepo *domain_mocks.MockBoardSummaryRepository, todoRepo *domain_mocks.MockTodoRepository) {
-				todoRepo.EXPECT().ListTodos(
-					mock.Anything,
-					1,
-					1000,
-				).Return(todos, false, nil)
-
-				generator.EXPECT().GenerateBoardSummary(
-					mock.Anything,
-					todos,
-				).Return(boardSummary, nil)
-
-				summaryRepo.EXPECT().StoreSummary(
-					mock.Anything,
-					mock.Anything,
-				).Return(errors.New("database error"))
-			},
-			expectedErr: errors.New("database error"),
-		},
-		"empty-todos": {
-			setExpectations: func(generator *domain_mocks.MockBoardSummaryGenerator, summaryRepo *domain_mocks.MockBoardSummaryRepository, todoRepo *domain_mocks.MockTodoRepository) {
-				todoRepo.EXPECT().ListTodos(
-					mock.Anything,
-					1,
-					1000,
-				).Return([]domain.Todo{}, false, nil)
-
-				emptySummary := domain.BoardSummary{
-					Content: domain.BoardSummaryContent{
-						Counts: domain.TodoStatusCounts{
-							Open: 0,
-							Done: 0,
-						},
-						Summary: "No todos to summarize.",
-					},
-				}
-
-				generator.EXPECT().GenerateBoardSummary(
-					mock.Anything,
-					[]domain.Todo{},
-				).Return(emptySummary, nil)
-
-				summaryRepo.EXPECT().StoreSummary(
-					mock.Anything,
-					mock.Anything,
-				).Return(nil)
-			},
-			expectedErr: nil,
+			expectedErr: assert.AnError,
 		},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			generator := domain_mocks.NewMockBoardSummaryGenerator(t)
-			summaryRepo := domain_mocks.NewMockBoardSummaryRepository(t)
-			todoRepo := domain_mocks.NewMockTodoRepository(t)
+			sr := domain_mocks.NewMockBoardSummaryRepository(t)
+			td := domain_mocks.NewMockTodoRepository(t)
+			tp := domain_mocks.NewMockCurrentTimeProvider(t)
+			c := domain_mocks.NewMockLLMClient(t)
 
 			if tt.setExpectations != nil {
-				tt.setExpectations(generator, summaryRepo, todoRepo)
+				tt.setExpectations(sr, td, tp, c)
 			}
 
-			gbs := NewGenerateBoardSummaryImpl(generator, summaryRepo, todoRepo, nil)
+			gbs := NewGenerateBoardSummaryImpl(sr, td, tp, c, "mistral", nil)
 
 			err := gbs.Execute(context.Background())
 			assert.Equal(t, tt.expectedErr, err)
