@@ -13,7 +13,7 @@ type InitDockerCompose struct {
 	compose *compose.DockerCompose
 }
 
-func (i InitDockerCompose) Initialize(ctx context.Context) (context.Context, error) {
+func (i *InitDockerCompose) Initialize(ctx context.Context) (context.Context, error) {
 	dc, err := compose.NewDockerCompose("../../docker-compose.deps.yml")
 	if err != nil {
 		return ctx, err
