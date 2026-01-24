@@ -32,6 +32,7 @@ func NewTodoApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&postgres.InitUnitOfWork{},
 			&postgres.InitTodoRepository{},
 			&postgres.InitBoardSummaryRepository{},
+			&postgres.InitChatMessageRepository{},
 			&time.InitCurrentTimeProvider{},
 			&pubsub.InitClient{},
 			&llm.InitBoardSummaryGenerator{},
@@ -41,6 +42,8 @@ func NewTodoApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&usecases.InitDeleteTodo{},
 			&usecases.InitGenerateBoardSummary{},
 			&usecases.InitGetBoardSummary{},
+			&usecases.InitListChatMessages{},
+			&usecases.InitDeleteConversation{},
 		).
 		Host(
 			&http.TodoAppServer{},
