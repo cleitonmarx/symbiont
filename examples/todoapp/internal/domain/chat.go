@@ -44,17 +44,15 @@ func NewChatMessage(role ChatRole, content string, model string, promptTokens, c
 	}
 }
 
-//go:generate mockery --name=ChatMessageRepository --output=./mocks --outpkg=mocks --filename=chat_message_repository.go
-
 // ChatMessageRepository defines the interface for chat message persistence
 type ChatMessageRepository interface {
 	// CreateChatMessage persists a chat message for the global conversation
-	CreateChatMessage(ctx context.Context, message *ChatMessage) error
+	CreateChatMessage(ctx context.Context, message ChatMessage) error
 
 	// ListChatMessages retrieves messages for the global conversation ordered by creation time.
 	// If limit is greater than 0, only the last N messages are returned.
 	// Returns messages and a boolean indicating if there are more messages.
-	ListChatMessages(ctx context.Context, limit int) ([]*ChatMessage, bool, error)
+	ListChatMessages(ctx context.Context, limit int) ([]ChatMessage, bool, error)
 
 	// DeleteConversation removes all messages for the global conversation
 	DeleteConversation(ctx context.Context) error
