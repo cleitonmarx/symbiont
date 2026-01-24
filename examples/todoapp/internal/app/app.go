@@ -35,7 +35,7 @@ func NewTodoApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&postgres.InitChatMessageRepository{},
 			&time.InitCurrentTimeProvider{},
 			&pubsub.InitClient{},
-			&llm.InitBoardSummaryGenerator{},
+			&llm.InitLLMClient{},
 			&usecases.InitListTodos{},
 			&usecases.InitCreateTodo{},
 			&usecases.InitUpdateTodo{},
