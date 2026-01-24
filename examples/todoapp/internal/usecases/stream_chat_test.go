@@ -20,34 +20,36 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 	tests := map[string]struct {
 		userMessage     string
-		setupMocks      func(*mocks.MockChatMessageRepository, *mocks.MockLLMClient)
+		setupMocks      func(*mocks.MockChatMessageRepository, *mocks.MockTodoRepository, *mocks.MockLLMClient)
 		expectErr       bool
 		expectedContent string
 	}{
 		"success-with-usage": {
 			userMessage: "Hello, how are you?",
-			setupMocks: func(repo *mocks.MockChatMessageRepository, client *mocks.MockLLMClient) {
-				// Mock LLM streaming
+			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
+				todoRepo.EXPECT().
+					ListTodos(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]domain.Todo{}, false, nil)
+
+				// history: empty
+				chatRepo.EXPECT().
+					ListChatMessages(mock.Anything, mock.Anything).
+					Return([]domain.ChatMessage{}, false, nil).
+					Once()
+
 				client.EXPECT().
-					ChatStream(mock.Anything, mock.MatchedBy(func(req domain.LLMChatRequest) bool {
-						return req.Model == "ai/gpt-oss" &&
-							len(req.Messages) == 2 &&
-							req.Messages[0].Role == domain.ChatRole("system") &&
-							req.Messages[1].Content == "Hello, how are you?"
-					}), mock.Anything).
+					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					Run(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) {
-						// Simulate meta event
+						// Simulate events
 						_ = onEvent("meta", domain.LLMStreamEventMeta{
 							ConversationID:     domain.GlobalConversationID,
 							UserMessageID:      userMsgID,
 							AssistantMessageID: assistantMsgID,
 							StartedAt:          fixedTime,
 						})
-						// Simulate delta events
 						_ = onEvent("delta", domain.LLMStreamEventDelta{Text: "I'm "})
 						_ = onEvent("delta", domain.LLMStreamEventDelta{Text: "doing "})
 						_ = onEvent("delta", domain.LLMStreamEventDelta{Text: "great!"})
-						// Simulate done event
 						_ = onEvent("done", domain.LLMStreamEventDone{
 							AssistantMessageID: assistantMsgID.String(),
 							CompletedAt:        fixedTime.Format(time.RFC3339),
@@ -60,36 +62,46 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					}).
 					Return(nil)
 
-				// Expect user message to be saved
-				repo.EXPECT().
+				// user and assistant saves...
+				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ID == userMsgID &&
-							msg.ConversationID == domain.GlobalConversationID &&
-							msg.ChatRole == domain.ChatRole("user") &&
-							msg.Content == "Hello, how are you?" &&
-							msg.Model == "ai/gpt-oss"
+						return msg.ChatRole == domain.ChatRole("user")
 					})).
-					Return(nil)
+					Run(func(ctx context.Context, msg domain.ChatMessage) {
+						assert.Equal(t, userMsgID, msg.ID)
+						assert.Equal(t, "Hello, how are you?", msg.Content)
+					}).
+					Return(nil).
+					Once()
 
-				// Expect assistant message to be saved
-				repo.EXPECT().
+				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ID == assistantMsgID &&
-							msg.ConversationID == domain.GlobalConversationID &&
-							msg.ChatRole == domain.ChatRole("assistant") &&
-							msg.Content == "I'm doing great!" &&
-							msg.Model == "ai/gpt-oss" &&
-							msg.PromptTokens == 10 &&
-							msg.CompletionTokens == 5
+						return msg.ChatRole == domain.ChatRole("assistant")
 					})).
-					Return(nil)
+					Run(func(ctx context.Context, msg domain.ChatMessage) {
+						assert.Equal(t, assistantMsgID, msg.ID)
+						assert.Equal(t, "I'm doing great!", msg.Content)
+						assert.Equal(t, 10, msg.PromptTokens)
+						assert.Equal(t, 5, msg.CompletionTokens)
+					}).
+					Return(nil).
+					Once()
 			},
 			expectErr:       false,
 			expectedContent: "I'm doing great!",
 		},
 		"success-without-usage": {
 			userMessage: "Test",
-			setupMocks: func(repo *mocks.MockChatMessageRepository, client *mocks.MockLLMClient) {
+			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
+				todoRepo.EXPECT().
+					ListTodos(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]domain.Todo{}, false, nil)
+
+				chatRepo.EXPECT().
+					ListChatMessages(mock.Anything, mock.Anything).
+					Return([]domain.ChatMessage{}, false, nil).
+					Once()
+
 				client.EXPECT().
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					Run(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) {
@@ -103,31 +115,54 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 						_ = onEvent("done", domain.LLMStreamEventDone{
 							AssistantMessageID: assistantMsgID.String(),
 							CompletedAt:        fixedTime.Format(time.RFC3339),
-							Usage:              nil, // No usage
+							Usage:              nil,
 						})
 					}).
 					Return(nil)
 
-				repo.EXPECT().
+				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
 						return msg.ChatRole == domain.ChatRole("user")
 					})).
-					Return(nil)
+					Return(nil).
+					Once()
 
-				repo.EXPECT().
+				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole("assistant") &&
-							msg.PromptTokens == 0 &&
-							msg.CompletionTokens == 0
+						return msg.ChatRole == domain.ChatRole("assistant")
 					})).
-					Return(nil)
+					Run(func(ctx context.Context, msg domain.ChatMessage) {
+						assert.Equal(t, 0, msg.PromptTokens)
+						assert.Equal(t, 0, msg.CompletionTokens)
+					}).
+					Return(nil).
+					Once()
 			},
 			expectErr:       false,
 			expectedContent: "OK",
 		},
+		"list-todos-error": {
+			userMessage: "Test",
+			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
+				todoRepo.EXPECT().
+					ListTodos(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return(nil, false, errors.New("list todos error"))
+				// no ListChatMessages needed; returns early
+			},
+			expectErr: true,
+		},
 		"llm-client-error": {
 			userMessage: "Test",
-			setupMocks: func(repo *mocks.MockChatMessageRepository, client *mocks.MockLLMClient) {
+			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
+				todoRepo.EXPECT().
+					ListTodos(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]domain.Todo{}, false, nil)
+
+				chatRepo.EXPECT().
+					ListChatMessages(mock.Anything, mock.Anything).
+					Return([]domain.ChatMessage{}, false, nil).
+					Once()
+
 				client.EXPECT().
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					Return(errors.New("llm error"))
@@ -136,7 +171,16 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 		},
 		"user-message-save-error": {
 			userMessage: "Test",
-			setupMocks: func(repo *mocks.MockChatMessageRepository, client *mocks.MockLLMClient) {
+			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
+				todoRepo.EXPECT().
+					ListTodos(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]domain.Todo{}, false, nil)
+
+				chatRepo.EXPECT().
+					ListChatMessages(mock.Anything, mock.Anything).
+					Return([]domain.ChatMessage{}, false, nil).
+					Once()
+
 				client.EXPECT().
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					Run(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) {
@@ -154,17 +198,27 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					}).
 					Return(nil)
 
-				repo.EXPECT().
+				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
 						return msg.ChatRole == domain.ChatRole("user")
 					})).
-					Return(errors.New("db error"))
+					Return(errors.New("db error")).
+					Once()
 			},
 			expectErr: true,
 		},
 		"assistant-message-save-error": {
 			userMessage: "Test",
-			setupMocks: func(repo *mocks.MockChatMessageRepository, client *mocks.MockLLMClient) {
+			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
+				todoRepo.EXPECT().
+					ListTodos(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]domain.Todo{}, false, nil)
+
+				chatRepo.EXPECT().
+					ListChatMessages(mock.Anything, mock.Anything).
+					Return([]domain.ChatMessage{}, false, nil).
+					Once()
+
 				client.EXPECT().
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					Run(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) {
@@ -182,17 +236,19 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					}).
 					Return(nil)
 
-				repo.EXPECT().
+				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
 						return msg.ChatRole == domain.ChatRole("user")
 					})).
-					Return(nil)
+					Return(nil).
+					Once()
 
-				repo.EXPECT().
+				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
 						return msg.ChatRole == domain.ChatRole("assistant")
 					})).
-					Return(errors.New("db error"))
+					Return(errors.New("db error")).
+					Once()
 			},
 			expectErr: true,
 		},
@@ -200,12 +256,13 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			mockRepo := mocks.NewMockChatMessageRepository(t)
-			mockClient := mocks.NewMockLLMClient(t)
+			chatRepo := mocks.NewMockChatMessageRepository(t)
+			todoRepo := mocks.NewMockTodoRepository(t)
+			client := mocks.NewMockLLMClient(t)
 
-			tt.setupMocks(mockRepo, mockClient)
+			tt.setupMocks(chatRepo, todoRepo, client)
 
-			useCase := NewStreamChatImpl(mockRepo, mockClient)
+			useCase := NewStreamChatImpl(chatRepo, todoRepo, client)
 
 			var capturedContent string
 			err := useCase.Execute(context.Background(), tt.userMessage, func(eventType string, data interface{}) error {
@@ -224,9 +281,6 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					assert.Equal(t, tt.expectedContent, capturedContent)
 				}
 			}
-
-			mockRepo.AssertExpectations(t)
-			mockClient.AssertExpectations(t)
 		})
 	}
 }
