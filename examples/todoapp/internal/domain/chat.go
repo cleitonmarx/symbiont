@@ -31,8 +31,8 @@ type ChatMessage struct {
 }
 
 // NewChatMessage creates a new chat message for the global conversation
-func NewChatMessage(role ChatRole, content string, model string, promptTokens, completionTokens int) *ChatMessage {
-	return &ChatMessage{
+func NewChatMessage(role ChatRole, content string, model string, promptTokens, completionTokens int) ChatMessage {
+	return ChatMessage{
 		ID:               uuid.New(),
 		ConversationID:   GlobalConversationID,
 		ChatRole:         role,

@@ -9,8 +9,8 @@ import (
 
 // LLMChatMessage represents a message in a chat request to the LLM API
 type LLMChatMessage struct {
-	Role    ChatRole `json:"role"`
-	Content string   `json:"content"`
+	Role    ChatRole `json:"role" yaml:"role"`
+	Content string   `json:"content" yaml:"content"`
 }
 
 // LLMChatRequest represents a request to the LLM API
@@ -18,6 +18,9 @@ type LLMChatRequest struct {
 	Model    string           `json:"model"`
 	Messages []LLMChatMessage `json:"messages"`
 	Stream   bool             `json:"stream"`
+	// Optional parameters
+	Temperature *float64 `json:"temperature,omitempty"`
+	TopP        *float64 `json:"top_p,omitempty"`
 }
 
 // LLMUsage represents token usage information from the LLM
@@ -55,4 +58,7 @@ type LLMClient interface {
 	// ChatStream streams assistant output as events from an LLM server
 	// It calls onEvent with each event (meta, delta, done) and returns any error
 	ChatStream(ctx context.Context, req LLMChatRequest, onEvent LLMStreamEventCallback) error
+
+	// Chat sends a chat request to the LLM and returns the full assistant response
+	Chat(ctx context.Context, req LLMChatRequest) (string, error)
 }
