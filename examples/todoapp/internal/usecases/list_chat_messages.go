@@ -3,13 +3,14 @@ package usecases
 import (
 	"context"
 
+	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/tracing"
 )
 
 // ListChatMessages defines the interface for the ListChatMessages use case
 type ListChatMessages interface {
-	Query(ctx context.Context, page int, pageSize int) ([]*domain.ChatMessage, bool, error)
+	Query(ctx context.Context, page int, pageSize int) ([]domain.ChatMessage, bool, error)
 }
 
 // ListChatMessagesImpl is the implementation of the ListChatMessages use case
@@ -25,7 +26,7 @@ func NewListChatMessagesImpl(chatMessageRepo domain.ChatMessageRepository) ListC
 }
 
 // Query retrieves chat messages with pagination support
-func (lcm ListChatMessagesImpl) Query(ctx context.Context, page int, pageSize int) ([]*domain.ChatMessage, bool, error) {
+func (lcm ListChatMessagesImpl) Query(ctx context.Context, page int, pageSize int) ([]domain.ChatMessage, bool, error) {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
@@ -35,4 +36,15 @@ func (lcm ListChatMessagesImpl) Query(ctx context.Context, page int, pageSize in
 	}
 
 	return messages, hasMore, nil
+}
+
+// InitListChatMessages is the initializer for the ListChatMessages use case
+type InitListChatMessages struct {
+	Repo domain.ChatMessageRepository `resolve:""`
+}
+
+// Initialize registers the ListChatMessages use case in the dependency container
+func (i InitListChatMessages) Initialize(ctx context.Context) (context.Context, error) {
+	depend.Register[ListChatMessages](NewListChatMessagesImpl(i.Repo))
+	return ctx, nil
 }

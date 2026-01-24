@@ -467,24 +467,24 @@ func (_m *MockListChatMessages) EXPECT() *MockListChatMessages_Expecter {
 }
 
 // Query provides a mock function for the type MockListChatMessages
-func (_mock *MockListChatMessages) Query(ctx context.Context, page int, pageSize int) ([]*domain.ChatMessage, bool, error) {
+func (_mock *MockListChatMessages) Query(ctx context.Context, page int, pageSize int) ([]domain.ChatMessage, bool, error) {
 	ret := _mock.Called(ctx, page, pageSize)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Query")
 	}
 
-	var r0 []*domain.ChatMessage
+	var r0 []domain.ChatMessage
 	var r1 bool
 	var r2 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) ([]*domain.ChatMessage, bool, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) ([]domain.ChatMessage, bool, error)); ok {
 		return returnFunc(ctx, page, pageSize)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) []*domain.ChatMessage); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) []domain.ChatMessage); ok {
 		r0 = returnFunc(ctx, page, pageSize)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*domain.ChatMessage)
+			r0 = ret.Get(0).([]domain.ChatMessage)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, int, int) bool); ok {
@@ -536,12 +536,12 @@ func (_c *MockListChatMessages_Query_Call) Run(run func(ctx context.Context, pag
 	return _c
 }
 
-func (_c *MockListChatMessages_Query_Call) Return(chatMessages []*domain.ChatMessage, b bool, err error) *MockListChatMessages_Query_Call {
+func (_c *MockListChatMessages_Query_Call) Return(chatMessages []domain.ChatMessage, b bool, err error) *MockListChatMessages_Query_Call {
 	_c.Call.Return(chatMessages, b, err)
 	return _c
 }
 
-func (_c *MockListChatMessages_Query_Call) RunAndReturn(run func(ctx context.Context, page int, pageSize int) ([]*domain.ChatMessage, bool, error)) *MockListChatMessages_Query_Call {
+func (_c *MockListChatMessages_Query_Call) RunAndReturn(run func(ctx context.Context, page int, pageSize int) ([]domain.ChatMessage, bool, error)) *MockListChatMessages_Query_Call {
 	_c.Call.Return(run)
 	return _c
 }

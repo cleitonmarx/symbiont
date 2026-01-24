@@ -68,7 +68,7 @@ func TestListChatMessagesImpl_Query(t *testing.T) {
 			setExpectations: func(repo *mocks.MockChatMessageRepository) {
 				repo.EXPECT().
 					ListChatMessages(mock.Anything, 50).
-					Return([]*domain.ChatMessage{}, false, nil).
+					Return([]domain.ChatMessage{}, false, nil).
 					Once()
 			},
 		},
@@ -89,10 +89,10 @@ func TestListChatMessagesImpl_Query(t *testing.T) {
 	}
 }
 
-func createChatMessages(count int, role domain.ChatRole) []*domain.ChatMessage {
-	messages := make([]*domain.ChatMessage, count)
+func createChatMessages(count int, role domain.ChatRole) []domain.ChatMessage {
+	messages := make([]domain.ChatMessage, count)
 	for i := 0; i < count; i++ {
-		messages[i] = &domain.ChatMessage{
+		messages[i] = domain.ChatMessage{
 			ChatRole: role,
 			Content:  "Test message",
 		}
