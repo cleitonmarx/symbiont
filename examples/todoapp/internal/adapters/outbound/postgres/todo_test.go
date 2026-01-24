@@ -433,3 +433,50 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 		})
 	}
 }
+
+func TestTodoRepository_DeleteTodo(t *testing.T) {
+	id := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
+
+	tests := map[string]struct {
+		expect func(sqlmock.Sqlmock)
+		err    bool
+	}{
+		"success": {
+			expect: func(m sqlmock.Sqlmock) {
+				m.ExpectExec("DELETE FROM todos WHERE id = $1").
+					WithArgs(id).
+					WillReturnResult(sqlmock.NewResult(0, 1))
+			},
+			err: false,
+		},
+		"db-error": {
+			expect: func(m sqlmock.Sqlmock) {
+				m.ExpectExec("DELETE FROM todos WHERE id = $1").
+					WithArgs(id).
+					WillReturnError(errors.New("db error"))
+			},
+			err: true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			assert.NoError(t, err)
+			defer db.Close() //nolint:errcheck
+
+			tt.expect(mock)
+
+			repo := NewTodoRepository(db)
+			gotErr := repo.DeleteTodo(context.Background(), id)
+
+			if tt.err {
+				assert.Error(t, gotErr)
+			} else {
+				assert.NoError(t, gotErr)
+			}
+
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
