@@ -30,20 +30,6 @@ type ChatMessage struct {
 	CreatedAt        time.Time
 }
 
-// NewChatMessage creates a new chat message for the global conversation
-func NewChatMessage(role ChatRole, content string, model string, promptTokens, completionTokens int) ChatMessage {
-	return ChatMessage{
-		ID:               uuid.New(),
-		ConversationID:   GlobalConversationID,
-		ChatRole:         role,
-		Content:          content,
-		Model:            model,
-		PromptTokens:     promptTokens,
-		CompletionTokens: completionTokens,
-		CreatedAt:        time.Now(),
-	}
-}
-
 // ChatMessageRepository defines the interface for chat message persistence
 type ChatMessageRepository interface {
 	// CreateChatMessage persists a chat message for the global conversation
