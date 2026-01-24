@@ -2,12 +2,14 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -233,4 +235,16 @@ func TestChatMessageRepository_DeleteConversation(t *testing.T) {
 			assert.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
+}
+
+func TestInitChatMessageRepository_Initialize(t *testing.T) {
+	i := &InitChatMessageRepository{
+		DB: &sql.DB{},
+	}
+
+	_, err := i.Initialize(context.Background())
+	assert.NoError(t, err)
+
+	_, err = depend.Resolve[domain.ChatMessageRepository]()
+	assert.NoError(t, err)
 }

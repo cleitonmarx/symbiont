@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -237,4 +238,16 @@ func TestBoardSummaryRepository_GetLatestSummary(t *testing.T) {
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
+}
+
+func TestInitBoardSummaryRepository_Initialize(t *testing.T) {
+	i := &InitBoardSummaryRepository{
+		DB: &sql.DB{},
+	}
+
+	_, err := i.Initialize(context.Background())
+	assert.NoError(t, err)
+
+	_, err = depend.Resolve[domain.BoardSummaryRepository]()
+	assert.NoError(t, err)
 }

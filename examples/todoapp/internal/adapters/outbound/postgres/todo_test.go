@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -479,4 +480,16 @@ func TestTodoRepository_DeleteTodo(t *testing.T) {
 			assert.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
+}
+
+func TestInitTodoRepository_Initialize(t *testing.T) {
+	i := &InitTodoRepository{
+		DB: &sql.DB{},
+	}
+
+	_, err := i.Initialize(context.Background())
+	assert.NoError(t, err)
+
+	_, err = depend.Resolve[domain.TodoRepository]()
+	assert.NoError(t, err)
 }

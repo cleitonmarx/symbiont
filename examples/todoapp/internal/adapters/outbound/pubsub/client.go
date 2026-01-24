@@ -16,11 +16,13 @@ type InitClient struct {
 }
 
 func (i *InitClient) Initialize(ctx context.Context) (context.Context, error) {
-	client, err := pubsubV2.NewClient(ctx, i.ProjectID)
-	if err != nil {
-		return ctx, fmt.Errorf("failed to create pubsub client: %w", err)
+	if i.client == nil {
+		client, err := pubsubV2.NewClient(ctx, i.ProjectID)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to create pubsub client: %w", err)
+		}
+		i.client = client
 	}
-	i.client = client
 
 	depend.Register(i.client)
 

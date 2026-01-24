@@ -2,11 +2,13 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -206,4 +208,17 @@ func TestUnitOfWork_TransactionIsolation(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestInitUnitOfWork_Initialize(t *testing.T) {
+	i := &InitUnitOfWork{
+		DB: &sql.DB{},
+	}
+
+	_, err := i.Initialize(context.Background())
+	assert.NoError(t, err)
+
+	_, err = depend.Resolve[domain.UnitOfWork]()
+	assert.NoError(t, err)
+
 }
