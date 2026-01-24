@@ -10,6 +10,8 @@ tags:
     description: Todo creation, updates, and listing.
   - name: Board
     description: AI-generated summary of the todo board.
+  - name: AI Chat
+    description: Chat with the AI assistant about your todos.
 
 paths:
   /api/v1/todos:
@@ -221,6 +223,102 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResp"
+
+  /api/v1/chat:stream:
+    post:
+      operationId: streamChat
+      tags: [AI Chat]
+      summary: Stream assistant response for a user message (single global chat)
+      description: >
+        Streams Server-Sent Events (SSE). Events: meta, delta, done, error.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatStreamRequest"
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              examples:
+                example:
+                  summary: Example SSE events
+                  value: |
+                    event: meta
+                    data: {"conversation_id":"global","user_message_id":"2b81d8d2-2a90-4b4f-83e5-9b7a1e4e0b9c","assistant_message_id":"0f7d6ef6-1f2a-4e0c-9f6d-7d7c7c2e1a11","started_at":"2026-01-23T22:10:00Z"}
+
+                    event: delta
+                    data: {"text":"You have 2 overdue todos:"}
+
+                    event: done
+                    data: {"assistant_message_id":"0f7d6ef6-1f2a-4e0c-9f6d-7d7c7c2e1a11","completed_at":"2026-01-23T22:10:05Z","usage":{"prompt_tokens":123,"completion_tokens":45,"total_tokens":168}}
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatApiError"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatApiError"
+
+  /api/v1/chat/messages:
+    get:
+      operationId: listChatMessages
+      summary: Fetch chat history (single global chat)
+      tags: [AI Chat]
+      parameters:
+        - in: query
+          name: pagesize
+          required: true
+          description: Maximum number of messages to return (server may cap).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 200
+        - in: query
+          name: page
+          required: true
+          description: >
+            Opaque cursor from a prior ListChatMessagesResp to fetch the next page.
+            Omit or set to null to fetch the first page.
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Message history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatHistoryResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatApiError"
+
+    delete:
+      operationId: clearChatMessages
+      summary: Clear chat history (single global chat)
+      tags: [AI Chat]
+      responses:
+        "204":
+          description: Cleared
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatApiError"
 
 
 components:
@@ -478,3 +576,132 @@ components:
         reason:
           type: string
           example: "Overdue"
+
+    ### AI Chat Schemas
+
+    ChatStreamRequest:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 4000
+
+    ChatHistoryResponse:
+      type: object
+      additionalProperties: false
+      required: [conversation_id, messages, page]
+      properties:
+        conversation_id:
+          type: string
+          enum: [global]
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        page:
+          type: integer
+          description: >
+            Opaque cursor for the current page of results.
+          example: 1
+        previous_page:
+          type: integer
+          nullable: true
+          description: >
+            Opaque cursor to fetch the previous page of results.
+            Null if there is no previous page.
+          example: null
+        next_page:
+          type: integer
+          nullable: true
+          description: >
+            Opaque cursor to fetch the next page of results.
+            Null if there are no more pages.
+          example: 2
+
+    ChatMessage:
+      type: object
+      additionalProperties: false
+      required: [id, role, content, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    # SSE payload schemas (for documentation; not directly enforced by OpenAPI for text/event-stream)
+    SseMeta:
+      type: object
+      additionalProperties: false
+      required: [conversation_id, user_message_id, assistant_message_id, started_at]
+      properties:
+        conversation_id:
+          type: string
+          enum: [global]
+        user_message_id:
+          type: string
+          format: uuid
+        assistant_message_id:
+          type: string
+          format: uuid
+        started_at:
+          type: string
+          format: date-time
+
+    SseDelta:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text:
+          type: string
+
+    SseDone:
+      type: object
+      additionalProperties: false
+      required: [assistant_message_id, completed_at]
+      properties:
+        assistant_message_id:
+          type: string
+          format: uuid
+        completed_at:
+          type: string
+          format: date-time
+        usage:
+          $ref: "#/components/schemas/TokenUsage"
+
+    TokenUsage:
+      type: object
+      additionalProperties: false
+      properties:
+        prompt_tokens:
+          type: integer
+          minimum: 0
+        completion_tokens:
+          type: integer
+          minimum: 0
+        total_tokens:
+          type: integer
+          minimum: 0
+
+    ChatApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          nullable: true
+          description: Optional structured error details for debugging

@@ -20,6 +20,18 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for ChatHistoryResponseConversationId.
+const (
+	Global ChatHistoryResponseConversationId = "global"
+)
+
+// Defines values for ChatMessageRole.
+const (
+	Assistant ChatMessageRole = "assistant"
+	System    ChatMessageRole = "system"
+	User      ChatMessageRole = "user"
+)
+
 // Defines values for ErrorCode.
 const (
 	BADREQUEST    ErrorCode = "BAD_REQUEST"
@@ -49,6 +61,49 @@ type BoardSummary struct {
 
 	// Summary Short, user-facing summary of the board state.
 	Summary string `json:"summary"`
+}
+
+// ChatApiError defines model for ChatApiError.
+type ChatApiError struct {
+	Code string `json:"code"`
+
+	// Details Optional structured error details for debugging
+	Details interface{} `json:"details"`
+	Message string      `json:"message"`
+}
+
+// ChatHistoryResponse defines model for ChatHistoryResponse.
+type ChatHistoryResponse struct {
+	ConversationId ChatHistoryResponseConversationId `json:"conversation_id"`
+	Messages       []ChatMessage                     `json:"messages"`
+
+	// NextPage Opaque cursor to fetch the next page of results. Null if there are no more pages.
+	NextPage *int `json:"next_page"`
+
+	// Page Opaque cursor for the current page of results.
+	Page int `json:"page"`
+
+	// PreviousPage Opaque cursor to fetch the previous page of results. Null if there is no previous page.
+	PreviousPage *int `json:"previous_page"`
+}
+
+// ChatHistoryResponseConversationId defines model for ChatHistoryResponse.ConversationId.
+type ChatHistoryResponseConversationId string
+
+// ChatMessage defines model for ChatMessage.
+type ChatMessage struct {
+	Content   string             `json:"content"`
+	CreatedAt time.Time          `json:"created_at"`
+	Id        openapi_types.UUID `json:"id"`
+	Role      ChatMessageRole    `json:"role"`
+}
+
+// ChatMessageRole defines model for ChatMessage.Role.
+type ChatMessageRole string
+
+// ChatStreamRequest defines model for ChatStreamRequest.
+type ChatStreamRequest struct {
+	Message string `json:"message"`
 }
 
 // CreateTodoRequest Request payload for creating a todo.
@@ -160,6 +215,15 @@ type BadRequest = ErrorResp
 // NotFound Standard error envelope.
 type NotFound = ErrorResp
 
+// ListChatMessagesParams defines parameters for ListChatMessages.
+type ListChatMessagesParams struct {
+	// Pagesize Maximum number of messages to return (server may cap).
+	Pagesize int `form:"pagesize" json:"pagesize"`
+
+	// Page Opaque cursor from a prior ListChatMessagesResp to fetch the next page. Omit or set to null to fetch the first page.
+	Page int `form:"page" json:"page"`
+}
+
 // ListTodosParams defines parameters for ListTodos.
 type ListTodosParams struct {
 	// Status Filter todos by status.
@@ -171,6 +235,9 @@ type ListTodosParams struct {
 	// Page Opaque cursor from a prior ListTodosResp to fetch the next page. Omit or set to null to fetch the first page.
 	Page int `form:"page" json:"page"`
 }
+
+// StreamChatJSONRequestBody defines body for StreamChat for application/json ContentType.
+type StreamChatJSONRequestBody = ChatStreamRequest
 
 // CreateTodoJSONRequestBody defines body for CreateTodo for application/json ContentType.
 type CreateTodoJSONRequestBody = CreateTodoRequest
@@ -404,6 +471,17 @@ type ClientInterface interface {
 	// GetBoardSummary request
 	GetBoardSummary(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ClearChatMessages request
+	ClearChatMessages(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListChatMessages request
+	ListChatMessages(ctx context.Context, params *ListChatMessagesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StreamChatWithBody request with any body
+	StreamChatWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	StreamChat(ctx context.Context, body StreamChatJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListTodos request
 	ListTodos(ctx context.Context, params *ListTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -423,6 +501,54 @@ type ClientInterface interface {
 
 func (c *Client) GetBoardSummary(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetBoardSummaryRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ClearChatMessages(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewClearChatMessagesRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListChatMessages(ctx context.Context, params *ListChatMessagesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListChatMessagesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) StreamChatWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStreamChatRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) StreamChat(ctx context.Context, body StreamChatJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStreamChatRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -528,6 +654,130 @@ func NewGetBoardSummaryRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewClearChatMessagesRequest generates requests for ClearChatMessages
+func NewClearChatMessagesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/chat/messages")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListChatMessagesRequest generates requests for ListChatMessages
+func NewListChatMessagesRequest(server string, params *ListChatMessagesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/chat/messages")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "pagesize", runtime.ParamLocationQuery, params.Pagesize); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStreamChatRequest calls the generic StreamChat builder with application/json body
+func NewStreamChatRequest(server string, body StreamChatJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStreamChatRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewStreamChatRequestWithBody generates requests for StreamChat with any type of body
+func NewStreamChatRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/chat:stream")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -772,6 +1022,17 @@ type ClientWithResponsesInterface interface {
 	// GetBoardSummaryWithResponse request
 	GetBoardSummaryWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetBoardSummaryResponse, error)
 
+	// ClearChatMessagesWithResponse request
+	ClearChatMessagesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ClearChatMessagesResponse, error)
+
+	// ListChatMessagesWithResponse request
+	ListChatMessagesWithResponse(ctx context.Context, params *ListChatMessagesParams, reqEditors ...RequestEditorFn) (*ListChatMessagesResponse, error)
+
+	// StreamChatWithBodyWithResponse request with any body
+	StreamChatWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StreamChatResponse, error)
+
+	StreamChatWithResponse(ctx context.Context, body StreamChatJSONRequestBody, reqEditors ...RequestEditorFn) (*StreamChatResponse, error)
+
 	// ListTodosWithResponse request
 	ListTodosWithResponse(ctx context.Context, params *ListTodosParams, reqEditors ...RequestEditorFn) (*ListTodosResponse, error)
 
@@ -806,6 +1067,74 @@ func (r GetBoardSummaryResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetBoardSummaryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ClearChatMessagesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON500      *ChatApiError
+}
+
+// Status returns HTTPResponse.Status
+func (r ClearChatMessagesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ClearChatMessagesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListChatMessagesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ChatHistoryResponse
+	JSON500      *ChatApiError
+}
+
+// Status returns HTTPResponse.Status
+func (r ListChatMessagesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListChatMessagesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type StreamChatResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *ChatApiError
+	JSON500      *ChatApiError
+}
+
+// Status returns HTTPResponse.Status
+func (r StreamChatResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StreamChatResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -912,6 +1241,41 @@ func (c *ClientWithResponses) GetBoardSummaryWithResponse(ctx context.Context, r
 	return ParseGetBoardSummaryResponse(rsp)
 }
 
+// ClearChatMessagesWithResponse request returning *ClearChatMessagesResponse
+func (c *ClientWithResponses) ClearChatMessagesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ClearChatMessagesResponse, error) {
+	rsp, err := c.ClearChatMessages(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseClearChatMessagesResponse(rsp)
+}
+
+// ListChatMessagesWithResponse request returning *ListChatMessagesResponse
+func (c *ClientWithResponses) ListChatMessagesWithResponse(ctx context.Context, params *ListChatMessagesParams, reqEditors ...RequestEditorFn) (*ListChatMessagesResponse, error) {
+	rsp, err := c.ListChatMessages(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListChatMessagesResponse(rsp)
+}
+
+// StreamChatWithBodyWithResponse request with arbitrary body returning *StreamChatResponse
+func (c *ClientWithResponses) StreamChatWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StreamChatResponse, error) {
+	rsp, err := c.StreamChatWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStreamChatResponse(rsp)
+}
+
+func (c *ClientWithResponses) StreamChatWithResponse(ctx context.Context, body StreamChatJSONRequestBody, reqEditors ...RequestEditorFn) (*StreamChatResponse, error) {
+	rsp, err := c.StreamChat(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStreamChatResponse(rsp)
+}
+
 // ListTodosWithResponse request returning *ListTodosResponse
 func (c *ClientWithResponses) ListTodosWithResponse(ctx context.Context, params *ListTodosParams, reqEditors ...RequestEditorFn) (*ListTodosResponse, error) {
 	rsp, err := c.ListTodos(ctx, params, reqEditors...)
@@ -991,6 +1355,98 @@ func ParseGetBoardSummaryResponse(rsp *http.Response) (*GetBoardSummaryResponse,
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseClearChatMessagesResponse parses an HTTP response from a ClearChatMessagesWithResponse call
+func ParseClearChatMessagesResponse(rsp *http.Response) (*ClearChatMessagesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ClearChatMessagesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ChatApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListChatMessagesResponse parses an HTTP response from a ListChatMessagesWithResponse call
+func ParseListChatMessagesResponse(rsp *http.Response) (*ListChatMessagesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListChatMessagesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ChatHistoryResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ChatApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStreamChatResponse parses an HTTP response from a StreamChatWithResponse call
+func ParseStreamChatResponse(rsp *http.Response) (*StreamChatResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StreamChatResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ChatApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ChatApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
 
 	}
 
@@ -1127,6 +1583,15 @@ type ServerInterface interface {
 	// Get AI-generated board summary
 	// (GET /api/v1/board/summary)
 	GetBoardSummary(w http.ResponseWriter, r *http.Request)
+	// Clear chat history (single global chat)
+	// (DELETE /api/v1/chat/messages)
+	ClearChatMessages(w http.ResponseWriter, r *http.Request)
+	// Fetch chat history (single global chat)
+	// (GET /api/v1/chat/messages)
+	ListChatMessages(w http.ResponseWriter, r *http.Request, params ListChatMessagesParams)
+	// Stream assistant response for a user message (single global chat)
+	// (POST /api/v1/chat:stream)
+	StreamChat(w http.ResponseWriter, r *http.Request)
 	// List todos
 	// (GET /api/v1/todos)
 	ListTodos(w http.ResponseWriter, r *http.Request, params ListTodosParams)
@@ -1155,6 +1620,83 @@ func (siw *ServerInterfaceWrapper) GetBoardSummary(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetBoardSummary(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ClearChatMessages operation middleware
+func (siw *ServerInterfaceWrapper) ClearChatMessages(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ClearChatMessages(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListChatMessages operation middleware
+func (siw *ServerInterfaceWrapper) ListChatMessages(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListChatMessagesParams
+
+	// ------------- Required query parameter "pagesize" -------------
+
+	if paramValue := r.URL.Query().Get("pagesize"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "pagesize"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "pagesize", r.URL.Query(), &params.Pagesize)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "pagesize", Err: err})
+		return
+	}
+
+	// ------------- Required query parameter "page" -------------
+
+	if paramValue := r.URL.Query().Get("page"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "page", r.URL.Query(), &params.Page)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListChatMessages(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// StreamChat operation middleware
+func (siw *ServerInterfaceWrapper) StreamChat(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.StreamChat(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1406,6 +1948,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	}
 
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/board/summary", wrapper.GetBoardSummary)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/chat/messages", wrapper.ClearChatMessages)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/chat/messages", wrapper.ListChatMessages)
+	m.HandleFunc("POST "+options.BaseURL+"/api/v1/chat:stream", wrapper.StreamChat)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/todos", wrapper.ListTodos)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/todos", wrapper.CreateTodo)
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/todos/{todo_id}", wrapper.DeleteTodo)

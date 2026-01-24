@@ -163,6 +163,17 @@ func (api TodoAppServer) GetBoardSummary(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, resp)
 }
 
+func (api TodoAppServer) ClearChatMessages(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (api TodoAppServer) ListChatMessages(w http.ResponseWriter, r *http.Request, params openapi.ListChatMessagesParams) {
+}
+
+func (api TodoAppServer) StreamChat(w http.ResponseWriter, r *http.Request) {
+
+}
+
 //go:embed webappdist/*
 var embedFS embed.FS
 
