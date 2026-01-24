@@ -26,7 +26,7 @@ func TestOutboxRepository_PublishEvent(t *testing.T) {
 	}{
 		"success": {
 			expect: func(m sqlmock.Sqlmock) {
-				m.ExpectExec(`INSERT INTO outbox_events \(id, entity_type, entity_id, topic, event_type, payload, retry_count, max_retries, last_error, created_at\) VALUES \(\$1,\$2,\$3,\$4,\$5,\$6,\$7,\$8,\$9,\$10\)`).
+				m.ExpectExec("INSERT INTO outbox_events (id,entity_type,entity_id,topic,event_type,payload,retry_count,max_retries,last_error,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)").
 					WithArgs(
 						sqlmock.AnyArg(), // id
 						"Todo",
@@ -45,7 +45,7 @@ func TestOutboxRepository_PublishEvent(t *testing.T) {
 		},
 		"db-error": {
 			expect: func(m sqlmock.Sqlmock) {
-				m.ExpectExec(`INSERT INTO outbox_events \(id, entity_type, entity_id, topic, event_type, payload, retry_count, max_retries, last_error, created_at\) VALUES \(\$1,\$2,\$3,\$4,\$5,\$6,\$7,\$8,\$9,\$10\)`).
+				m.ExpectExec("INSERT INTO outbox_events (id,entity_type,entity_id,topic,event_type,payload,retry_count,max_retries,last_error,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)").
 					WithArgs(
 						sqlmock.AnyArg(),
 						"Todo",
@@ -66,7 +66,7 @@ func TestOutboxRepository_PublishEvent(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			assert.NoError(t, err)
 			defer db.Close() // nolint:errcheck
 
@@ -110,7 +110,7 @@ func TestOutboxRepository_FetchPendingEvents(t *testing.T) {
 						nil,
 						t1,
 					)
-				m.ExpectQuery(`SELECT id, entity_type, entity_id, topic, event_type, payload, retry_count, max_retries, last_error, created_at FROM outbox_events WHERE status = \$1 ORDER BY created_at ASC LIMIT 2 FOR UPDATE SKIP LOCKED`).
+				m.ExpectQuery("SELECT id, entity_type, entity_id, topic, event_type, payload, retry_count, max_retries, last_error, created_at FROM outbox_events WHERE status = $1 ORDER BY created_at ASC LIMIT 2 FOR UPDATE SKIP LOCKED").
 					WithArgs("PENDING").
 					WillReturnRows(rows)
 			},
@@ -120,7 +120,7 @@ func TestOutboxRepository_FetchPendingEvents(t *testing.T) {
 		"db-error": {
 			limit: 1,
 			expect: func(m sqlmock.Sqlmock) {
-				m.ExpectQuery(`SELECT id, entity_type, entity_id, topic, event_type, payload, retry_count, max_retries, last_error, created_at FROM outbox_events WHERE status = \$1 ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED`).
+				m.ExpectQuery("SELECT id, entity_type, entity_id, topic, event_type, payload, retry_count, max_retries, last_error, created_at FROM outbox_events WHERE status = $1 ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED").
 					WithArgs("PENDING").
 					WillReturnError(errors.New("db error"))
 			},
@@ -144,7 +144,7 @@ func TestOutboxRepository_FetchPendingEvents(t *testing.T) {
 						nil,
 						t1,
 					)
-				m.ExpectQuery(`SELECT id, entity_type, entity_id, topic, event_type, payload, retry_count, max_retries, last_error, created_at FROM outbox_events WHERE status = \$1 ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED`).
+				m.ExpectQuery("SELECT id, entity_type, entity_id, topic, event_type, payload, retry_count, max_retries, last_error, created_at FROM outbox_events WHERE status = $1 ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED").
 					WithArgs("PENDING").
 					WillReturnRows(rows)
 			},
@@ -155,7 +155,7 @@ func TestOutboxRepository_FetchPendingEvents(t *testing.T) {
 			limit: 1,
 			expect: func(m sqlmock.Sqlmock) {
 				rows := sqlmock.NewRows(outboxEventFields)
-				m.ExpectQuery(`SELECT id, entity_type, entity_id, topic, event_type, payload, retry_count, max_retries, last_error, created_at FROM outbox_events WHERE status = \$1 ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED`).
+				m.ExpectQuery("SELECT id, entity_type, entity_id, topic, event_type, payload, retry_count, max_retries, last_error, created_at FROM outbox_events WHERE status = $1 ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED").
 					WithArgs("PENDING").
 					WillReturnRows(rows)
 			},
@@ -166,7 +166,7 @@ func TestOutboxRepository_FetchPendingEvents(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			assert.NoError(t, err)
 			defer db.Close() // nolint:errcheck
 
@@ -194,7 +194,7 @@ func TestOutboxRepository_UpdateEvent(t *testing.T) {
 	}{
 		"success": {
 			expect: func(m sqlmock.Sqlmock) {
-				m.ExpectExec(`UPDATE outbox_events SET status = \$1, retry_count = \$2, last_error = \$3 WHERE id = \$4`).
+				m.ExpectExec("UPDATE outbox_events SET status = $1, retry_count = $2, last_error = $3 WHERE id = $4").
 					WithArgs("DONE", 1, "ok", id).
 					WillReturnResult(sqlmock.NewResult(1, 1))
 			},
@@ -202,7 +202,7 @@ func TestOutboxRepository_UpdateEvent(t *testing.T) {
 		},
 		"db-error": {
 			expect: func(m sqlmock.Sqlmock) {
-				m.ExpectExec(`UPDATE outbox_events SET status = \$1, retry_count = \$2, last_error = \$3 WHERE id = \$4`).
+				m.ExpectExec("UPDATE outbox_events SET status = $1, retry_count = $2, last_error = $3 WHERE id = $4").
 					WithArgs("DONE", 1, "ok", id).
 					WillReturnError(errors.New("db error"))
 			},
@@ -212,7 +212,7 @@ func TestOutboxRepository_UpdateEvent(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			assert.NoError(t, err)
 			defer db.Close() // nolint:errcheck
 
@@ -239,7 +239,7 @@ func TestOutboxRepository_DeleteEvent(t *testing.T) {
 	}{
 		"success": {
 			expect: func(m sqlmock.Sqlmock) {
-				m.ExpectExec(`DELETE FROM outbox_events WHERE id = \$1`).
+				m.ExpectExec("DELETE FROM outbox_events WHERE id = $1").
 					WithArgs(id).
 					WillReturnResult(driver.RowsAffected(1))
 			},
@@ -247,7 +247,7 @@ func TestOutboxRepository_DeleteEvent(t *testing.T) {
 		},
 		"db-error": {
 			expect: func(m sqlmock.Sqlmock) {
-				m.ExpectExec(`DELETE FROM outbox_events WHERE id = \$1`).
+				m.ExpectExec("DELETE FROM outbox_events WHERE id = $1").
 					WithArgs(id).
 					WillReturnError(errors.New("db error"))
 			},
@@ -257,7 +257,7 @@ func TestOutboxRepository_DeleteEvent(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			assert.NoError(t, err)
 			defer db.Close() // nolint:errcheck
 
