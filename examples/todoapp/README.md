@@ -5,7 +5,7 @@ TodoApp is a comprehensive example application demonstrating the capabilities of
 ## Features
 
 - 📝 **Todo Management**: Create, update, and track todos with due dates
-- 🤖 **AI Board Summaries**: Automatically generate intelligent board summaries using local LLM inference
+- 🤖 **AI Chat & Summaries**: Interactive LLM-powered chat that streams responses and generates intelligent board summaries from your current todos
 - 🔔 **Event-Driven**: Pub/Sub architecture for asynchronous processing
 - 🔒 **Secrets Management**: HashiCorp Vault integration for secure configuration
 - 📊 **Observability**: OpenTelemetry tracing with Jaeger
@@ -22,9 +22,9 @@ TodoApp is a comprehensive example application demonstrating the capabilities of
 - **Pub/Sub Emulator**: Google Cloud Pub/Sub emulator for event messaging
 - **Vault**: Secret management for sensitive configuration
 - **Docker Model Runner**: Local LLM inference for board summary generation
-- **Jaeger**: Distributed tracing and monitoring
+- **Jaeger**: Distributed tracing and monitoring using OpenTelemetry
 
-### 🔗 Dependency Injection Graph - Auto-Generated from Introspection
+### 🔗 Dependency Graph (Initializers, Runners, Dependencies, Configs)
 
 ```mermaid
 graph TD
@@ -356,14 +356,4 @@ This example demonstrates Symbiont's key features:
 1. **Dependency Injection**: All components are wired through Symbiont's DI container
 2. **Configuration Loading**: Type-safe configuration from multiple sources (environment variables, Vault, defaults)
 3. **Introspection**: Auto-generated dependency graphs for visualizing application architecture
-
-### AI Model Configuration
-
-The application uses Docker's Model Runner for local AI inference:
-
-- **Model**: `ai/gpt-oss:latest` - Open-source GPT model for text generation
-- **Temperature**: 0 - Deterministic responses with no randomness
-- **Top P**: 0.1 - Highly focused nucleus sampling for consistent outputs
-- **Streaming**: Disabled - Single response per request
-
-The model is configured to generate structured JSON responses following a strict schema, ensuring predictable board summaries.
+4. **Multi-Process Hosting**: Run multiple Runners/servers/workers within the same deployable for simplified ops
