@@ -22,15 +22,16 @@ type StreamChatImpl struct {
 	ChatMessageRepo domain.ChatMessageRepository `resolve:""`
 	TodoRepo        domain.TodoRepository        `resolve:""`
 	LLMClient       domain.LLMClient             `resolve:""`
-	LLMModel        string                       `config:"LLM_MODEL" default:"ai/gpt-oss"`
+	llmModel        string
 }
 
 // NewStreamChatImpl creates a new instance of StreamChatImpl
-func NewStreamChatImpl(chatMessageRepo domain.ChatMessageRepository, todoRepo domain.TodoRepository, llmClient domain.LLMClient) StreamChatImpl {
+func NewStreamChatImpl(chatMessageRepo domain.ChatMessageRepository, todoRepo domain.TodoRepository, llmClient domain.LLMClient, llmModel string) StreamChatImpl {
 	return StreamChatImpl{
 		ChatMessageRepo: chatMessageRepo,
 		TodoRepo:        todoRepo,
 		LLMClient:       llmClient,
+		llmModel:        llmModel,
 	}
 }
 
@@ -43,7 +44,7 @@ func buildTodosJSON(todos []domain.Todo) string {
 // buildSystemPrompt creates a system prompt with current todos context
 func (sc StreamChatImpl) buildSystemPrompt(ctx context.Context) (string, error) {
 	// Fetch all todos
-	todos, _, err := sc.TodoRepo.ListTodos(ctx, 0, 100, nil)
+	todos, _, err := sc.TodoRepo.ListTodos(ctx, 1, 1000)
 	if err != nil {
 		return "", err
 	}
@@ -95,7 +96,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 	})
 
 	req := domain.LLMChatRequest{
-		Model:    sc.LLMModel,
+		Model:    sc.llmModel,
 		Messages: messages,
 		Stream:   true,
 	}
@@ -185,6 +186,6 @@ type InitStreamChat struct {
 
 // Initialize registers the StreamChat use case in the dependency container
 func (i InitStreamChat) Initialize(ctx context.Context) (context.Context, error) {
-	depend.Register[StreamChat](NewStreamChatImpl(i.ChatMessageRepo, i.TodoRepo, i.LLMClient))
+	depend.Register[StreamChat](NewStreamChatImpl(i.ChatMessageRepo, i.TodoRepo, i.LLMClient, i.LLMModel))
 	return ctx, nil
 }

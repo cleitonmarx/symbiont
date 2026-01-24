@@ -35,6 +35,7 @@ type TodoAppServer struct {
 	GetBoardSummaryUseCase    usecases.GetBoardSummary    `resolve:""`
 	ListChatMessagesUseCase   usecases.ListChatMessages   `resolve:""`
 	DeleteConversationUseCase usecases.DeleteConversation `resolve:""`
+	StreamChatUseCase         usecases.StreamChat         `resolve:""`
 }
 
 //go:embed webappdist/*

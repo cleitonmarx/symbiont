@@ -262,7 +262,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 			tt.setupMocks(chatRepo, todoRepo, client)
 
-			useCase := NewStreamChatImpl(chatRepo, todoRepo, client)
+			useCase := NewStreamChatImpl(chatRepo, todoRepo, client, "test-model")
 
 			var capturedContent string
 			err := useCase.Execute(context.Background(), tt.userMessage, func(eventType string, data interface{}) error {

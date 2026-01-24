@@ -44,6 +44,7 @@ func NewTodoApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&usecases.InitGetBoardSummary{},
 			&usecases.InitListChatMessages{},
 			&usecases.InitDeleteConversation{},
+			&usecases.InitStreamChat{},
 		).
 		Host(
 			&http.TodoAppServer{},
