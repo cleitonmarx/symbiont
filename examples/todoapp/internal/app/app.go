@@ -48,7 +48,7 @@ func NewTodoApp(initializers ...symbiont.Initializer) *symbiont.App {
 		Host(
 			&http.TodoAppServer{},
 			&workers.TodoEventSubscriber{},
-			&workers.OutboxWorker{},
+			&workers.MessageRelay{},
 		)
 }
 

@@ -12,8 +12,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// OutboxWorker periodically fetches outbox events from the database and publishes them to Pub/Sub.
-type OutboxWorker struct {
+// MessageRelay is a runnable that processes outbox events and publishes them to Pub/Sub.
+type MessageRelay struct {
 	Uow      domain.UnitOfWork `resolve:""`
 	Client   *pubsub.Client    `resolve:""`
 	Logger   *log.Logger       `resolve:""`
@@ -21,7 +21,7 @@ type OutboxWorker struct {
 }
 
 // Run starts the periodic processing of outbox events.
-func (op OutboxWorker) Run(ctx context.Context) error {
+func (op MessageRelay) Run(ctx context.Context) error {
 	op.Logger.Println("OutboxPublisher: running...")
 	ticker := time.NewTicker(op.Interval)
 	defer ticker.Stop()
@@ -42,7 +42,7 @@ func (op OutboxWorker) Run(ctx context.Context) error {
 
 // processBatch fetches a batch of pending outbox events, publishes them to Pub/Sub,
 // and deletes or updates them based on the publishing result.
-func (op OutboxWorker) processBatch(ctx context.Context) error {
+func (op MessageRelay) processBatch(ctx context.Context) error {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
@@ -81,7 +81,7 @@ func (op OutboxWorker) processBatch(ctx context.Context) error {
 }
 
 // publishToPubSub publishes a single outbox event to Pub/Sub.
-func (op OutboxWorker) publishToPubSub(ctx context.Context, event domain.OutboxEvent) error {
+func (op MessageRelay) publishToPubSub(ctx context.Context, event domain.OutboxEvent) error {
 	spanCtx, span := tracing.Start(ctx,
 		trace.WithAttributes(
 			attribute.String("event_id", event.ID.String()),
