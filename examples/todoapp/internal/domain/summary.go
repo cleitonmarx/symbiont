@@ -38,11 +38,6 @@ type NextUpTodoItem struct {
 	Reason string `json:"reason"`
 }
 
-// BoardSummaryGenerator defines the interface for generating board summaries using LLM.
-type BoardSummaryGenerator interface {
-	GenerateBoardSummary(ctx context.Context, todos []Todo) (BoardSummary, error)
-}
-
 // BoardSummaryRepository defines the interface for storing and retrieving board summaries.
 type BoardSummaryRepository interface {
 	StoreSummary(ctx context.Context, summary BoardSummary) error
