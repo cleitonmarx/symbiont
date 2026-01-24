@@ -83,7 +83,7 @@ func (api TodoAppServer) StreamChat(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
-	err := api.StreamChatUseCase.Execute(r.Context(), req.Message, func(eventType string, data interface{}) error {
+	err := api.StreamChatUseCase.Execute(r.Context(), req.Message, func(eventType domain.LLMStreamEventType, data any) error {
 		dataBytes, err := json.Marshal(data)
 		if err != nil {
 			return err

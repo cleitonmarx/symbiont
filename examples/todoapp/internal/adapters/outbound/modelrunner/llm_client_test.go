@@ -1,4 +1,4 @@
-package llm
+package modelrunner
 
 import (
 	"context"
@@ -23,7 +23,7 @@ func TestLLMClientAdapter_ChatStream(t *testing.T) {
 	tests := map[string]struct {
 		serverHandler   http.HandlerFunc
 		expectErr       bool
-		validateEvents  func(*testing.T, []string)
+		validateEvents  func(*testing.T, []domain.LLMStreamEventType)
 		validateContent func(*testing.T, []string)
 		validateUsage   func(*testing.T, *domain.LLMStreamEventDone)
 	}{
@@ -63,11 +63,11 @@ func TestLLMClientAdapter_ChatStream(t *testing.T) {
 				flusher.Flush()
 			},
 			expectErr: false,
-			validateEvents: func(t *testing.T, eventTypes []string) {
+			validateEvents: func(t *testing.T, eventTypes []domain.LLMStreamEventType) {
 				// Per spec: must have meta, delta, and done
-				assert.Contains(t, eventTypes, "meta", "spec requires meta event")
-				assert.Contains(t, eventTypes, "delta", "spec requires at least one delta event")
-				assert.Contains(t, eventTypes, "done", "spec requires done event")
+				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Meta, "spec requires meta event")
+				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Delta, "spec requires at least one delta event")
+				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Done, "spec requires done event")
 			},
 			validateContent: func(t *testing.T, deltaTexts []string) {
 				// Verify delta content was captured
@@ -115,10 +115,10 @@ func TestLLMClientAdapter_ChatStream(t *testing.T) {
 				flusher.Flush()
 			},
 			expectErr: false,
-			validateEvents: func(t *testing.T, eventTypes []string) {
-				assert.Contains(t, eventTypes, "meta")
-				assert.Contains(t, eventTypes, "delta")
-				assert.Contains(t, eventTypes, "done")
+			validateEvents: func(t *testing.T, eventTypes []domain.LLMStreamEventType) {
+				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Meta)
+				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Delta)
+				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Done)
 				// Count delta events
 				deltaCount := 0
 				for _, et := range eventTypes {
@@ -159,8 +159,8 @@ func TestLLMClientAdapter_ChatStream(t *testing.T) {
 				flusher.Flush()
 			},
 			expectErr: false,
-			validateEvents: func(t *testing.T, eventTypes []string) {
-				assert.Contains(t, eventTypes, "delta")
+			validateEvents: func(t *testing.T, eventTypes []domain.LLMStreamEventType) {
+				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Delta)
 			},
 			validateContent: func(t *testing.T, deltaTexts []string) {
 				assert.GreaterOrEqual(t, len(deltaTexts), 1)
@@ -193,11 +193,11 @@ func TestLLMClientAdapter_ChatStream(t *testing.T) {
 				flusher.Flush()
 			},
 			expectErr: false,
-			validateEvents: func(t *testing.T, eventTypes []string) {
+			validateEvents: func(t *testing.T, eventTypes []domain.LLMStreamEventType) {
 				assert.Equal(t, 3, len(eventTypes), "should have exactly 3 events: meta, delta, done")
-				assert.Equal(t, "meta", eventTypes[0], "first event must be meta")
-				assert.Equal(t, "delta", eventTypes[1], "second event must be delta")
-				assert.Equal(t, "done", eventTypes[2], "third event must be done")
+				assert.Equal(t, domain.LLMStreamEventType_Meta, eventTypes[0], "first event must be meta")
+				assert.Equal(t, domain.LLMStreamEventType_Delta, eventTypes[1], "second event must be delta")
+				assert.Equal(t, domain.LLMStreamEventType_Done, eventTypes[2], "third event must be done")
 			},
 			validateContent: func(t *testing.T, deltaTexts []string) {
 				assert.Len(t, deltaTexts, 1)
@@ -224,8 +224,8 @@ func TestLLMClientAdapter_ChatStream(t *testing.T) {
 				flusher.Flush()
 			},
 			expectErr: false,
-			validateEvents: func(t *testing.T, eventTypes []string) {
-				assert.Contains(t, eventTypes, "delta")
+			validateEvents: func(t *testing.T, eventTypes []domain.LLMStreamEventType) {
+				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Delta)
 			},
 		},
 		"server-error": {
@@ -257,7 +257,7 @@ func TestLLMClientAdapter_ChatStream(t *testing.T) {
 			server := httptest.NewServer(tt.serverHandler)
 			defer server.Close()
 
-			client := NewDockerModelAPIClient(server.URL, "", server.Client())
+			client := NewDRMAPIClient(server.URL, "", server.Client())
 
 			adapter := NewLLMClientAdapter(client)
 
@@ -270,22 +270,22 @@ func TestLLMClientAdapter_ChatStream(t *testing.T) {
 				},
 			}
 
-			var eventTypes []string
+			var eventTypes []domain.LLMStreamEventType
 			var deltaTexts []string
 			var metaEvent *domain.LLMStreamEventMeta
 			var doneEvent *domain.LLMStreamEventDone
 
-			err := adapter.ChatStream(context.Background(), domainReq, func(eventType string, data interface{}) error {
+			err := adapter.ChatStream(context.Background(), domainReq, func(eventType domain.LLMStreamEventType, data interface{}) error {
 				eventTypes = append(eventTypes, eventType)
 
 				switch eventType {
-				case "meta":
+				case domain.LLMStreamEventType_Meta:
 					meta := data.(domain.LLMStreamEventMeta)
 					metaEvent = &meta
-				case "delta":
+				case domain.LLMStreamEventType_Delta:
 					delta := data.(domain.LLMStreamEventDelta)
 					deltaTexts = append(deltaTexts, delta.Text)
-				case "done":
+				case domain.LLMStreamEventType_Done:
 					done := data.(domain.LLMStreamEventDone)
 					doneEvent = &done
 				}
@@ -413,7 +413,7 @@ func TestLLMClientAdapter_Chat(t *testing.T) {
 			server := httptest.NewServer(tt.serverHandler(&capturedReq))
 			defer server.Close()
 
-			client := NewDockerModelAPIClient(server.URL, "", server.Client())
+			client := NewDRMAPIClient(server.URL, "", server.Client())
 			adapter := NewLLMClientAdapter(client)
 
 			resp, err := adapter.Chat(context.Background(), tt.req)

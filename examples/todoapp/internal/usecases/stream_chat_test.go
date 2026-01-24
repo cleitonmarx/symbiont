@@ -41,16 +41,16 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					Run(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) {
 						// Simulate events
-						_ = onEvent("meta", domain.LLMStreamEventMeta{
+						_ = onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
 							ConversationID:     domain.GlobalConversationID,
 							UserMessageID:      userMsgID,
 							AssistantMessageID: assistantMsgID,
 							StartedAt:          fixedTime,
 						})
-						_ = onEvent("delta", domain.LLMStreamEventDelta{Text: "I'm "})
-						_ = onEvent("delta", domain.LLMStreamEventDelta{Text: "doing "})
-						_ = onEvent("delta", domain.LLMStreamEventDelta{Text: "great!"})
-						_ = onEvent("done", domain.LLMStreamEventDone{
+						_ = onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{Text: "I'm "})
+						_ = onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{Text: "doing "})
+						_ = onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{Text: "great!"})
+						_ = onEvent(domain.LLMStreamEventType_Done, domain.LLMStreamEventDone{
 							AssistantMessageID: assistantMsgID.String(),
 							CompletedAt:        fixedTime.Format(time.RFC3339),
 							Usage: &domain.LLMUsage{
@@ -65,7 +65,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 				// user and assistant saves...
 				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole("user")
+						return msg.ChatRole == domain.ChatRole_User
 					})).
 					Run(func(ctx context.Context, msg domain.ChatMessage) {
 						assert.Equal(t, userMsgID, msg.ID)
@@ -105,14 +105,14 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 				client.EXPECT().
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					Run(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) {
-						_ = onEvent("meta", domain.LLMStreamEventMeta{
+						_ = onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
 							ConversationID:     domain.GlobalConversationID,
 							UserMessageID:      userMsgID,
 							AssistantMessageID: assistantMsgID,
 							StartedAt:          fixedTime,
 						})
-						_ = onEvent("delta", domain.LLMStreamEventDelta{Text: "OK"})
-						_ = onEvent("done", domain.LLMStreamEventDone{
+						_ = onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{Text: "OK"})
+						_ = onEvent(domain.LLMStreamEventType_Done, domain.LLMStreamEventDone{
 							AssistantMessageID: assistantMsgID.String(),
 							CompletedAt:        fixedTime.Format(time.RFC3339),
 							Usage:              nil,
@@ -122,14 +122,14 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole("user")
+						return msg.ChatRole == domain.ChatRole_User
 					})).
 					Return(nil).
 					Once()
 
 				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole("assistant")
+						return msg.ChatRole == domain.ChatRole_Assistant
 					})).
 					Run(func(ctx context.Context, msg domain.ChatMessage) {
 						assert.Equal(t, 0, msg.PromptTokens)
@@ -184,14 +184,14 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 				client.EXPECT().
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					Run(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) {
-						_ = onEvent("meta", domain.LLMStreamEventMeta{
+						_ = onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
 							ConversationID:     domain.GlobalConversationID,
 							UserMessageID:      userMsgID,
 							AssistantMessageID: assistantMsgID,
 							StartedAt:          fixedTime,
 						})
-						_ = onEvent("delta", domain.LLMStreamEventDelta{Text: "OK"})
-						_ = onEvent("done", domain.LLMStreamEventDone{
+						_ = onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{Text: "OK"})
+						_ = onEvent(domain.LLMStreamEventType_Done, domain.LLMStreamEventDone{
 							AssistantMessageID: assistantMsgID.String(),
 							CompletedAt:        fixedTime.Format(time.RFC3339),
 						})
@@ -200,7 +200,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole("user")
+						return msg.ChatRole == domain.ChatRole_User
 					})).
 					Return(errors.New("db error")).
 					Once()
@@ -222,14 +222,14 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 				client.EXPECT().
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					Run(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) {
-						_ = onEvent("meta", domain.LLMStreamEventMeta{
+						_ = onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
 							ConversationID:     domain.GlobalConversationID,
 							UserMessageID:      userMsgID,
 							AssistantMessageID: assistantMsgID,
 							StartedAt:          fixedTime,
 						})
-						_ = onEvent("delta", domain.LLMStreamEventDelta{Text: "OK"})
-						_ = onEvent("done", domain.LLMStreamEventDone{
+						_ = onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{Text: "OK"})
+						_ = onEvent(domain.LLMStreamEventType_Done, domain.LLMStreamEventDone{
 							AssistantMessageID: assistantMsgID.String(),
 							CompletedAt:        fixedTime.Format(time.RFC3339),
 						})
@@ -238,14 +238,14 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole("user")
+						return msg.ChatRole == domain.ChatRole_User
 					})).
 					Return(nil).
 					Once()
 
 				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole("assistant")
+						return msg.ChatRole == domain.ChatRole_Assistant
 					})).
 					Return(errors.New("db error")).
 					Once()
@@ -265,8 +265,8 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 			useCase := NewStreamChatImpl(chatRepo, todoRepo, client, "test-model")
 
 			var capturedContent string
-			err := useCase.Execute(context.Background(), tt.userMessage, func(eventType string, data interface{}) error {
-				if eventType == "delta" {
+			err := useCase.Execute(context.Background(), tt.userMessage, func(eventType domain.LLMStreamEventType, data any) error {
+				if eventType == domain.LLMStreamEventType_Delta {
 					delta := data.(domain.LLMStreamEventDelta)
 					capturedContent += delta.Text
 				}

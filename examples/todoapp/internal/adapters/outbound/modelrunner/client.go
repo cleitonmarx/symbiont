@@ -4,7 +4,7 @@
 // It intentionally ignores any non-standard fields such as "reasoning_content"
 // and returns the assistant "content" (which may itself be JSON if you prompt
 // the model to output JSON).
-package llm
+package modelrunner
 
 import (
 	"bufio"
@@ -22,18 +22,18 @@ import (
 	"github.com/google/uuid"
 )
 
-// DockerModelAPIClient calls a Docker-hosted OpenAI-compatible API.
-type DockerModelAPIClient struct {
+// DRMAPIClient calls a Docker Model Runner API (e.g., llama.cpp server)
+type DRMAPIClient struct {
 	baseURL string
 	apiKey  string
 	http    *http.Client
 }
 
-// NewDockerModelAPIClient creates a new client.
+// NewDRMAPIClient creates a new client.
 // baseURL example: "http://localhost:12434" (no trailing slash required)
 // apiKey is optional for local deployments.
-func NewDockerModelAPIClient(baseURL string, apiKey string, httpClient *http.Client) DockerModelAPIClient {
-	return DockerModelAPIClient{
+func NewDRMAPIClient(baseURL string, apiKey string, httpClient *http.Client) DRMAPIClient {
+	return DRMAPIClient{
 		baseURL: baseURL,
 		apiKey:  apiKey,
 		http:    httpClient,
@@ -100,7 +100,7 @@ type Usage struct {
 }
 
 // Chat sends a chat completion request and returns the parsed response.
-func (c DockerModelAPIClient) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
+func (c DRMAPIClient) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
 	if req.Model == "" {
 		return nil, errors.New("llm: request model is required")
 	}
@@ -206,7 +206,7 @@ type StreamEventCallback func(eventType string, data interface{}) error
 
 // ChatStream streams assistant output as events from an OpenAI-compatible server.
 // It calls onEvent with each event (meta, delta, done) and returns any error.
-func (c DockerModelAPIClient) ChatStream(ctx context.Context, req ChatRequest, onEvent StreamEventCallback) error {
+func (c DRMAPIClient) ChatStream(ctx context.Context, req ChatRequest, onEvent StreamEventCallback) error {
 	if req.Model == "" {
 		return errors.New("llm: request model is required")
 	}
@@ -290,7 +290,7 @@ func (c DockerModelAPIClient) ChatStream(ctx context.Context, req ChatRequest, o
 
 // consumeStream reads the SSE stream, forwarding meta/delta/done events.
 // It returns the final usage and completedAt captured from the stream (if any).
-func (c DockerModelAPIClient) consumeStream(rd *bufio.Reader, onEvent StreamEventCallback) (*Usage, string, error) {
+func (c DRMAPIClient) consumeStream(rd *bufio.Reader, onEvent StreamEventCallback) (*Usage, string, error) {
 	var finalUsage *Usage
 	var completedAt string
 	currentEvent := ""
@@ -376,7 +376,7 @@ func (c DockerModelAPIClient) consumeStream(rd *bufio.Reader, onEvent StreamEven
 
 // handleExplicitEvent processes SSE frames that use explicit event types (e.g., llama.cpp: event: delta/done).
 // It returns: handled(bool), doneFromServer(bool), usage(*Usage), completedAt(string), error.
-func (c DockerModelAPIClient) handleExplicitEvent(
+func (c DRMAPIClient) handleExplicitEvent(
 	currentEvent string,
 	payload string,
 	onEvent StreamEventCallback,

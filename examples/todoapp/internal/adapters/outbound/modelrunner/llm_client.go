@@ -1,4 +1,4 @@
-package llm
+package modelrunner
 
 import (
 	"context"
@@ -10,13 +10,13 @@ import (
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/tracing"
 )
 
-// LLMClient adapts DockerModelAPIClient to the domain.LLMClient interface
+// LLMClient adapts Docker Model Runner API Client to the domain.LLMClient interface
 type LLMClient struct {
-	client DockerModelAPIClient
+	client DRMAPIClient
 }
 
 // NewLLMClientAdapter creates a new adapter for the LLM client
-func NewLLMClientAdapter(client DockerModelAPIClient) LLMClient {
+func NewLLMClientAdapter(client DRMAPIClient) LLMClient {
 	return LLMClient{
 		client: client,
 	}
@@ -42,12 +42,12 @@ func (a LLMClient) ChatStream(ctx context.Context, req domain.LLMChatRequest, on
 	}
 
 	// Call the underlying client with adapted callback
-	return a.client.ChatStream(spanCtx, adapterReq, func(eventType string, data interface{}) error {
+	return a.client.ChatStream(spanCtx, adapterReq, func(eventType string, data any) error {
 		// Adapt events from adapter domain to domain layer
 		switch eventType {
 		case "meta":
 			meta := data.(StreamEventMeta)
-			return onEvent("meta", domain.LLMStreamEventMeta{
+			return onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
 				ConversationID:     meta.ConversationID,
 				UserMessageID:      meta.UserMessageID,
 				AssistantMessageID: meta.AssistantMessageID,
@@ -56,7 +56,7 @@ func (a LLMClient) ChatStream(ctx context.Context, req domain.LLMChatRequest, on
 
 		case "delta":
 			delta := data.(StreamEventDelta)
-			return onEvent("delta", domain.LLMStreamEventDelta{
+			return onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{
 				Text: delta.Text,
 			})
 
@@ -70,14 +70,14 @@ func (a LLMClient) ChatStream(ctx context.Context, req domain.LLMChatRequest, on
 					TotalTokens:      done.Usage.TotalTokens,
 				}
 			}
-			return onEvent("done", domain.LLMStreamEventDone{
+			return onEvent(domain.LLMStreamEventType_Done, domain.LLMStreamEventDone{
 				AssistantMessageID: done.AssistantMessageID.String(),
 				CompletedAt:        done.CompletedAt,
 				Usage:              domainUsage,
 			})
 
 		default:
-			return onEvent(eventType, data)
+			return onEvent(domain.LLMStreamEventType(eventType), data)
 		}
 	})
 }
@@ -126,7 +126,7 @@ type InitLLMClient struct {
 // Initialize registers the LLMClient in the dependency container
 func (i InitLLMClient) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[domain.LLMClient](NewLLMClientAdapter(
-		NewDockerModelAPIClient(i.LLMHost, "", i.HttpClient),
+		NewDRMAPIClient(i.LLMHost, "", i.HttpClient),
 	))
 	return ctx, nil
 }

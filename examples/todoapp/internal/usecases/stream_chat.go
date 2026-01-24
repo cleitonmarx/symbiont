@@ -81,7 +81,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 	// Build chat request: system + history + current user turn
 	messages := make([]domain.LLMChatMessage, 0, len(history)+2)
 	messages = append(messages, domain.LLMChatMessage{
-		Role:    domain.ChatRole("system"),
+		Role:    domain.ChatRole_System,
 		Content: systemPrompt,
 	})
 	for _, m := range history {
@@ -91,7 +91,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 		})
 	}
 	messages = append(messages, domain.LLMChatMessage{
-		Role:    domain.ChatRole("user"),
+		Role:    domain.ChatRole_User,
 		Content: userMessage,
 	})
 
@@ -108,27 +108,27 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 	var finalUsage *domain.LLMUsage
 
 	// Stream from LLM client
-	err = sc.LLMClient.ChatStream(spanCtx, req, func(eventType string, data interface{}) error {
+	err = sc.LLMClient.ChatStream(spanCtx, req, func(eventType domain.LLMStreamEventType, data any) error {
 		// Forward all events to the caller
 		if err := onEvent(eventType, data); err != nil {
 			return err
 		}
 
 		// Capture metadata from meta event
-		if eventType == "meta" {
+		if eventType == domain.LLMStreamEventType_Meta {
 			meta := data.(domain.LLMStreamEventMeta)
 			assistantMessageID = meta.AssistantMessageID
 			userMessageID = meta.UserMessageID
 		}
 
 		// Accumulate content from delta events
-		if eventType == "delta" {
+		if eventType == domain.LLMStreamEventType_Delta {
 			delta := data.(domain.LLMStreamEventDelta)
 			fullContent.WriteString(delta.Text)
 		}
 
 		// Capture usage from done event
-		if eventType == "done" {
+		if eventType == domain.LLMStreamEventType_Done {
 			done := data.(domain.LLMStreamEventDone)
 			finalUsage = done.Usage
 		}

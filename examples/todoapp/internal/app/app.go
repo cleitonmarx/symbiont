@@ -8,8 +8,8 @@ import (
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/http"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/workers"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/outbound/config"
-	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/outbound/llm"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/outbound/log"
+	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/outbound/modelrunner"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/outbound/postgres"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/outbound/pubsub"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/outbound/time"
@@ -35,7 +35,7 @@ func NewTodoApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&postgres.InitChatMessageRepository{},
 			&time.InitCurrentTimeProvider{},
 			&pubsub.InitClient{},
-			&llm.InitLLMClient{},
+			&modelrunner.InitLLMClient{},
 			&usecases.InitListTodos{},
 			&usecases.InitCreateTodo{},
 			&usecases.InitUpdateTodo{},
