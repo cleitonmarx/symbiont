@@ -42,10 +42,10 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 				timeProvider.EXPECT().Now().Return(fixedTime)
 
 				repo := domain_mocks.NewMockTodoRepository(t)
-				publisher := domain_mocks.NewMockTodoEventPublisher(t)
+				outbox := domain_mocks.NewMockOutboxRepository(t)
 
 				uow.EXPECT().Todo().Return(repo)
-				uow.EXPECT().Publisher().Return(publisher)
+				uow.EXPECT().Outbox().Return(outbox)
 				uow.EXPECT().
 					Execute(mock.Anything, mock.Anything).
 					RunAndReturn(func(ctx context.Context, fn func(_ domain.UnitOfWork) error) error {
@@ -57,7 +57,7 @@ func TestCreateTodoImpl_Execute(t *testing.T) {
 					todo,
 				).Return(nil)
 
-				publisher.EXPECT().PublishEvent(
+				outbox.EXPECT().RecordEvent(
 					mock.Anything,
 					domain.TodoEvent{
 						Type:      domain.TodoEventType_TODO_CREATED,

@@ -64,7 +64,7 @@ func (uti UpdateTodoImpl) Execute(ctx context.Context, id uuid.UUID, title *stri
 
 		todo = td
 
-		return uow.Publisher().PublishEvent(spanCtx, domain.TodoEvent{
+		return uow.Outbox().RecordEvent(spanCtx, domain.TodoEvent{
 			Type:   domain.TodoEventType_TODO_UPDATED,
 			TodoID: todo.ID,
 		})

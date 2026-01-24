@@ -117,18 +117,6 @@ func TestUnitOfWork_Todo(t *testing.T) {
 	assert.IsType(t, TodoRepository{}, repo)
 }
 
-func TestUnitOfWork_Publisher(t *testing.T) {
-	db, _, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close() //nolint:errcheck
-
-	uow := NewUnitOfWork(db)
-	publisher := uow.Publisher()
-
-	assert.NotNil(t, publisher)
-	assert.IsType(t, OutboxRepository{}, publisher)
-}
-
 func TestUnitOfWork_Outbox(t *testing.T) {
 	db, _, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -213,7 +201,7 @@ func TestUnitOfWork_TransactionIsolation(t *testing.T) {
 			Type:      domain.TodoEventType("Deleted"),
 			CreatedAt: time.Date(2026, 1, 24, 15, 0, 0, 0, time.UTC),
 		}
-		return uow.Publisher().PublishEvent(context.Background(), event)
+		return uow.Outbox().RecordEvent(context.Background(), event)
 	})
 
 	assert.NoError(t, err)

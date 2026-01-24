@@ -40,10 +40,10 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 			setExpectations: func(uow *domain_mocks.MockUnitOfWork, timeProvider *domain_mocks.MockCurrentTimeProvider) {
 				timeProvider.EXPECT().Now().Return(fixedTime)
 				repo := domain_mocks.NewMockTodoRepository(t)
-				publisher := domain_mocks.NewMockTodoEventPublisher(t)
+				outbox := domain_mocks.NewMockOutboxRepository(t)
 
 				uow.EXPECT().Todo().Return(repo)
-				uow.EXPECT().Publisher().Return(publisher)
+				uow.EXPECT().Outbox().Return(outbox)
 				uow.EXPECT().
 					Execute(mock.Anything, mock.Anything).
 					RunAndReturn(func(ctx context.Context, fn func(_ domain.UnitOfWork) error) error {
@@ -55,7 +55,7 @@ func TestUpdateTodoImpl_Execute(t *testing.T) {
 					return t.ID == fixedUUID && t.Title == todo.Title && t.UpdatedAt.Equal(fixedTime)
 				})).Return(nil)
 
-				publisher.EXPECT().PublishEvent(
+				outbox.EXPECT().RecordEvent(
 					mock.Anything,
 					domain.TodoEvent{
 						Type:   domain.TodoEventType_TODO_UPDATED,

@@ -250,7 +250,7 @@ func (_m *MockTodoEventPublisher) EXPECT() *MockTodoEventPublisher_Expecter {
 }
 
 // PublishEvent provides a mock function for the type MockTodoEventPublisher
-func (_mock *MockTodoEventPublisher) PublishEvent(ctx context.Context, event domain.TodoEvent) error {
+func (_mock *MockTodoEventPublisher) PublishEvent(ctx context.Context, event domain.OutboxEvent) error {
 	ret := _mock.Called(ctx, event)
 
 	if len(ret) == 0 {
@@ -258,7 +258,7 @@ func (_mock *MockTodoEventPublisher) PublishEvent(ctx context.Context, event dom
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.TodoEvent) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.OutboxEvent) error); ok {
 		r0 = returnFunc(ctx, event)
 	} else {
 		r0 = ret.Error(0)
@@ -273,20 +273,20 @@ type MockTodoEventPublisher_PublishEvent_Call struct {
 
 // PublishEvent is a helper method to define mock.On call
 //   - ctx context.Context
-//   - event domain.TodoEvent
+//   - event domain.OutboxEvent
 func (_e *MockTodoEventPublisher_Expecter) PublishEvent(ctx interface{}, event interface{}) *MockTodoEventPublisher_PublishEvent_Call {
 	return &MockTodoEventPublisher_PublishEvent_Call{Call: _e.mock.On("PublishEvent", ctx, event)}
 }
 
-func (_c *MockTodoEventPublisher_PublishEvent_Call) Run(run func(ctx context.Context, event domain.TodoEvent)) *MockTodoEventPublisher_PublishEvent_Call {
+func (_c *MockTodoEventPublisher_PublishEvent_Call) Run(run func(ctx context.Context, event domain.OutboxEvent)) *MockTodoEventPublisher_PublishEvent_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 domain.TodoEvent
+		var arg1 domain.OutboxEvent
 		if args[1] != nil {
-			arg1 = args[1].(domain.TodoEvent)
+			arg1 = args[1].(domain.OutboxEvent)
 		}
 		run(
 			arg0,
@@ -301,7 +301,7 @@ func (_c *MockTodoEventPublisher_PublishEvent_Call) Return(err error) *MockTodoE
 	return _c
 }
 
-func (_c *MockTodoEventPublisher_PublishEvent_Call) RunAndReturn(run func(ctx context.Context, event domain.TodoEvent) error) *MockTodoEventPublisher_PublishEvent_Call {
+func (_c *MockTodoEventPublisher_PublishEvent_Call) RunAndReturn(run func(ctx context.Context, event domain.OutboxEvent) error) *MockTodoEventPublisher_PublishEvent_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -610,6 +610,63 @@ func (_c *MockOutboxRepository_FetchPendingEvents_Call) Return(outboxEvents []do
 }
 
 func (_c *MockOutboxRepository_FetchPendingEvents_Call) RunAndReturn(run func(ctx context.Context, limit int) ([]domain.OutboxEvent, error)) *MockOutboxRepository_FetchPendingEvents_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RecordEvent provides a mock function for the type MockOutboxRepository
+func (_mock *MockOutboxRepository) RecordEvent(ctx context.Context, event domain.TodoEvent) error {
+	ret := _mock.Called(ctx, event)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecordEvent")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.TodoEvent) error); ok {
+		r0 = returnFunc(ctx, event)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockOutboxRepository_RecordEvent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RecordEvent'
+type MockOutboxRepository_RecordEvent_Call struct {
+	*mock.Call
+}
+
+// RecordEvent is a helper method to define mock.On call
+//   - ctx context.Context
+//   - event domain.TodoEvent
+func (_e *MockOutboxRepository_Expecter) RecordEvent(ctx interface{}, event interface{}) *MockOutboxRepository_RecordEvent_Call {
+	return &MockOutboxRepository_RecordEvent_Call{Call: _e.mock.On("RecordEvent", ctx, event)}
+}
+
+func (_c *MockOutboxRepository_RecordEvent_Call) Run(run func(ctx context.Context, event domain.TodoEvent)) *MockOutboxRepository_RecordEvent_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 domain.TodoEvent
+		if args[1] != nil {
+			arg1 = args[1].(domain.TodoEvent)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockOutboxRepository_RecordEvent_Call) Return(err error) *MockOutboxRepository_RecordEvent_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockOutboxRepository_RecordEvent_Call) RunAndReturn(run func(ctx context.Context, event domain.TodoEvent) error) *MockOutboxRepository_RecordEvent_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1395,52 +1452,6 @@ func (_c *MockUnitOfWork_Outbox_Call) Return(outboxRepository domain.OutboxRepos
 }
 
 func (_c *MockUnitOfWork_Outbox_Call) RunAndReturn(run func() domain.OutboxRepository) *MockUnitOfWork_Outbox_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Publisher provides a mock function for the type MockUnitOfWork
-func (_mock *MockUnitOfWork) Publisher() domain.TodoEventPublisher {
-	ret := _mock.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for Publisher")
-	}
-
-	var r0 domain.TodoEventPublisher
-	if returnFunc, ok := ret.Get(0).(func() domain.TodoEventPublisher); ok {
-		r0 = returnFunc()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(domain.TodoEventPublisher)
-		}
-	}
-	return r0
-}
-
-// MockUnitOfWork_Publisher_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Publisher'
-type MockUnitOfWork_Publisher_Call struct {
-	*mock.Call
-}
-
-// Publisher is a helper method to define mock.On call
-func (_e *MockUnitOfWork_Expecter) Publisher() *MockUnitOfWork_Publisher_Call {
-	return &MockUnitOfWork_Publisher_Call{Call: _e.mock.On("Publisher")}
-}
-
-func (_c *MockUnitOfWork_Publisher_Call) Run(run func()) *MockUnitOfWork_Publisher_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockUnitOfWork_Publisher_Call) Return(todoEventPublisher domain.TodoEventPublisher) *MockUnitOfWork_Publisher_Call {
-	_c.Call.Return(todoEventPublisher)
-	return _c
-}
-
-func (_c *MockUnitOfWork_Publisher_Call) RunAndReturn(run func() domain.TodoEventPublisher) *MockUnitOfWork_Publisher_Call {
 	_c.Call.Return(run)
 	return _c
 }

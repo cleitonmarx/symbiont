@@ -25,5 +25,5 @@ type TodoEvent struct {
 
 // TodoEventPublisher defines the interface for publishing todo events.
 type TodoEventPublisher interface {
-	PublishEvent(ctx context.Context, event TodoEvent) error
+	PublishEvent(ctx context.Context, event OutboxEvent) error
 }

@@ -51,11 +51,6 @@ func (u *UnitOfWork) Todo() domain.TodoRepository {
 	return NewTodoRepository(u.getBaseRunner())
 }
 
-// Publisher returns the OutboxPublisher for this UnitOfWork.
-func (u *UnitOfWork) Publisher() domain.TodoEventPublisher {
-	return NewOutboxRepository(u.getBaseRunner())
-}
-
 // Outbox returns the OutboxRepository for this UnitOfWork.
 func (u *UnitOfWork) Outbox() domain.OutboxRepository {
 	return NewOutboxRepository(u.getBaseRunner())

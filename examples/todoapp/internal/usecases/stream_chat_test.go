@@ -29,7 +29,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
 				todoRepo.EXPECT().
 					ListTodos(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-					Return([]domain.Todo{}, false, nil)
+					Return([]domain.Todo{{Title: "Test Todo"}}, false, nil)
 
 				// history: empty
 				chatRepo.EXPECT().

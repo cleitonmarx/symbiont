@@ -35,6 +35,7 @@ func NewTodoApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&postgres.InitChatMessageRepository{},
 			&time.InitCurrentTimeProvider{},
 			&pubsub.InitClient{},
+			&pubsub.InitPublisher{},
 			&modelrunner.InitLLMClient{},
 			&usecases.InitListTodos{},
 			&usecases.InitCreateTodo{},
@@ -45,6 +46,7 @@ func NewTodoApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&usecases.InitListChatMessages{},
 			&usecases.InitDeleteConversation{},
 			&usecases.InitStreamChat{},
+			&usecases.InitRelayOutbox{},
 		).
 		Host(
 			&http.TodoAppServer{},

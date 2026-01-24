@@ -36,7 +36,7 @@ func NewOutboxRepository(br squirrel.BaseRunner) OutboxRepository {
 	}
 }
 
-func (op OutboxRepository) PublishEvent(ctx context.Context, event domain.TodoEvent) error {
+func (op OutboxRepository) RecordEvent(ctx context.Context, event domain.TodoEvent) error {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 

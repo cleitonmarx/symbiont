@@ -56,7 +56,7 @@ func (cti CreateTodoImpl) Execute(ctx context.Context, title string, dueDate tim
 			return err
 		}
 
-		err = uow.Publisher().PublishEvent(spanCtx, domain.TodoEvent{
+		err = uow.Outbox().RecordEvent(spanCtx, domain.TodoEvent{
 			Type:      domain.TodoEventType_TODO_CREATED,
 			TodoID:    todo.ID,
 			CreatedAt: now,

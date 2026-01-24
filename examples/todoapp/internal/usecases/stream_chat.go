@@ -2,7 +2,9 @@ package usecases
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/tracing"
 	"github.com/google/uuid"
+	"go.yaml.in/yaml/v3"
 )
 
 // StreamChat defines the interface for the StreamChat use case
@@ -41,24 +44,42 @@ func buildTodosJSON(todos []domain.Todo) string {
 	return string(jsonBytes)
 }
 
+//go:embed prompts/chat.yml
+var chatPrompt embed.FS
+
 // buildSystemPrompt creates a system prompt with current todos context
-func (sc StreamChatImpl) buildSystemPrompt(ctx context.Context) (string, error) {
+func (sc StreamChatImpl) buildSystemPrompt(ctx context.Context) ([]domain.LLMChatMessage, error) {
 	// Fetch all todos
 	todos, _, err := sc.TodoRepo.ListTodos(ctx, 1, 1000)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Build todos JSON
 	todosJSON := buildTodosJSON(todos)
 
-	// Build prompt with todo context
-	prompt := "You are a helpful assistant for managing todos.\n\n"
-	prompt += "Current todos:\n"
-	prompt += todosJSON + "\n\n"
-	prompt += "Help the user manage their todos effectively."
+	file, err := chatPrompt.Open("prompts/chat.yml")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open chat prompt: %w", err)
+	}
+	defer file.Close() //nolint:errcheck
 
-	return prompt, nil
+	messages := []domain.LLMChatMessage{}
+	err = yaml.NewDecoder(file).Decode(&messages)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode summary prompt: %w", err)
+	}
+
+	for i, msg := range messages {
+		if msg.Role == domain.ChatRole_System {
+			msg.Content = fmt.Sprintf(msg.Content,
+				todosJSON,
+			)
+			messages[i] = msg
+		}
+	}
+
+	return messages, nil
 }
 
 // Execute streams a chat response and persists the conversation
@@ -79,21 +100,14 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 	}
 
 	// Build chat request: system + history + current user turn
-	messages := make([]domain.LLMChatMessage, 0, len(history)+2)
-	messages = append(messages, domain.LLMChatMessage{
-		Role:    domain.ChatRole_System,
-		Content: systemPrompt,
-	})
-	for _, m := range history {
+	messages := make([]domain.LLMChatMessage, 0, len(systemPrompt)+len(history)+1)
+	messages = append(messages, systemPrompt...)
+	for _, msg := range history {
 		messages = append(messages, domain.LLMChatMessage{
-			Role:    domain.ChatRole(m.ChatRole),
-			Content: m.Content,
+			Role:    msg.ChatRole,
+			Content: msg.Content,
 		})
 	}
-	messages = append(messages, domain.LLMChatMessage{
-		Role:    domain.ChatRole_User,
-		Content: userMessage,
-	})
 
 	req := domain.LLMChatRequest{
 		Model:    sc.llmModel,
