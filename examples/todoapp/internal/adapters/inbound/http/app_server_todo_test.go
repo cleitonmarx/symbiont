@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -411,76 +410,25 @@ func TestTodoAppServer_UpdateTodo(t *testing.T) {
 
 }
 
-func TestTodoAppServer_GetBoardSummary(t *testing.T) {
-	fixedUUID := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
-	generatedAt := time.Date(2026, 1, 22, 10, 30, 0, 0, time.UTC)
-
+func TestTodoAppServer_ClearChatMessages(t *testing.T) {
 	tests := map[string]struct {
-		setupMocks     func(*mocks.MockGetBoardSummary)
+		setupMocks     func(*mocks.MockDeleteConversation)
 		expectedStatus int
-		expectedBody   *openapi.BoardSummary
 		expectedError  *openapi.ErrorResp
 	}{
 		"success": {
-			setupMocks: func(m *mocks.MockGetBoardSummary) {
-				m.EXPECT().Query(mock.Anything).Return(domain.BoardSummary{
-					ID:            fixedUUID,
-					Model:         "ai/gpt-oss:latest",
-					GeneratedAt:   generatedAt,
-					SourceVersion: 1,
-					Content: domain.BoardSummaryContent{
-						Counts: domain.TodoStatusCounts{
-							Open: 5,
-							Done: 3,
-						},
-						NextUp: []domain.NextUpTodoItem{
-							{
-								Title:  "Buy groceries",
-								Reason: "Due tomorrow",
-							},
-						},
-						Overdue:      []string{"Pay electricity bill"},
-						NearDeadline: []string{"Renew car insurance"},
-						Summary:      "You have 1 overdue task and 2 tasks due this week.",
-					},
-				}, nil)
-			},
-			expectedStatus: http.StatusOK,
-			expectedBody: &openapi.BoardSummary{
-				Counts: openapi.TodoStatusCounts{
-					OPEN: 5,
-					DONE: 3,
-				},
-				NextUp: []openapi.NextUpTodoItem{
-					{
-						Title:  "Buy groceries",
-						Reason: "Due tomorrow",
-					},
-				},
-				Overdue:      []string{"Pay electricity bill"},
-				NearDeadline: []string{"Renew car insurance"},
-				Summary:      "You have 1 overdue task and 2 tasks due this week.",
-			},
-		},
-		"summary-not-found": {
-			setupMocks: func(m *mocks.MockGetBoardSummary) {
+			setupMocks: func(m *mocks.MockDeleteConversation) {
 				m.EXPECT().
-					Query(mock.Anything).
-					Return(domain.BoardSummary{}, domain.NewNotFoundErr("board summary not found"))
+					Execute(mock.Anything).
+					Return(nil)
 			},
-			expectedStatus: http.StatusNotFound,
-			expectedError: &openapi.ErrorResp{
-				Error: openapi.Error{
-					Code:    openapi.NOTFOUND,
-					Message: "board summary not found",
-				},
-			},
+			expectedStatus: http.StatusNoContent,
 		},
 		"use-case-error": {
-			setupMocks: func(m *mocks.MockGetBoardSummary) {
+			setupMocks: func(m *mocks.MockDeleteConversation) {
 				m.EXPECT().
-					Query(mock.Anything).
-					Return(domain.BoardSummary{}, errors.New("database error"))
+					Execute(mock.Anything).
+					Return(errors.New("database error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedError: &openapi.ErrorResp{
@@ -494,22 +442,148 @@ func TestTodoAppServer_GetBoardSummary(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			mockGetBoardSummary := mocks.NewMockGetBoardSummary(t)
-			tt.setupMocks(mockGetBoardSummary)
+			mockDeleteConversation := mocks.NewMockDeleteConversation(t)
+			tt.setupMocks(mockDeleteConversation)
 
 			server := &TodoAppServer{
-				GetBoardSummaryUseCase: mockGetBoardSummary,
+				DeleteConversationUseCase: mockDeleteConversation,
 			}
 
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/board/summary", nil)
+			req := httptest.NewRequest(http.MethodDelete, "/api/v1/chat/messages", nil)
 			w := httptest.NewRecorder()
 
-			server.GetBoardSummary(w, req)
+			server.ClearChatMessages(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			if tt.expectedError != nil {
+				var response openapi.ErrorResp
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedError.Error, response.Error)
+			}
+
+			mockDeleteConversation.AssertExpectations(t)
+		})
+	}
+}
+
+func TestTodoAppServer_ListChatMessages(t *testing.T) {
+	fixedTime := time.Date(2026, 1, 22, 10, 30, 0, 0, time.UTC)
+	fixedID := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
+
+	domainMessage := domain.ChatMessage{
+		ID:        fixedID,
+		ChatRole:  "user",
+		Content:   "Hello, how are you?",
+		CreatedAt: fixedTime,
+	}
+
+	openAPIMessage := openapi.ChatMessage{
+		Id:        fixedID,
+		Role:      openapi.ChatMessageRole("user"),
+		Content:   "Hello, how are you?",
+		CreatedAt: fixedTime,
+	}
+
+	tests := map[string]struct {
+		page           int
+		pageSize       int
+		setupMocks     func(*mocks.MockListChatMessages)
+		expectedStatus int
+		expectedBody   *openapi.ChatHistoryResp
+		expectedError  *openapi.ErrorResp
+	}{
+		"success-with-messages": {
+			page:     1,
+			pageSize: 10,
+			setupMocks: func(m *mocks.MockListChatMessages) {
+				m.EXPECT().
+					Query(mock.Anything, 1, 10).
+					Return([]domain.ChatMessage{domainMessage}, false, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody: &openapi.ChatHistoryResp{
+				ConversationId: domain.GlobalConversationID,
+				Messages:       []openapi.ChatMessage{openAPIMessage},
+				Page:           1,
+			},
+		},
+		"success-with-no-messages": {
+			page:     1,
+			pageSize: 10,
+			setupMocks: func(m *mocks.MockListChatMessages) {
+				m.EXPECT().
+					Query(mock.Anything, 1, 10).
+					Return([]domain.ChatMessage{}, false, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody: &openapi.ChatHistoryResp{
+				ConversationId: domain.GlobalConversationID,
+				Messages:       []openapi.ChatMessage{},
+				Page:           1,
+			},
+		},
+		"success-with-next-and-previous-page": {
+			page:     2,
+			pageSize: 10,
+			setupMocks: func(m *mocks.MockListChatMessages) {
+				m.EXPECT().
+					Query(mock.Anything, 2, 10).
+					Return([]domain.ChatMessage{domainMessage}, true, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody: &openapi.ChatHistoryResp{
+				ConversationId: domain.GlobalConversationID,
+				Messages:       []openapi.ChatMessage{openAPIMessage},
+				Page:           2,
+				NextPage:       common.Ptr(3),
+				PreviousPage:   common.Ptr(1),
+			},
+		},
+		"use-case-error": {
+			page:     1,
+			pageSize: 10,
+			setupMocks: func(m *mocks.MockListChatMessages) {
+				m.EXPECT().
+					Query(mock.Anything, 1, 10).
+					Return(nil, false, errors.New("database error"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedError: &openapi.ErrorResp{
+				Error: openapi.Error{
+					Code:    openapi.INTERNALERROR,
+					Message: "internal server error",
+				},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			mockListChatMessages := mocks.NewMockListChatMessages(t)
+			tt.setupMocks(mockListChatMessages)
+
+			server := &TodoAppServer{
+				ListChatMessagesUseCase: mockListChatMessages,
+			}
+
+			u, err := url.Parse("http://localhost/api/v1/chat/messages")
+			assert.NoError(t, err)
+			q := u.Query()
+			q.Set("page", strconv.Itoa(tt.page))
+			q.Set("pagesize", strconv.Itoa(tt.pageSize))
+			u.RawQuery = q.Encode()
+			req := httptest.NewRequest(http.MethodGet, u.String(), nil)
+
+			w := httptest.NewRecorder()
+
+			openapi.Handler(server).ServeHTTP(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 
 			if tt.expectedBody != nil {
-				var response openapi.BoardSummary
+				var response openapi.ChatHistoryResp
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				assert.NoError(t, err)
 				assert.Equal(t, *tt.expectedBody, response)
@@ -519,48 +593,11 @@ func TestTodoAppServer_GetBoardSummary(t *testing.T) {
 				var response openapi.ErrorResp
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedError.Error, response.Error)
+				assert.Equal(t, *tt.expectedError, response)
 			}
 
-			mockGetBoardSummary.AssertExpectations(t)
+			mockListChatMessages.AssertExpectations(t)
 		})
-	}
-}
-
-func TestTodoAppServer_Run(t *testing.T) {
-	cancelCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	server := &TodoAppServer{
-		Port:   12345,
-		Logger: log.Default(),
-	}
-
-	shutdownCh := make(chan error, 1)
-
-	go func() {
-		shutdownCh <- server.Run(cancelCtx)
-	}()
-
-	for range 10 {
-		err := server.IsReady(cancelCtx)
-		if err == nil {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	cancel()
-
-	select {
-	case err := <-shutdownCh:
-		if err != nil {
-			assert.Fail(t, "server exited with error: %v", err)
-		}
-		assert.NoError(t, err)
-	case <-time.After(5 * time.Second):
-		assert.Fail(t, "server did not shut down in time")
-
 	}
 }
 
