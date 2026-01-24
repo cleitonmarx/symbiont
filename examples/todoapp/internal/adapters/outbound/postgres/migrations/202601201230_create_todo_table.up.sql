@@ -38,3 +38,20 @@ CREATE TABLE outbox_events (
 -- Index for unprocessed events (ordered by creation time for FIFO processing)
 CREATE INDEX IF NOT EXISTS idx_outbox_pending ON outbox_events(status, created_at ASC);
 
+
+CREATE TABLE ai_chat_messages (
+  id UUID PRIMARY KEY,
+  conversation_id text not null DEFAULT 'global',
+  chat_role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  model TEXT,
+  prompt_tokens INT,
+  completion_tokens INT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_convo_created_at
+  ON ai_chat_messages (conversation_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_convo_id
+  ON ai_chat_messages (conversation_id, id);
