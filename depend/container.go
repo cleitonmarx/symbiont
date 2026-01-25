@@ -127,6 +127,10 @@ func ResolveNamed[T any](name string) (T, error) {
 // Resolve retrieves the unnamed registered dependency of the specified type.
 func Resolve[T any]() (T, error) {
 	dep, err := ResolveNamed[T]("")
+	if err != nil {
+		return dep, err
+	}
+
 	logEvent(
 		introspection.DepResolved,
 		reflectx.GetTypeName(reflect.TypeFor[T]()),
@@ -135,7 +139,7 @@ func Resolve[T any]() (T, error) {
 		nil,
 		2,
 	)
-	return dep, err
+	return dep, nil
 }
 
 // ResolveStruct injects dependencies into all struct fields tagged with resolve:"name".

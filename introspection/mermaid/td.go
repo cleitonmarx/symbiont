@@ -135,7 +135,7 @@ func Subline(style Style, format string, args ...any) string {
 // RenderTD renders the graph in Mermaid TD (top-down) format.
 func (g *Graph) RenderTD() string {
 	var b strings.Builder
-	b.WriteString("---\nconfig:\n  layout: elk\n---\n")
+	b.WriteString("---\n  config:\n    layout: elk\n---\n")
 	b.WriteString("graph TD\n")
 
 	// Group nodes by type
@@ -192,9 +192,9 @@ func (g *Graph) RenderTD() string {
 		from := sanitizeID(e.From)
 		to := sanitizeID(e.To)
 		if e.Arrow != "" {
-			fmt.Fprintf(&b, "    %s %s %s\n", from, e.Arrow, to)
+			fmt.Fprintf(&b, "	%s %s %s\n", from, e.Arrow, to)
 		} else {
-			fmt.Fprintf(&b, "    %s --> %s\n", from, to)
+			fmt.Fprintf(&b, "	%s --> %s\n", from, to)
 		}
 	}
 
@@ -202,10 +202,10 @@ func (g *Graph) RenderTD() string {
 	for _, n := range g.Nodes {
 		id := sanitizeID(n.ID)
 		if n.Style.ToCSS() != "" {
-			fmt.Fprintf(&b, "    style %s %s\n", id, n.Style.ToCSS())
+			fmt.Fprintf(&b, "	style %s %s\n", id, n.Style.ToCSS())
 		}
 		if n.Class != "" {
-			fmt.Fprintf(&b, "    class %s %s;\n", id, n.Class)
+			fmt.Fprintf(&b, "	class %s %s;\n", id, n.Class)
 		}
 	}
 
