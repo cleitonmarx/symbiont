@@ -16,13 +16,15 @@ type DeleteTodo interface {
 
 // DeleteTodoImpl is the implementation of the DeleteTodo use case.
 type DeleteTodoImpl struct {
-	uow domain.UnitOfWork
+	uow          domain.UnitOfWork
+	timeProvider domain.CurrentTimeProvider
 }
 
 // NewDeleteTodo creates a new instance of DeleteTodoImpl.
-func NewDeleteTodo(uow domain.UnitOfWork) DeleteTodoImpl {
+func NewDeleteTodo(uow domain.UnitOfWork, timeProvider domain.CurrentTimeProvider) DeleteTodoImpl {
 	return DeleteTodoImpl{
-		uow: uow,
+		uow:          uow,
+		timeProvider: timeProvider,
 	}
 }
 
@@ -36,17 +38,27 @@ func (dti DeleteTodoImpl) Execute(ctx context.Context, todoID uuid.UUID) error {
 		if err != nil {
 			return err
 		}
-		return uow.Todo().DeleteTodo(spanCtx, todoID)
+		err = uow.Todo().DeleteTodo(spanCtx, todoID)
+		if err != nil {
+			return err
+		}
+
+		return uow.Outbox().RecordEvent(spanCtx, domain.TodoEvent{
+			Type:      domain.TodoEventType_TODO_DELETED,
+			TodoID:    todoID,
+			CreatedAt: dti.timeProvider.Now(),
+		})
 	})
 }
 
 // InitDeleteTodo initializes the DeleteTodo use case.
 type InitDeleteTodo struct {
-	Uow domain.UnitOfWork `resolve:""`
+	Uow          domain.UnitOfWork          `resolve:""`
+	TimeProvider domain.CurrentTimeProvider `resolve:""`
 }
 
 // Initialize registers the DeleteTodo use case in the dependency container.
 func (i InitDeleteTodo) Initialize(ctx context.Context) (context.Context, error) {
-	depend.Register[DeleteTodo](NewDeleteTodo(i.Uow))
+	depend.Register[DeleteTodo](NewDeleteTodo(i.Uow, i.TimeProvider))
 	return ctx, nil
 }

@@ -14,6 +14,8 @@ const (
 	TodoEventType_TODO_CREATED TodoEventType = "TODO.CREATED"
 	// TodoEventType_TODO_UPDATED represents the event when a todo item is updated.
 	TodoEventType_TODO_UPDATED TodoEventType = "TODO.UPDATED"
+	// TodoEventType_TODO_DELETED represents the event when a todo item is deleted.
+	TodoEventType_TODO_DELETED TodoEventType = "TODO.DELETED"
 )
 
 // TodoEvent represents a domain event in the system.
