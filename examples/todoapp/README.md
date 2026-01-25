@@ -28,8 +28,8 @@ TodoApp is a comprehensive example application demonstrating the capabilities of
 
 ```mermaid
 ---
-config:
-  layout: elk
+  config:
+    layout: elk
 ---
 graph TD
 	postgres_BoardSummaryRepository["<b><span style='font-size:16px'>domain.BoardSummaryRepository</span></b><br/><span style='color:darkgray;font-size:11px;'>🧩 postgres.BoardSummaryRepository</span><br/><span style='color:darkblue;font-size:11px;'>🏗️ postgres.InitBoardSummaryRepository.Initialize</span><br/><span style='color:gray;font-size:11px;'>📍(postgres/board_summary.go:129)</span><br/><span style='color:green;font-size:11px;'>💉 <b>Dependency</b></span>"]

@@ -135,7 +135,7 @@ func Subline(style Style, format string, args ...any) string {
 // RenderTD renders the graph in Mermaid TD (top-down) format.
 func (g *Graph) RenderTD() string {
 	var b strings.Builder
-	b.WriteString("---\nconfig:\n  layout: elk\n---\n")
+	b.WriteString("---\n  config:\n    layout: elk\n---\n")
 	b.WriteString("graph TD\n")
 
 	// Group nodes by type
