@@ -57,5 +57,8 @@ services:
 
 
 models:
-  llm:
+  gpt-oss:
     model: ai/gpt-oss:latest
+  mistral:
+    model: ai/mistral:latest
+  

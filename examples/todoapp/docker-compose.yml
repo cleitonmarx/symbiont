@@ -23,8 +23,10 @@ services:
       - PUBSUB_TOPIC_ID=Todo
       - PUBSUB_SUBSCRIPTION_ID=todo_summary_generator
       - LLM_MODEL_HOST=http://model-runner.docker.internal
+      - LLM_MODEL=ai/gpt-oss
     models:
-      - llm
+      - gpt-oss
+      - mistral
     depends_on:
       jaeger:
         condition: service_started
