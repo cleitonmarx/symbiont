@@ -26,7 +26,7 @@ func (r *recCloser) Close() { *r.log = append(*r.log, r.name) }
 type ctxKeyType string
 
 const (
-	ctxKeyK ctxKeyType = "k"
+	testContextKey ctxKeyType = "k"
 )
 
 type ctxInitializer struct {
@@ -144,13 +144,13 @@ func TestApp_RunWithContext(t *testing.T) {
 	}{
 		"success_and_closers_lifo": {
 			inits: []Initializer{
-				&ctxInitializer{key: ctxKeyK, val: "v"},
+				&ctxInitializer{key: testContextKey, val: "v"},
 				&recCloser{name: "initA", log: &[]string{}},
 				&recCloser{name: "initB", log: &[]string{}},
 			},
 			runs: []Runnable{
-				&runCloser{name: "run1", log: &[]string{}, ctxKey: ctxKeyK, gotVal: new(string)},
-				&runCloser{name: "run2", log: &[]string{}, ctxKey: ctxKeyK, gotVal: new(string)},
+				&runCloser{name: "run1", log: &[]string{}, ctxKey: testContextKey, gotVal: new(string)},
+				&runCloser{name: "run2", log: &[]string{}, ctxKey: testContextKey, gotVal: new(string)},
 			},
 			validate: func(t *testing.T, tt *testCase, err error) {
 				assert.NoError(t, err)
