@@ -60,8 +60,8 @@ func TestGenerateIntrospectionGraph_Coverage(t *testing.T) {
 	assert.Contains(t, out, "run1 --- SymbiontApp")
 	assert.Contains(t, out, "run2 --- SymbiontApp")
 
-	// Mermaid graph header
-	//assert.True(t, strings.HasPrefix(out, "graph TD"), "output should start with 'graph TD'")
+	// graph type
+	assert.Contains(t, out, "graph TD")
 
 	// No duplicate edges for duplicate runners/initializers
 	assert.Equal(t, 1, strings.Count(out, sanitizeID("initLogger")+" --o DepImpldepName"))
