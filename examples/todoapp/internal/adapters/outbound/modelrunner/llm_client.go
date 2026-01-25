@@ -4,93 +4,32 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/tracing"
+	"github.com/google/uuid"
 )
 
-// LLMClient adapts Docker Model Runner API Client to the domain.LLMClient interface
+// LLMClient adapts DRMAPIClient to domain.LLMClient interface
 type LLMClient struct {
 	client DRMAPIClient
 }
 
-// NewLLMClientAdapter creates a new adapter for the LLM client
+// NewLLMClientAdapter creates a new adapter
 func NewLLMClientAdapter(client DRMAPIClient) LLMClient {
-	return LLMClient{
-		client: client,
-	}
+	return LLMClient{client: client}
 }
 
-// ChatStream implements domain.LLMClient.ChatStream by adapting the underlying client
-func (a LLMClient) ChatStream(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) error {
-	spanCtx, span := tracing.Start(ctx)
-	defer span.End()
-
-	// Adapt domain request to adapter request
-	adapterReq := ChatRequest{
-		Model:    req.Model,
-		Stream:   req.Stream,
-		Messages: make([]ChatMessage, len(req.Messages)),
-	}
-
-	for i, msg := range req.Messages {
-		adapterReq.Messages[i] = ChatMessage{
-			Role:    string(msg.Role),
-			Content: msg.Content,
-		}
-	}
-
-	// Call the underlying client with adapted callback
-	return a.client.ChatStream(spanCtx, adapterReq, func(eventType string, data any) error {
-		// Adapt events from adapter domain to domain layer
-		switch eventType {
-		case "meta":
-			meta := data.(StreamEventMeta)
-			return onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
-				ConversationID:     meta.ConversationID,
-				UserMessageID:      meta.UserMessageID,
-				AssistantMessageID: meta.AssistantMessageID,
-				StartedAt:          meta.StartedAt,
-			})
-
-		case "delta":
-			delta := data.(StreamEventDelta)
-			return onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{
-				Text: delta.Text,
-			})
-
-		case "done":
-			done := data.(StreamEventDone)
-			var domainUsage *domain.LLMUsage
-			if done.Usage != (Usage{}) {
-				domainUsage = &domain.LLMUsage{
-					PromptTokens:     done.Usage.PromptTokens,
-					CompletionTokens: done.Usage.CompletionTokens,
-					TotalTokens:      done.Usage.TotalTokens,
-				}
-			}
-			return onEvent(domain.LLMStreamEventType_Done, domain.LLMStreamEventDone{
-				AssistantMessageID: done.AssistantMessageID.String(),
-				CompletedAt:        done.CompletedAt,
-				Usage:              domainUsage,
-			})
-
-		default:
-			return onEvent(domain.LLMStreamEventType(eventType), data)
-		}
-	})
-}
-
-// Chat implements domain.LLMClient.Chat by adapting the underlying client
+// Chat implements domain.LLMClient.Chat
 func (a LLMClient) Chat(ctx context.Context, req domain.LLMChatRequest) (string, error) {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
-	// Adapt domain request to adapter request
 	adapterReq := ChatRequest{
 		Model:       req.Model,
-		Stream:      req.Stream,
 		Temperature: req.Temperature,
 		TopP:        req.TopP,
 		Messages:    make([]ChatMessage, len(req.Messages)),
@@ -109,12 +48,112 @@ func (a LLMClient) Chat(ctx context.Context, req domain.LLMChatRequest) (string,
 	}
 
 	if len(resp.Choices) == 0 {
-		err := errors.New("llm: no choices in response")
+		err := errors.New("no choices in response")
 		tracing.RecordErrorAndStatus(span, err)
 		return "", err
 	}
 
 	return resp.Choices[0].Message.Content, nil
+}
+
+// ChatStream implements domain.LLMClient.ChatStream
+func (a LLMClient) ChatStream(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) error {
+	spanCtx, span := tracing.Start(ctx)
+	defer span.End()
+
+	adapterReq := ChatRequest{
+		Model:    req.Model,
+		Messages: make([]ChatMessage, len(req.Messages)),
+	}
+
+	for i, msg := range req.Messages {
+		adapterReq.Messages[i] = ChatMessage{
+			Role:    string(msg.Role),
+			Content: msg.Content,
+		}
+	}
+
+	// Send meta event
+	meta := domain.LLMStreamEventMeta{
+		ConversationID:     domain.GlobalConversationID,
+		UserMessageID:      uuid.New(),
+		AssistantMessageID: uuid.New(),
+		StartedAt:          time.Now().UTC(),
+	}
+	if err := onEvent(domain.LLMStreamEventType_Meta, meta); err != nil {
+		return err
+	}
+
+	var finalUsage *Usage
+	estimatedPromptTokens := estimateTokenCount(adapterReq.Messages)
+
+	// Stream chunks
+	err := a.client.ChatStream(spanCtx, adapterReq, func(chunk StreamChunk) error {
+		// Capture usage from chunk
+		if chunk.Usage != nil {
+			finalUsage = chunk.Usage
+		}
+
+		// Extract usage from timings if not provided
+		if chunk.Timings != nil && finalUsage == nil {
+			finalUsage = &Usage{
+				PromptTokens:     chunk.Timings.PromptN,
+				CompletionTokens: chunk.Timings.PredictedN,
+				TotalTokens:      chunk.Timings.PromptN + chunk.Timings.PredictedN,
+			}
+		}
+
+		// Send delta events
+		for _, choice := range chunk.Choices {
+			if choice.Delta.Content != "" {
+				if err := onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{
+					Text: choice.Delta.Content,
+				}); err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// Fallback for usage estimation
+	if finalUsage == nil {
+		finalUsage = &Usage{
+			PromptTokens:     estimatedPromptTokens,
+			CompletionTokens: 0,
+			TotalTokens:      estimatedPromptTokens,
+		}
+	} else if finalUsage.PromptTokens < estimatedPromptTokens {
+		finalUsage.PromptTokens = estimatedPromptTokens
+		finalUsage.TotalTokens = finalUsage.PromptTokens + finalUsage.CompletionTokens
+	}
+
+	// Send done event
+	done := domain.LLMStreamEventDone{
+		AssistantMessageID: meta.AssistantMessageID.String(),
+		CompletedAt:        time.Now().UTC().Format(time.RFC3339),
+		Usage: &domain.LLMUsage{
+			PromptTokens:     finalUsage.PromptTokens,
+			CompletionTokens: finalUsage.CompletionTokens,
+			TotalTokens:      finalUsage.TotalTokens,
+		},
+	}
+	return onEvent(domain.LLMStreamEventType_Done, done)
+}
+
+// estimateTokenCount estimates tokens from messages
+func estimateTokenCount(messages []ChatMessage) int {
+	totalWords := 0
+	for _, msg := range messages {
+		totalWords += 4 // message overhead
+		totalWords += len(strings.Fields(msg.Content))
+	}
+	return int(float64(totalWords) * 1.3)
 }
 
 // InitLLMClient initializes the LLMClient dependency
@@ -123,7 +162,7 @@ type InitLLMClient struct {
 	LLMHost    string       `config:"LLM_MODEL_HOST"`
 }
 
-// Initialize registers the LLMClient in the dependency container
+// Initialize registers the LLMClient
 func (i InitLLMClient) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[domain.LLMClient](NewLLMClientAdapter(
 		NewDRMAPIClient(i.LLMHost, "", i.HttpClient),

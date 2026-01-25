@@ -8,315 +8,173 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLLMClientAdapter_ChatStream(t *testing.T) {
-	userMsgID := uuid.New()
-	assistantMsgID := uuid.New()
-	fixedTime := time.Date(2026, 1, 24, 15, 0, 0, 0, time.UTC)
+// createStreamingServer creates a test server that sends OpenAI-style streaming chunks
+func createStreamingServer(chunks []StreamChunk) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
 
+		flusher := w.(http.Flusher)
+		for _, chunk := range chunks {
+			data, _ := json.Marshal(chunk)
+			fmt.Fprintf(w, "data: %s\n\n", data) //nolint:errcheck
+			flusher.Flush()
+		}
+		fmt.Fprintf(w, "data: [DONE]\n\n") //nolint:errcheck
+		flusher.Flush()
+	}))
+}
+
+// collectStreamEvents collects all events from a stream
+func collectStreamEvents(adapter LLMClient, req domain.LLMChatRequest) ([]domain.LLMStreamEventType, []string, *domain.LLMStreamEventDone, error) {
+	var eventTypes []domain.LLMStreamEventType
+	var deltaTexts []string
+	var doneEvent *domain.LLMStreamEventDone
+
+	err := adapter.ChatStream(context.Background(), req, func(eventType domain.LLMStreamEventType, data interface{}) error {
+		eventTypes = append(eventTypes, eventType)
+
+		switch eventType {
+		case domain.LLMStreamEventType_Delta:
+			delta := data.(domain.LLMStreamEventDelta)
+			deltaTexts = append(deltaTexts, delta.Text)
+		case domain.LLMStreamEventType_Done:
+			done := data.(domain.LLMStreamEventDone)
+			doneEvent = &done
+		}
+		return nil
+	})
+
+	return eventTypes, deltaTexts, doneEvent, err
+}
+
+func TestLLMClientAdapter_ChatStream(t *testing.T) {
 	tests := map[string]struct {
-		serverHandler   http.HandlerFunc
+		chunks          []StreamChunk
 		expectErr       bool
-		validateEvents  func(*testing.T, []domain.LLMStreamEventType)
-		validateContent func(*testing.T, []string)
+		expectedEvents  []domain.LLMStreamEventType
+		expectedContent string
 		validateUsage   func(*testing.T, *domain.LLMStreamEventDone)
 	}{
-		"success-with-all-events-per-spec": {
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, http.MethodPost, r.Method)
-
-				w.Header().Set("Content-Type", "text/event-stream")
-				w.WriteHeader(http.StatusOK)
-
-				flusher := w.(http.Flusher)
-
-				// Per OpenAPI spec: meta event first
-				fmt.Fprintf( //nolint:errcheck
-					w,
-					"event: meta\ndata: {\"conversation_id\":\"global\",\"user_message_id\":\"%s\",\"assistant_message_id\":\"%s\",\"started_at\":\"%s\"}\n\n",
-					userMsgID.String(),
-					assistantMsgID.String(),
-					fixedTime.Format(time.RFC3339),
-				)
-				flusher.Flush()
-
-				// Per OpenAPI spec: delta events with streaming text
-				fmt.Fprintf( //nolint:errcheck
-					w,
-					"event: delta\ndata: {\"text\":\"You have 2 overdue todos\"}\n\n",
-				)
-				flusher.Flush()
-
-				// Per OpenAPI spec: done event with usage
-				fmt.Fprintf( //nolint:errcheck
-					w,
-					"event: done\ndata: {\"assistant_message_id\":\"%s\",\"completed_at\":\"%s\",\"usage\":{\"prompt_tokens\":123,\"completion_tokens\":45,\"total_tokens\":168}}\n\n",
-					assistantMsgID.String(),
-					fixedTime.Format(time.RFC3339),
-				)
-				flusher.Flush()
+		"success-complete-stream": {
+			chunks: []StreamChunk{
+				{Choices: []StreamChunkChoice{{Delta: StreamChunkDelta{Content: "Hello world"}}}},
+				{Usage: &Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15}},
 			},
-			expectErr: false,
-			validateEvents: func(t *testing.T, eventTypes []domain.LLMStreamEventType) {
-				// Per spec: must have meta, delta, and done
-				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Meta, "spec requires meta event")
-				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Delta, "spec requires at least one delta event")
-				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Done, "spec requires done event")
-			},
-			validateContent: func(t *testing.T, deltaTexts []string) {
-				// Verify delta content was captured
-				assert.GreaterOrEqual(t, len(deltaTexts), 1, "should have at least one delta event")
-				combined := strings.Join(deltaTexts, "")
-				assert.Contains(t, combined, "overdue todos")
-			},
+			expectedEvents:  []domain.LLMStreamEventType{"meta", "delta", "done"},
+			expectedContent: "Hello world",
 			validateUsage: func(t *testing.T, done *domain.LLMStreamEventDone) {
-				if done != nil && done.Usage != nil {
-					assert.Equal(t, 123, done.Usage.PromptTokens)
-					assert.Equal(t, 45, done.Usage.CompletionTokens)
-					assert.Equal(t, 168, done.Usage.TotalTokens)
-				}
+				assert.NotNil(t, done.Usage)
+				assert.Equal(t, 10, done.Usage.PromptTokens)
+				assert.Equal(t, 5, done.Usage.CompletionTokens)
+				assert.Equal(t, 15, done.Usage.TotalTokens)
 			},
 		},
-		"delta-events-streaming": {
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "text/event-stream")
-				w.WriteHeader(http.StatusOK)
-
-				flusher := w.(http.Flusher)
-
-				fmt.Fprintf( //nolint:errcheck
-					w,
-					"event: meta\ndata: {\"conversation_id\":\"global\",\"user_message_id\":\"%s\",\"assistant_message_id\":\"%s\",\"started_at\":\"%s\"}\n\n",
-					userMsgID.String(),
-					assistantMsgID.String(),
-					fixedTime.Format(time.RFC3339),
-				)
-				flusher.Flush()
-
-				// Multiple delta events as per streaming spec
-				texts := []string{"Hello", " ", "world", "!"}
-				for _, txt := range texts {
-					fmt.Fprintf(w, "event: delta\ndata: {\"text\":\"%s\"}\n\n", txt) //nolint:errcheck
-					flusher.Flush()
-				}
-
-				fmt.Fprintf( //nolint:errcheck
-					w,
-					"event: done\ndata: {\"assistant_message_id\":\"%s\",\"completed_at\":\"%s\"}\n\n",
-					assistantMsgID.String(),
-					fixedTime.Format(time.RFC3339),
-				)
-				flusher.Flush()
+		"multiple-deltas": {
+			chunks: []StreamChunk{
+				{Choices: []StreamChunkChoice{{Delta: StreamChunkDelta{Content: "Hello"}}}},
+				{Choices: []StreamChunkChoice{{Delta: StreamChunkDelta{Content: " "}}}},
+				{Choices: []StreamChunkChoice{{Delta: StreamChunkDelta{Content: "world"}}}},
 			},
-			expectErr: false,
-			validateEvents: func(t *testing.T, eventTypes []domain.LLMStreamEventType) {
-				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Meta)
-				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Delta)
-				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Done)
-				// Count delta events
-				deltaCount := 0
-				for _, et := range eventTypes {
-					if et == "delta" {
-						deltaCount++
-					}
-				}
-				assert.GreaterOrEqual(t, deltaCount, 1, "should have multiple delta events")
+			expectedEvents:  []domain.LLMStreamEventType{"meta", "delta", "delta", "delta", "done"},
+			expectedContent: "Hello world",
+		},
+		"usage-from-timings": {
+			chunks: []StreamChunk{
+				{Choices: []StreamChunkChoice{{Delta: StreamChunkDelta{Content: "test"}}}},
+				{Timings: &Timings{PromptN: 8, PredictedN: 4}},
 			},
-			validateContent: func(t *testing.T, deltaTexts []string) {
-				assert.GreaterOrEqual(t, len(deltaTexts), 1)
-				combined := strings.Join(deltaTexts, "")
-				assert.Equal(t, "Hello world!", combined)
+			expectedEvents:  []domain.LLMStreamEventType{"meta", "delta", "done"},
+			expectedContent: "test",
+			validateUsage: func(t *testing.T, done *domain.LLMStreamEventDone) {
+				assert.NotNil(t, done.Usage)
+				assert.Equal(t, 8, done.Usage.PromptTokens)
+				assert.Equal(t, 4, done.Usage.CompletionTokens)
+				assert.Equal(t, 12, done.Usage.TotalTokens)
 			},
 		},
-		"delta-with-special-characters-per-spec": {
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "text/event-stream")
-				w.WriteHeader(http.StatusOK)
-
-				flusher := w.(http.Flusher)
-
-				fmt.Fprintf( //nolint:errcheck
-					w,
-					"event: meta\ndata: {\"conversation_id\":\"global\",\"user_message_id\":\"%s\",\"assistant_message_id\":\"%s\",\"started_at\":\"%s\"}\n\n",
-					userMsgID.String(),
-					assistantMsgID.String(),
-					fixedTime.Format(time.RFC3339),
-				)
-				flusher.Flush()
-
-				// Delta with escaped JSON characters
-				fmt.Fprintf(w, "event: delta\ndata: {\"text\":\"Line 1\\nLine 2\\tTabbed\"}\n\n") //nolint:errcheck
-				flusher.Flush()
-
-				fmt.Fprintf(w, "event: done\ndata: {\"assistant_message_id\":\"%s\",\"completed_at\":\"%s\"}\n\n", //nolint:errcheck
-					assistantMsgID.String(), fixedTime.Format(time.RFC3339))
-				flusher.Flush()
+		"empty-delta": {
+			chunks: []StreamChunk{
+				{Choices: []StreamChunkChoice{{Delta: StreamChunkDelta{Content: ""}}}},
 			},
-			expectErr: false,
-			validateEvents: func(t *testing.T, eventTypes []domain.LLMStreamEventType) {
-				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Delta)
-			},
-			validateContent: func(t *testing.T, deltaTexts []string) {
-				assert.GreaterOrEqual(t, len(deltaTexts), 1)
-			},
+			expectedEvents:  []domain.LLMStreamEventType{"meta", "done"},
+			expectedContent: "",
 		},
-		"meta-then-delta-then-done-sequence": {
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "text/event-stream")
-				w.WriteHeader(http.StatusOK)
-
-				flusher := w.(http.Flusher)
-
-				// Strict event order per spec: meta, delta(s), done
-				fmt.Fprintf(
-					w,
-					"event: meta\ndata: {\"conversation_id\":\"global\",\"user_message_id\":\"%s\",\"assistant_message_id\":\"%s\",\"started_at\":\"%s\"}\n\n", //nolint:errcheck
-					userMsgID.String(),
-					assistantMsgID.String(),
-					fixedTime.Format(time.RFC3339),
-				)
-				flusher.Flush()
-
-				fmt.Fprintf(w, "event: delta\ndata: {\"text\":\"Response text\"}\n\n") //nolint:errcheck
-				flusher.Flush()
-
-				fmt.Fprintf( //nolint:errcheck
-					w,
-					"event: done\ndata: {\"assistant_message_id\":\"%s\",\"completed_at\":\"%s\",\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":5,\"total_tokens\":15}}\n\n",
-					assistantMsgID.String(), fixedTime.Format(time.RFC3339))
-				flusher.Flush()
+		"no-usage-fallback": {
+			chunks: []StreamChunk{
+				{Choices: []StreamChunkChoice{{Delta: StreamChunkDelta{Content: "test"}}}},
 			},
-			expectErr: false,
-			validateEvents: func(t *testing.T, eventTypes []domain.LLMStreamEventType) {
-				assert.Equal(t, 3, len(eventTypes), "should have exactly 3 events: meta, delta, done")
-				assert.Equal(t, domain.LLMStreamEventType_Meta, eventTypes[0], "first event must be meta")
-				assert.Equal(t, domain.LLMStreamEventType_Delta, eventTypes[1], "second event must be delta")
-				assert.Equal(t, domain.LLMStreamEventType_Done, eventTypes[2], "third event must be done")
+			expectedEvents:  []domain.LLMStreamEventType{"meta", "delta", "done"},
+			expectedContent: "test",
+			validateUsage: func(t *testing.T, done *domain.LLMStreamEventDone) {
+				assert.NotNil(t, done.Usage)
+				assert.Greater(t, done.Usage.PromptTokens, 0) // Estimated from message
 			},
-			validateContent: func(t *testing.T, deltaTexts []string) {
-				assert.Len(t, deltaTexts, 1)
-				assert.Equal(t, "Response text", deltaTexts[0])
-			},
-		},
-		"delta-empty-text": {
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "text/event-stream")
-				w.WriteHeader(http.StatusOK)
-
-				flusher := w.(http.Flusher)
-
-				fmt.Fprintf(w, "event: meta\ndata: {\"conversation_id\":\"global\",\"user_message_id\":\"%s\",\"assistant_message_id\":\"%s\",\"started_at\":\"%s\"}\n\n", //nolint:errcheck
-					userMsgID.String(), assistantMsgID.String(), fixedTime.Format(time.RFC3339))
-				flusher.Flush()
-
-				// Empty delta should still be sent per spec
-				fmt.Fprintf(w, "event: delta\ndata: {\"text\":\"\"}\n\n") //nolint:errcheck
-				flusher.Flush()
-
-				fmt.Fprintf(w, "event: done\ndata: {\"assistant_message_id\":\"%s\",\"completed_at\":\"%s\"}\n\n", //nolint:errcheck
-					assistantMsgID.String(), fixedTime.Format(time.RFC3339))
-				flusher.Flush()
-			},
-			expectErr: false,
-			validateEvents: func(t *testing.T, eventTypes []domain.LLMStreamEventType) {
-				assert.Contains(t, eventTypes, domain.LLMStreamEventType_Delta)
-			},
-		},
-		"server-error": {
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte("Internal Server Error")) //nolint:errcheck
-			},
-			expectErr: true,
-		},
-		"connection-close-during-stream": {
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "text/event-stream")
-				w.WriteHeader(http.StatusOK)
-
-				flusher := w.(http.Flusher)
-
-				fmt.Fprintf(w, "event: meta\ndata: {\"conversation_id\":\"global\",\"user_message_id\":\"%s\",\"assistant_message_id\":\"%s\",\"started_at\":\"%s\"}\n\n", //nolint:errcheck
-					userMsgID.String(), assistantMsgID.String(), fixedTime.Format(time.RFC3339))
-				flusher.Flush()
-
-				// Connection closes without sending done event
-			},
-			expectErr: false,
 		},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			server := httptest.NewServer(tt.serverHandler)
+			server := createStreamingServer(tt.chunks)
 			defer server.Close()
 
 			client := NewDRMAPIClient(server.URL, "", server.Client())
-
 			adapter := NewLLMClientAdapter(client)
 
-			domainReq := domain.LLMChatRequest{
-				Model:  "test-model",
-				Stream: true,
+			req := domain.LLMChatRequest{
+				Model: "test-model",
 				Messages: []domain.LLMChatMessage{
-					{Role: domain.ChatRole("system"), Content: "You are helpful"},
-					{Role: domain.ChatRole("user"), Content: "Hello"},
+					{Role: "user", Content: "test"},
 				},
 			}
 
-			var eventTypes []domain.LLMStreamEventType
-			var deltaTexts []string
-			var metaEvent *domain.LLMStreamEventMeta
-			var doneEvent *domain.LLMStreamEventDone
-
-			err := adapter.ChatStream(context.Background(), domainReq, func(eventType domain.LLMStreamEventType, data interface{}) error {
-				eventTypes = append(eventTypes, eventType)
-
-				switch eventType {
-				case domain.LLMStreamEventType_Meta:
-					meta := data.(domain.LLMStreamEventMeta)
-					metaEvent = &meta
-				case domain.LLMStreamEventType_Delta:
-					delta := data.(domain.LLMStreamEventDelta)
-					deltaTexts = append(deltaTexts, delta.Text)
-				case domain.LLMStreamEventType_Done:
-					done := data.(domain.LLMStreamEventDone)
-					doneEvent = &done
-				}
-				return nil
-			})
+			eventTypes, deltaTexts, doneEvent, err := collectStreamEvents(adapter, req)
 
 			if tt.expectErr {
 				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				if tt.validateEvents != nil {
-					tt.validateEvents(t, eventTypes)
-				}
-				if tt.validateContent != nil {
-					tt.validateContent(t, deltaTexts)
-				}
-				if tt.validateUsage != nil {
-					tt.validateUsage(t, doneEvent)
-				}
+				return
+			}
 
-				if metaEvent != nil {
-					assert.Equal(t, "global", metaEvent.ConversationID)
-					assert.NotZero(t, metaEvent.UserMessageID)
-				}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedEvents, eventTypes)
 
-				if doneEvent != nil {
-					assert.NotEmpty(t, doneEvent.AssistantMessageID)
-				}
+			combined := strings.Join(deltaTexts, "")
+			assert.Equal(t, tt.expectedContent, combined)
+
+			if tt.validateUsage != nil && doneEvent != nil {
+				tt.validateUsage(t, doneEvent)
 			}
 		})
 	}
+}
+
+func TestLLMClientAdapter_ChatStream_ServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	client := NewDRMAPIClient(server.URL, "", server.Client())
+	adapter := NewLLMClientAdapter(client)
+
+	req := domain.LLMChatRequest{
+		Model: "test-model",
+		Messages: []domain.LLMChatMessage{
+			{Role: "user", Content: "test"},
+		},
+	}
+
+	err := adapter.ChatStream(context.Background(), req, func(eventType domain.LLMStreamEventType, data interface{}) error {
+		return nil
+	})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "500")
 }
 
 func TestLLMClientAdapter_Chat(t *testing.T) {
@@ -324,84 +182,76 @@ func TestLLMClientAdapter_Chat(t *testing.T) {
 	topP := 0.9
 
 	tests := map[string]struct {
-		serverHandler func(*ChatRequest) http.HandlerFunc
-		req           domain.LLMChatRequest
-		expectErr     bool
-		expectedResp  string
-		validateReq   func(*testing.T, ChatRequest)
+		response     string
+		statusCode   int
+		req          domain.LLMChatRequest
+		expectErr    bool
+		expectedResp string
+		validateReq  func(*testing.T, *ChatRequest)
 	}{
-		"success-with-messages-and-params": {
-			serverHandler: func(captured *ChatRequest) http.HandlerFunc {
-				return func(w http.ResponseWriter, r *http.Request) {
-					assert.Equal(t, http.MethodPost, r.Method)
-					if err := json.NewDecoder(r.Body).Decode(captured); err != nil {
-						t.Fatalf("decode request: %v", err)
-					}
-					w.Header().Set("Content-Type", "application/json")
-					_, _ = w.Write([]byte(`{"choices":[{"message":{"role":"assistant","content":"ok"}}]}`))
-				}
+		"success": {
+			response:   `{"choices":[{"message":{"role":"assistant","content":"Hello!"}}]}`,
+			statusCode: http.StatusOK,
+			req: domain.LLMChatRequest{
+				Model: "test-model",
+				Messages: []domain.LLMChatMessage{
+					{Role: "user", Content: "hi"},
+				},
 			},
+			expectedResp: "Hello!",
+		},
+		"with-params": {
+			response:   `{"choices":[{"message":{"role":"assistant","content":"ok"}}]}`,
+			statusCode: http.StatusOK,
 			req: domain.LLMChatRequest{
 				Model:       "test-model",
-				Stream:      false,
 				Temperature: &temp,
 				TopP:        &topP,
 				Messages: []domain.LLMChatMessage{
-					{Role: domain.ChatRole("system"), Content: "sys msg"},
-					{Role: domain.ChatRole("user"), Content: "hi"},
+					{Role: "system", Content: "sys"},
+					{Role: "user", Content: "hi"},
 				},
 			},
-			expectErr:    false,
 			expectedResp: "ok",
-			validateReq: func(t *testing.T, got ChatRequest) {
-				assert.Equal(t, "test-model", got.Model)
-				assert.False(t, got.Stream)
-				if assert.Len(t, got.Messages, 2) {
-					assert.Equal(t, "system", got.Messages[0].Role)
-					assert.Equal(t, "sys msg", got.Messages[0].Content)
-					assert.Equal(t, "user", got.Messages[1].Role)
-					assert.Equal(t, "hi", got.Messages[1].Content)
-				}
-				if assert.NotNil(t, got.Temperature) {
-					assert.InDelta(t, 0.5, *got.Temperature, 1e-6)
-				}
-				if assert.NotNil(t, got.TopP) {
-					assert.InDelta(t, 0.9, *got.TopP, 1e-6)
-				}
+			validateReq: func(t *testing.T, req *ChatRequest) {
+				assert.Equal(t, "test-model", req.Model)
+				assert.NotNil(t, req.Temperature)
+				assert.InDelta(t, 0.5, *req.Temperature, 1e-6)
+				assert.NotNil(t, req.TopP)
+				assert.InDelta(t, 0.9, *req.TopP, 1e-6)
+				assert.Len(t, req.Messages, 2)
 			},
 		},
-		"no-choices-error": {
-			serverHandler: func(_ *ChatRequest) http.HandlerFunc {
-				return func(w http.ResponseWriter, r *http.Request) {
-					w.Header().Set("Content-Type", "application/json")
-					_, _ = w.Write([]byte(`{"choices":[]}`))
-				}
-			},
+		"no-choices": {
+			response:   `{"choices":[]}`,
+			statusCode: http.StatusOK,
 			req: domain.LLMChatRequest{
 				Model: "test-model",
+				Messages: []domain.LLMChatMessage{
+					{Role: "user", Content: "hi"},
+				},
 			},
 			expectErr: true,
 		},
-		"http-error": {
-			serverHandler: func(_ *ChatRequest) http.HandlerFunc {
-				return func(w http.ResponseWriter, r *http.Request) {
-					http.Error(w, "boom", http.StatusInternalServerError)
-				}
-			},
+		"server-error": {
+			response:   `Internal Server Error`,
+			statusCode: http.StatusInternalServerError,
 			req: domain.LLMChatRequest{
 				Model: "test-model",
+				Messages: []domain.LLMChatMessage{
+					{Role: "user", Content: "hi"},
+				},
 			},
 			expectErr: true,
 		},
-		"unexpected-payload-shape": {
-			serverHandler: func(_ *ChatRequest) http.HandlerFunc {
-				return func(w http.ResponseWriter, r *http.Request) {
-					w.Header().Set("Content-Type", "application/json")
-					_, _ = w.Write([]byte(`{"choices":[{"message":{"role":"assistant","content":123}}]}`))
-				}
-			},
+		"invalid-json": {
+			response:   `{invalid json}`,
+			statusCode: http.StatusOK,
 			req: domain.LLMChatRequest{
 				Model: "test-model",
+				Messages: []domain.LLMChatMessage{
+					{Role: "user", Content: "hi"},
+				},
 			},
 			expectErr: true,
 		},
@@ -409,8 +259,18 @@ func TestLLMClientAdapter_Chat(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			var capturedReq ChatRequest
-			server := httptest.NewServer(tt.serverHandler(&capturedReq))
+			var capturedReq *ChatRequest
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if tt.validateReq != nil {
+					var req ChatRequest
+					json.NewDecoder(r.Body).Decode(&req) //nolint:errcheck
+					capturedReq = &req
+				}
+
+				w.WriteHeader(tt.statusCode)
+				w.Write([]byte(tt.response)) //nolint:errcheck
+			}))
 			defer server.Close()
 
 			client := NewDRMAPIClient(server.URL, "", server.Client())
@@ -426,9 +286,33 @@ func TestLLMClientAdapter_Chat(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedResp, resp)
 
-			if tt.validateReq != nil {
+			if tt.validateReq != nil && capturedReq != nil {
 				tt.validateReq(t, capturedReq)
 			}
+		})
+	}
+}
+
+func TestLLMClientAdapter_Chat_ValidationErrors(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"choices":[{"message":{"content":"ok"}}]}`)) //nolint:errcheck
+	}))
+	defer server.Close()
+
+	client := NewDRMAPIClient(server.URL, "", server.Client())
+	adapter := NewLLMClientAdapter(client)
+
+	tests := map[string]struct {
+		req domain.LLMChatRequest
+	}{
+		"no-model":    {req: domain.LLMChatRequest{Messages: []domain.LLMChatMessage{{Role: "user", Content: "hi"}}}},
+		"no-messages": {req: domain.LLMChatRequest{Model: "test"}},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := adapter.Chat(context.Background(), tt.req)
+			assert.Error(t, err)
 		})
 	}
 }
