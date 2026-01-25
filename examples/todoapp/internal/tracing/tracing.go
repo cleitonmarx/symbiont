@@ -136,13 +136,14 @@ func newTracerProvider(ctx context.Context) (*sdktrace.TracerProvider, sdktrace.
 // InitHttpClient initializes an HTTP client instrumented with OpenTelemetry
 // and with retry capabilities.
 type InitHttpClient struct {
+	Logger *log.Logger `resolve:""`
 }
 
 func (i InitHttpClient) Initialize(ctx context.Context) (context.Context, error) {
 	retryClient := retryablehttp.NewClient()
-	retryClient.RetryWaitMax = 10 * time.Second
-	retryClient.RetryMax = 10
-	retryClient.Logger = nil
+	retryClient.RetryWaitMax = 5 * time.Second
+	retryClient.RetryMax = 5
+	retryClient.Logger = i.Logger
 
 	stdClient := retryClient.StandardClient()
 	stdClient.Transport = otelhttp.NewTransport(
