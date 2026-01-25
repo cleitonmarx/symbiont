@@ -18,33 +18,34 @@ const (
 
 // LLMChatMessage represents a message in a chat request to the LLM API
 type LLMChatMessage struct {
-	Role    ChatRole `json:"role" yaml:"role"`
-	Content string   `json:"content" yaml:"content"`
+	Role    ChatRole
+	Content string
 }
 
 // LLMChatRequest represents a request to the LLM API
 type LLMChatRequest struct {
-	Model    string           `json:"model"`
-	Messages []LLMChatMessage `json:"messages"`
-	Stream   bool             `json:"stream"`
+	Model    string
+	Messages []LLMChatMessage
+	Stream   bool
 	// Optional parameters
-	Temperature *float64 `json:"temperature,omitempty"`
-	TopP        *float64 `json:"top_p,omitempty"`
+	Temperature *float64
+	TopP        *float64
+	MaxTokens   *int
 }
 
 // LLMUsage represents token usage information from the LLM
 type LLMUsage struct {
-	PromptTokens     int `json:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"`
-	TotalTokens      int `json:"total_tokens"`
+	PromptTokens     int
+	CompletionTokens int
+	TotalTokens      int
 }
 
 // LLMStreamEventMeta contains metadata for a streaming chat session
 type LLMStreamEventMeta struct {
-	ConversationID     string    `json:"conversation_id"`
-	UserMessageID      uuid.UUID `json:"user_message_id"`
-	AssistantMessageID uuid.UUID `json:"assistant_message_id"`
-	StartedAt          time.Time `json:"started_at"`
+	ConversationID     string
+	UserMessageID      uuid.UUID
+	AssistantMessageID uuid.UUID
+	StartedAt          time.Time
 }
 
 // LLMStreamEventDelta contains a text delta from the stream
@@ -54,9 +55,9 @@ type LLMStreamEventDelta struct {
 
 // LLMStreamEventDone contains completion metadata and token usage
 type LLMStreamEventDone struct {
-	AssistantMessageID string    `json:"assistant_message_id"`
-	CompletedAt        string    `json:"completed_at"`
-	Usage              *LLMUsage `json:"usage,omitempty"`
+	AssistantMessageID string
+	CompletedAt        string
+	Usage              *LLMUsage
 }
 
 // LLMStreamEventCallback is called for each event in the stream

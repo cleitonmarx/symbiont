@@ -32,6 +32,7 @@ func (a LLMClient) Chat(ctx context.Context, req domain.LLMChatRequest) (string,
 		Model:       req.Model,
 		Temperature: req.Temperature,
 		TopP:        req.TopP,
+		MaxTokens:   req.MaxTokens,
 		Messages:    make([]ChatMessage, len(req.Messages)),
 	}
 
