@@ -64,11 +64,11 @@ import (
 )
 
 type LoggerInitializer struct{
-	Prefix `config:"LOG_PREFIX" default:"app"`
+	LogPrefix `config:"LOG_PREFIX" default:"app"`
 }
 
 func (i *LoggerInitializer) Initialize(ctx context.Context) (context.Context, error) {
-	logger := log.New(os.Stdout, i.Prefix, log.LstdFlags)
+	logger := log.New(os.Stdout, i.LogPrefix, log.LstdFlags)
 	depend.Register[*log.Logger](logger)
 	return ctx, nil
 }
