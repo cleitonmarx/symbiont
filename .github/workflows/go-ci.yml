@@ -36,7 +36,7 @@ jobs:
       - name: Run Tests
         run: go test -v -race ./...
       - name: Coverage Report
-        run: go test -covermode=count -coverprofile=profile.cov ./...
+        run: go test -coverprofile=coverage.txt
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
