@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain/mocks"
 	"github.com/google/uuid"
@@ -283,4 +284,17 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInitStreamChat_Initialize(t *testing.T) {
+	i := InitStreamChat{}
+
+	ctx, err := i.Initialize(context.Background())
+	assert.NoError(t, err)
+	assert.NotNil(t, ctx)
+
+	// Verify that the StreamChat use case is registered
+	streamChatUseCase, err := depend.Resolve[StreamChat]()
+	assert.NoError(t, err)
+	assert.NotNil(t, streamChatUseCase)
 }
