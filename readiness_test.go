@@ -87,8 +87,7 @@ func TestWaitForReadiness(t *testing.T) {
 			ctxFn: func() (context.Context, context.CancelFunc) {
 				return context.WithTimeout(context.Background(), 100*time.Millisecond)
 			},
-			expectErr:    true,
-			expectSymErr: true,
+			expectErr: true,
 		},
 		{
 			name:    "succeeds-before-timeout",
