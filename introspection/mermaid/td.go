@@ -192,9 +192,9 @@ func (g *Graph) RenderTD() string {
 		from := sanitizeID(e.From)
 		to := sanitizeID(e.To)
 		if e.Arrow != "" {
-			fmt.Fprintf(&b, "    %s %s %s\n", from, e.Arrow, to)
+			fmt.Fprintf(&b, "	%s %s %s\n", from, e.Arrow, to)
 		} else {
-			fmt.Fprintf(&b, "    %s --> %s\n", from, to)
+			fmt.Fprintf(&b, "	%s --> %s\n", from, to)
 		}
 	}
 
@@ -202,10 +202,10 @@ func (g *Graph) RenderTD() string {
 	for _, n := range g.Nodes {
 		id := sanitizeID(n.ID)
 		if n.Style.ToCSS() != "" {
-			fmt.Fprintf(&b, "    style %s %s\n", id, n.Style.ToCSS())
+			fmt.Fprintf(&b, "	style %s %s\n", id, n.Style.ToCSS())
 		}
 		if n.Class != "" {
-			fmt.Fprintf(&b, "    class %s %s;\n", id, n.Class)
+			fmt.Fprintf(&b, "	class %s %s;\n", id, n.Class)
 		}
 	}
 
