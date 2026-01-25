@@ -182,7 +182,7 @@ type InitGenerateBoardSummary struct {
 	TodoRepo     domain.TodoRepository         `resolve:""`
 	TimeProvider domain.CurrentTimeProvider    `resolve:""`
 	LLMClient    domain.LLMClient              `resolve:""`
-	Model        string                        `config:"LLM_MODEL" default:"ai/gpt-oss"`
+	Model        string                        `config:"LLM_MODEL"`
 }
 
 // Initialize registers the GenerateBoardSummary use case implementation.
