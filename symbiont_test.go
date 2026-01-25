@@ -23,8 +23,10 @@ func (r *recCloser) Initialize(ctx context.Context) (context.Context, error) { r
 
 func (r *recCloser) Close() { *r.log = append(*r.log, r.name) }
 
+type ctxKeyType string
+
 type ctxInitializer struct {
-	key string
+	key ctxKeyType
 	val string
 }
 
@@ -60,7 +62,7 @@ func (r *runCloser) Run(ctx context.Context) error {
 		return errors.New("run error")
 	}
 	if r.gotVal != nil && r.ctxKey != "" {
-		if v := ctx.Value(r.ctxKey); v != nil {
+		if v := ctx.Value(ctxKeyType(r.ctxKey)); v != nil {
 			*r.gotVal = v.(string)
 		}
 	}
@@ -138,13 +140,13 @@ func TestApp_RunWithContext(t *testing.T) {
 	}{
 		"success_and_closers_lifo": {
 			inits: []Initializer{
-				&ctxInitializer{key: "k", val: "v"},
+				&ctxInitializer{key: ctxKeyType("k"), val: "v"},
 				&recCloser{name: "initA", log: &[]string{}},
 				&recCloser{name: "initB", log: &[]string{}},
 			},
 			runs: []Runnable{
-				&runCloser{name: "run1", log: &[]string{}, ctxKey: "k", gotVal: new(string)},
-				&runCloser{name: "run2", log: &[]string{}, ctxKey: "k", gotVal: new(string)},
+				&runCloser{name: "run1", log: &[]string{}, ctxKey: string(ctxKeyType("k")), gotVal: new(string)},
+				&runCloser{name: "run2", log: &[]string{}, ctxKey: string(ctxKeyType("k")), gotVal: new(string)},
 			},
 			validate: func(t *testing.T, tt *testCase, err error) {
 				assert.NoError(t, err)
