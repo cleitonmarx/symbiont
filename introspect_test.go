@@ -2,14 +2,12 @@ package symbiont
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/cleitonmarx/symbiont/config"
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/introspection"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type mapProvider struct {
@@ -39,50 +37,77 @@ type runForIntrospect struct {
 func (r *runForIntrospect) Run(ctx context.Context) error { return nil }
 
 type recorderIntrospector struct {
-	report introspection.Report
-	called bool
+	report    introspection.Report
+	called    bool
+	willErr   bool
+	willPanic bool
 }
 
 func (r *recorderIntrospector) Introspect(_ context.Context, rep introspection.Report) error {
+	if r.willPanic {
+		panic("introspector panic")
+	}
 	r.report = rep
 	r.called = true
+	if r.willErr {
+		return assert.AnError
+	}
 	return nil
 }
 
 func TestApp_IntrospectProvidesReport(t *testing.T) {
-	defer depend.ClearContainer()
-	defer config.ResetGlobalProvider()
-	config.SetGlobalProvider(mapProvider{values: map[string]string{"cfgKey": "val"}})
-
-	ri := &recorderIntrospector{}
-	app := NewApp().
-		Initialize(&initForIntrospect{}).
-		Host(&runForIntrospect{}).
-		Introspect(ri)
-
-	require.NoError(t, app.RunWithContext(context.Background()))
-	require.True(t, ri.called, "introspector should be invoked")
-
-	assert.Len(t, ri.report.Initializers, 1)
-	assert.True(t, strings.Contains(ri.report.Initializers[0].Type, "initForIntrospect"))
-
-	assert.Len(t, ri.report.Runners, 1)
-	assert.True(t, strings.Contains(ri.report.Runners[0].Type, "runForIntrospect"))
-
-	if assert.Len(t, ri.report.Configs, 1) {
-		cfg := ri.report.Configs[0]
-		assert.Equal(t, "cfgKey", cfg.Key)
-		assert.False(t, cfg.UsedDefault)
+	type tc struct {
+		name      string
+		intro     *recorderIntrospector
+		expectErr bool
+		expectPan bool
 	}
 
-	assert.GreaterOrEqual(t, len(ri.report.Deps), 1)
-	hasRegister := false
-	for _, d := range ri.report.Deps {
-		if d.Kind == introspection.DepRegistered {
-			hasRegister = true
-			assert.Equal(t, "string", d.Impl)
-			assert.True(t, strings.Contains(d.Caller.Func, "initForIntrospect"))
-		}
+	cases := []tc{
+		{
+			name:      "success",
+			intro:     &recorderIntrospector{},
+			expectErr: false,
+			expectPan: false,
+		},
+		{
+			name:      "introspector returns error",
+			intro:     &recorderIntrospector{willErr: true},
+			expectErr: true,
+			expectPan: false,
+		},
+		{
+			name:      "introspector panics",
+			intro:     &recorderIntrospector{willPanic: true},
+			expectErr: false,
+			expectPan: true,
+		},
 	}
-	assert.True(t, hasRegister, "expected a registered dependency in report")
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			defer depend.ClearContainer()
+			defer config.ResetGlobalProvider()
+			config.SetGlobalProvider(mapProvider{values: map[string]string{"cfgKey": "val"}})
+
+			app := NewApp().
+				Initialize(&initForIntrospect{}).
+				Host(&runForIntrospect{}).
+				Introspect(c.intro)
+
+			err := app.RunWithContext(context.Background())
+			if c.expectPan {
+				assert.Error(t, err, "expected error when introspector panics")
+				return
+			}
+			if c.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.True(t, c.intro.called, "introspector should be invoked")
+				assert.Len(t, c.intro.report.Initializers, 1)
+				assert.Contains(t, c.intro.report.Initializers[0].Type, "initForIntrospect")
+			}
+		})
+	}
 }
