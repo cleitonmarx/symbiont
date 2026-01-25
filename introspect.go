@@ -12,11 +12,11 @@ type Introspector interface {
 	Introspect(context.Context, introspection.Report) error
 }
 
-// Instrospect allows introspection of configuration keys used and dependency events
+// Introspect allows introspection of configuration keys used and dependency events
 // during the application's lifecycle.
 // The provided Introspector's Introspect method will be called after initialization
 // and before starting runnables.
-func (a *App) Instrospect(i Introspector) *App {
+func (a *App) Introspect(i Introspector) *App {
 	a.introspector = i
 	return a
 }

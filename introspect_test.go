@@ -58,7 +58,7 @@ func TestApp_IntrospectProvidesReport(t *testing.T) {
 	app := NewApp().
 		Initialize(&initForIntrospect{}).
 		Host(&runForIntrospect{}).
-		Instrospect(ri)
+		Introspect(ri)
 
 	require.NoError(t, app.RunWithContext(context.Background()))
 	require.True(t, ri.called, "introspector should be invoked")
