@@ -18,6 +18,7 @@ type TodoEventSubscriber struct {
 	BatchSize            int                           `config:"SUMMARY_BATCH_SIZE" default:"20"`
 	SubscriptionID       string                        `config:"PUBSUB_SUBSCRIPTION_ID"`
 	GenerateBoardSummary usecases.GenerateBoardSummary `resolve:""`
+	workerExecutionChan  chan struct{}
 }
 
 // Run starts the subscriber worker.
@@ -76,6 +77,10 @@ func (s TodoEventSubscriber) Run(ctx context.Context) error {
 
 func (s TodoEventSubscriber) flush(ctx context.Context, batch []*pubsub.Message) {
 	s.Logger.Printf("TodoEventSubscriber: processing batch size=%d", len(batch))
+
+	if s.workerExecutionChan != nil {
+		s.workerExecutionChan <- struct{}{}
+	}
 
 	// Generate board-level summary once per batch
 	if err := s.GenerateBoardSummary.Execute(ctx); err != nil {
