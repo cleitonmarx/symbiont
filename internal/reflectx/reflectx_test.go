@@ -16,11 +16,11 @@ func TestEmptyValue(t *testing.T) {
 }
 
 func TestGetTypeName(t *testing.T) {
-	assert.Equal(t, "int", GetTypeName(reflect.TypeOf(1)))
-	assert.Equal(t, "string", GetTypeName(reflect.TypeOf("")))
+	assert.Equal(t, "int", GetTypeName(reflect.TypeFor[int]()))
+	assert.Equal(t, "string", GetTypeName(reflect.TypeFor[string]()))
 	type myStruct struct{}
-	assert.Contains(t, GetTypeName(reflect.TypeOf(myStruct{})), "myStruct")
-	assert.Contains(t, GetTypeName(reflect.TypeOf(&myStruct{})), "myStruct")
+	assert.Contains(t, GetTypeName(reflect.TypeFor[myStruct]()), "myStruct")
+	assert.Contains(t, GetTypeName(reflect.TypeFor[*myStruct]()), "myStruct")
 }
 
 func TestTypeNameOf(t *testing.T) {
@@ -75,7 +75,7 @@ func TestSetFieldValue(t *testing.T) {
 	type testStruct2 struct {
 		a int
 	}
-	s2 := &testStruct2{}
+	s2 := &testStruct2{a: 10}
 	val2 := reflect.ValueOf(s2).Elem()
 	field2 := val2.FieldByName("a")
 	structField2, _ := val2.Type().FieldByName("a")
