@@ -103,68 +103,24 @@ The following diagram is an example of the Mermaid output style produced by Symb
 introspection, including emoji labels, colored nodes, and relationship arrows.
 
 ```mermaid
+---
+config:
+  layout: elk
+---
 graph TD
-    %%subgraph DEPSUB[" "]
-        logger["<b><span style='font-size:16px'>logger</span></b><br/><span style='color:green;font-size:11px;'>🫴🏽 provider</span><br/><span style='color:green;font-size:11px;'>💉 <b>*log.Logger</b></span>"]
-        db["<b><span style='font-size:16px'>db</span></b><br/><span style='color:green;font-size:11px;'>🫴🏽 provider</span><br/><span style='color:green;font-size:11px;'>💉 <b>*sql.DB</b></span>"]
-        DepRepo["<b><span style='font-size:16px'>Repo</span></b><br/><span style='color:darkgray;font-size:11px;'>🧩 RepoImpl</span><br/><span style='color:darkblue;font-size:11px;'>🏗️ examples.(*initRepo).Initialize</span><br/><span style='color:gray;font-size:11px;'>📍(f:2)</span><br/><span style='color:green;font-size:11px;'>💉 <b>Dependency</b></span>"]
-        DepPublisher["<b><span style='font-size:16px'>Publisher</span></b><br/><span style='color:darkgray;font-size:11px;'>🧩 PubSubPublisher</span><br/><span style='color:darkblue;font-size:11px;'>🏗️ examples.(*initPublisher).Initialize</span><br/><span style='color:gray;font-size:11px;'>📍(f:3)</span><br/><span style='color:green;font-size:11px;'>💉 <b>Dependency</b></span>"]
-    %%end
-    %%subgraph CONFIGSUB[" "]
-        cfg["<b><span style='font-size:16px'>DB_DSN</span></b><br/><span style='color:green;font-size:11px;'>🫴🏽 provider</span><br/><span style='color:green;font-size:11px;'>🔑 <b>Config</b></span>"]
-    %%end
-    %%subgraph CALLERSUB[" "]
-        ptr_examples_initLogger["<b><span style='font-size:16px'>*examples.initLogger</span></b><br/><span style='color:green;font-size:11px;'>📦 <b>Initializer</b></span>"]
-        ptr_examples_initRepo["<b><span style='font-size:16px'>*examples.initRepo</span></b><br/><span style='color:green;font-size:11px;'>📦 <b>Initializer</b></span>"]
-        ptr_examples_initPublisher["<b><span style='font-size:16px'>*examples.initPublisher</span></b><br/><span style='color:green;font-size:11px;'>📦 <b>Initializer</b></span>"]
-        ptr_examples_initDB["<b><span style='font-size:16px'>*examples.initDB</span></b><br/><span style='color:green;font-size:11px;'>📦 <b>Initializer</b></span>"]
-    %%end
-    %%subgraph RUNABLESUB[" "]
-        run_api["<b><span style='font-size:16px'>api</span></b><br/><span style='color:green;font-size:11px;'>⚙️ <b>Runnable</b></span><br/>"]
-        run_worker["<b><span style='font-size:16px'>worker</span></b><br/><span style='color:green;font-size:11px;'>⚙️ <b>Runnable</b></span>"]
-        run_scheduler["<b><span style='font-size:16px'>scheduler</span></b><br/><span style='color:green;font-size:11px;'>⚙️ <b>Runnable</b></span>"]
-        run_consumer["<b><span style='font-size:16px'>consumer</span></b><br/><span style='color:green;font-size:11px;'>⚙️ <b>Runnable</b></span>"]
-    %%end
-
-
-    ptr_examples_initLogger --o logger
-    ptr_examples_initDB --o db
-
-    cfg -.-> ptr_examples_initDB
-    ptr_examples_initRepo --o DepRepo
-    ptr_examples_initPublisher --o DepPublisher
-
-    logger -.-> ptr_examples_initRepo
-    db -.-> ptr_examples_initRepo
-
-    DepRepo -.-> run_api
-    DepRepo -.-> run_worker
-    DepPublisher -.-> run_consumer
-    
-    logger -.-> run_scheduler
-    logger -.-> run_consumer
-
-    run_api --- SymbiontApp
-    run_worker --- SymbiontApp
-    run_scheduler --- SymbiontApp
-    run_consumer --- SymbiontApp
-
-
+	cfg["<b><span style='font-size:16px'>cfg</span></b><br/><span style='color:green;font-size:11px;'>🫴🏽 provider</span><br/><span style='color:green;font-size:11px;'>🔑 <b>Config</b></span>"]
+	DepImpl["<b><span style='font-size:16px'>Dep</span></b><br/><span style='color:darkgray;font-size:11px;'>🧩 DepImpl</span><br/><span style='color:darkblue;font-size:11px;'>🏗️ examples.(*initLogger).Initialize</span><br/><span style='color:gray;font-size:11px;'>📍(f:1)</span><br/><span style='color:green;font-size:11px;'>💉 <b>Dependency</b></span>"]
+	ptr_examples_initLogger["<b><span style='font-size:16px'>*examples.initLogger</span></b><br/><span style='color:green;font-size:11px;'>📦 <b>Initializer</b></span>"]
+	run1["<b><span style='font-size:16px'>run1</span></b><br/><span style='color:green;font-size:11px;'>⚙️ <b>Runnable</b></span>"]
+	SymbiontApp["<b><span style='font-size:20px;color:white'>🚀 Symbiont App</span></b>"]
+    ptr_examples_initLogger --o DepImpl
+    DepImpl -.-> run1
+    cfg -.-> ptr_examples_initLogger
+    run1 --- SymbiontApp
     style cfg fill:#f1f7d2,stroke:#a7c957,stroke-width:2px,color:#222222
-    style logger fill:#d6fff9,stroke:#2ec4b6,stroke-width:2px,color:#222222
-    style db fill:#d6fff9,stroke:#2ec4b6,stroke-width:2px,color:#222222
-    style DepRepo fill:#d6fff9,stroke:#2ec4b6,stroke-width:2px,color:#222222
-    style DepPublisher fill:#d6fff9,stroke:#2ec4b6,stroke-width:2px,color:#222222
-
+    style DepImpl fill:#d6fff9,stroke:#2ec4b6,stroke-width:2px,color:#222222
     style ptr_examples_initLogger fill:#f0f0f0,stroke:#373636,stroke-width:1px,color:#222222,font-weight:bold
-    style ptr_examples_initRepo fill:#f0f0f0,stroke:#373636,stroke-width:1px,color:#222222,font-weight:bold
-    style ptr_examples_initPublisher fill:#f0f0f0,stroke:#373636,stroke-width:1px,color:#222222,font-weight:bold
-    style ptr_examples_initDB fill:#f0f0f0,stroke:#373636,stroke-width:1px,color:#222222,font-weight:bold
-
-    style run_api fill:#f1e8ff,stroke:#7b2cbf,stroke-width:2px,color:#222222
-    style run_worker fill:#f1e8ff,stroke:#7b2cbf,stroke-width:2px,color:#222222
-    style run_scheduler fill:#f1e8ff,stroke:#7b2cbf,stroke-width:2px,color:#222222
-    style run_consumer fill:#f1e8ff,stroke:#7b2cbf,stroke-width:2px,color:#222222
+    style run1 fill:#f1e8ff,stroke:#7b2cbf,stroke-width:2px,color:#222222
     style SymbiontApp fill:#0f56c4,stroke:#68a4eb,stroke-width:6px,color:#ffffff,font-weight:bold
 
 ```
