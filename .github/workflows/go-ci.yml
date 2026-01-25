@@ -18,9 +18,9 @@ jobs:
         with:
           go-version: stable
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: latest
+          version: v2.8
 
   test:
     runs-on: ubuntu-latest
@@ -33,11 +33,10 @@ jobs:
         run: go vet -x ./...
       - name: Check Formatting
         run: test -z "$(gofmt -s -l . | tee /dev/stderr)"
-      - name: Run Tests
-        run: go test -v -race ./...
-      - name: Coverage Report
-        run: go test -coverprofile=coverage.txt
+      - name: Run Tests with Coverage
+        run: go test -v -race -covermode=atomic -coverprofile=coverage.txt ./...
       - name: Upload coverage reports to Codecov
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
