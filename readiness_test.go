@@ -22,25 +22,76 @@ func (e *eventuallyReady) IsReady(ctx context.Context) error {
 	if e.calls >= e.readyAfter {
 		return nil
 	}
-	return errors.New("not ready")
+	return errors.New("not ready yet")
 }
 
 // alwaysNotReady is a runnable that never becomes ready
 type alwaysNotReady struct{}
 
 func (a *alwaysNotReady) Run(ctx context.Context) error     { <-ctx.Done(); return nil }
-func (a *alwaysNotReady) IsReady(ctx context.Context) error { return errors.New("not ready") }
+func (a *alwaysNotReady) IsReady(ctx context.Context) error { return errors.New("never ready") }
+
+// immediatelyReady is a runnable that is always ready
+type immediatelyReady struct{}
+
+func (i *immediatelyReady) Run(ctx context.Context) error     { <-ctx.Done(); return nil }
+func (i *immediatelyReady) IsReady(ctx context.Context) error { return nil }
 
 func TestWaitForReadiness(t *testing.T) {
-	tests := map[string]struct {
-		setup       func(*App)
-		timeout     time.Duration
-		ctxFn       func() (context.Context, context.CancelFunc)
-		expectErr   bool
-		expectErrIs error
-		expectMsg   string
+	tests := []struct {
+		name         string
+		setup        func(*App)
+		runnables    []Runnable
+		timeout      time.Duration
+		ctxFn        func() (context.Context, context.CancelFunc)
+		expectErr    bool
+		expectErrIs  error
+		expectMsg    string
+		expectSymErr bool
 	}{
-		"succeeds_before_timeout": {
+		{
+			name:      "no-runnables",
+			setup:     nil,
+			runnables: nil,
+			timeout:   50 * time.Millisecond,
+			ctxFn: func() (context.Context, context.CancelFunc) {
+				return context.WithTimeout(context.Background(), 100*time.Millisecond)
+			},
+			expectErr: false,
+		},
+		{
+			name:      "all-ready-immediately",
+			setup:     nil,
+			runnables: []Runnable{&immediatelyReady{}},
+			timeout:   50 * time.Millisecond,
+			ctxFn: func() (context.Context, context.CancelFunc) {
+				return context.WithTimeout(context.Background(), 100*time.Millisecond)
+			},
+			expectErr: false,
+		},
+		{
+			name:      "eventually-ready",
+			setup:     nil,
+			runnables: []Runnable{&eventuallyReady{readyAfter: 2}},
+			timeout:   100 * time.Millisecond,
+			ctxFn: func() (context.Context, context.CancelFunc) {
+				return context.WithTimeout(context.Background(), 100*time.Millisecond)
+			},
+			expectErr: false,
+		},
+		{
+			name:      "never-ready",
+			setup:     nil,
+			runnables: []Runnable{&alwaysNotReady{}},
+			timeout:   10 * time.Millisecond,
+			ctxFn: func() (context.Context, context.CancelFunc) {
+				return context.WithTimeout(context.Background(), 100*time.Millisecond)
+			},
+			expectErr:    true,
+			expectSymErr: true,
+		},
+		{
+			name:    "succeeds-before-timeout",
 			setup:   func(a *App) { a.Host(&eventuallyReady{readyAfter: 2}) },
 			timeout: 500 * time.Millisecond,
 			ctxFn: func() (context.Context, context.CancelFunc) {
@@ -48,16 +99,18 @@ func TestWaitForReadiness(t *testing.T) {
 			},
 			expectErr: false,
 		},
-		"times_out": {
+		{
+			name:    "times-out",
 			setup:   func(a *App) { a.Host(&alwaysNotReady{}) },
 			timeout: 150 * time.Millisecond,
 			ctxFn: func() (context.Context, context.CancelFunc) {
 				return context.WithCancel(context.Background())
 			},
 			expectErr: true,
-			expectMsg: "not ready",
+			expectMsg: "never ready",
 		},
-		"context_canceled": {
+		{
+			name:    "context-canceled",
 			setup:   func(a *App) { a.Host(&alwaysNotReady{}) },
 			timeout: 500 * time.Millisecond,
 			ctxFn: func() (context.Context, context.CancelFunc) {
@@ -70,10 +123,15 @@ func TestWaitForReadiness(t *testing.T) {
 		},
 	}
 
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			a := NewApp()
-			tt.setup(a)
+			if tt.setup != nil {
+				tt.setup(a)
+			}
+			for _, r := range tt.runnables {
+				a = a.Host(r)
+			}
 			ctx, cancel := tt.ctxFn()
 			defer cancel()
 
@@ -92,6 +150,10 @@ func TestWaitForReadiness(t *testing.T) {
 					var se Error
 					assert.True(t, errors.As(err, &se))
 					assert.Contains(t, se.Error(), tt.expectMsg)
+				}
+				if tt.expectSymErr {
+					var se Error
+					assert.True(t, errors.As(err, &se), "should wrap with symbiont.Error")
 				}
 			} else {
 				require.NoError(t, err)

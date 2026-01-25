@@ -71,13 +71,13 @@ func TestApp_IntrospectProvidesReport(t *testing.T) {
 			expectPan: false,
 		},
 		{
-			name:      "introspector returns error",
+			name:      "introspector-returns-error",
 			intro:     &recorderIntrospector{willErr: true},
 			expectErr: true,
 			expectPan: false,
 		},
 		{
-			name:      "introspector panics",
+			name:      "introspector-panics",
 			intro:     &recorderIntrospector{willPanic: true},
 			expectErr: false,
 			expectPan: true,
