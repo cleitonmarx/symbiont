@@ -206,7 +206,7 @@ graph TD
 ### 1. Start the Application
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 The application will be available at:
@@ -237,11 +237,16 @@ The application stores sensitive configuration in Vault at `secret/data/todoapp`
 | `PUBSUB_PROJECT_ID` | Pub/Sub project ID | `local-dev` |
 | `PUBSUB_TOPIC_ID` | Pub/Sub topic name | `todo` |
 | `LLM_MODEL_HOST` | Docker Model Runner endpoint | `http://localhost:12434` |
+| `LLM_MODEL` | Docker Model Runnee LLM Model | `ai/gpt-oss` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry endpoint | `http://localhost:4318` |
 
 ## Local Development
 
 ### Running Locally
+
+```bash
+docker compose -f docker-compose.deps.yml  up -d 
+```
 
 ```bash
 # Set environment variables
@@ -254,6 +259,7 @@ export VAULT_TOKEN=root-token
 export PUBSUB_EMULATOR_HOST=localhost:8681
 export PUBSUB_PROJECT_ID=local-dev
 export LLM_MODEL_HOST=http://localhost:12434
+export LLM_MODEL=ai/gpt-oss
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 
 # Run the application

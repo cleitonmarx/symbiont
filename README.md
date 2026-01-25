@@ -113,15 +113,31 @@ Detailed documentation is available in the [`docs`](docs) directory:
 
 ## Examples
 
-The [`examples`](examples) directory contains programs demonstrating:
+This repo includes one full-stack example: **TodoApp** (`examples/todoapp`). It demonstrates:
 
-- application structure with initializers and runnables
-- dependency and configuration wiring
-- hosting multiple concurrent services
-- readiness for integration-style testing
-- introspection and Mermaid dependency graphs
+- Initialization and wiring of config, logging, DB, HTTP client, Vault, Pub/Sub, and tracing
+- Multiple Runnables in one deployable (HTTP API + background workers)
+- Dependency graph introspection (see generated Mermaid in the example README)
+- Integration-style testing with Testcontainers
 
-Each example is self-contained and runnable.
+Quick start:
+
+```bash
+cd examples/todoapp
+docker-compose up -d    # run full stack (DB, Vault, Pub/Sub emulator, Jaeger, LLM runner, app)
+# or, with local deps running:
+go run cmd/todoapp/main.go
+```
+
+What to read:
+
+- `cmd/todoapp/main.go` — app bootstrap
+- `internal/app/app.go` — Symbiont wiring (initializers + runnables)
+- `internal/adapters/outbound/postgres` — persistence initializers/repositories
+- `internal/adapters/inbound/http` — HTTP server runnable
+- `internal/adapters/inbound/workers` — background worker runnable
+- `internal/usecases` — application services wired as dependencies
+- `README.md` inside the example — config, diagrams, and test instructions
 
 ---
 
