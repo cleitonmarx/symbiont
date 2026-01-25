@@ -111,33 +111,18 @@ Detailed documentation is available in the [`docs`](docs) directory:
 
 ---
 
-## Examples
+## Example
 
-This repo includes one full-stack example: **TodoApp** (`examples/todoapp`). It demonstrates:
+Want to see Symbiont in action?  
+Check out the complete example app at [`examples/todoapp`](examples/todoapp)!
 
-- Initialization and wiring of config, logging, DB, HTTP client, Vault, Pub/Sub, and tracing
-- Multiple Runnables in one deployable (HTTP API + background workers)
-- Dependency graph introspection (see generated Mermaid in the example README)
-- Integration-style testing with Testcontainers
+You'll find:
 
-Quick start:
+- Real-world setup for config, logging, database, HTTP, and background workers
+- Clear use of initializers and runnables
+- Dependency graph visualization and full-system tests
 
-```bash
-cd examples/todoapp
-docker-compose up -d    # run full stack (DB, Vault, Pub/Sub emulator, Jaeger, LLM runner, app)
-# or, with local deps running:
-go run cmd/todoapp/main.go
-```
-
-What to read:
-
-- `cmd/todoapp/main.go` — app bootstrap
-- `internal/app/app.go` — Symbiont wiring (initializers + runnables)
-- `internal/adapters/outbound/postgres` — persistence initializers/repositories
-- `internal/adapters/inbound/http` — HTTP server runnable
-- `internal/adapters/inbound/workers` — background worker runnable
-- `internal/usecases` — application services wired as dependencies
-- `README.md` inside the example — config, diagrams, and test instructions
+Curious? Dive into [`examples/todoapp/README.md`](examples/todoapp/README.md) for details, setup, and a code tour.
 
 ---
 
