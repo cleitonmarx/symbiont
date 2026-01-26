@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/graphql/gen"
@@ -32,14 +33,15 @@ func (s *TodoGraphQLServer) Run(ctx context.Context) error {
 	)
 	h.AddTransport(transport.POST{})
 	h.AddTransport(transport.GET{})
+	h.Use(extension.Introspection{})
 
-	mux.Handle("/query", otelhttp.NewHandler(
+	mux.Handle("/v1/query", otelhttp.NewHandler(
 		h,
 		"",
 		otelhttp.WithSpanNameFormatter(tracing.SpanNameFormatter),
 	))
 
-	mux.Handle("/", playground.Handler("TodoApp GraphQL", "/query"))
+	mux.Handle("/", playground.Handler("TodoApp GraphQL", "/v1/query"))
 
 	svr := &http.Server{
 		Handler: mux,
