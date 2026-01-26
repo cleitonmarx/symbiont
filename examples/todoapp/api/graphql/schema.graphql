@@ -14,18 +14,27 @@ type TodoPage {
   previousPage: Int
 }
 
+input updateTodoParams {
+  id: UUID!
+  title: String
+  status: TodoStatus
+  due_date: String
+}
+
 enum TodoStatus {
   OPEN
   DONE
 }
+
+
 
 type Query {
   listTodos(status: TodoStatus, page: Int! = 1, pageSize: Int! = 50): TodoPage!
 }
 
 type Mutation {
-  markTodosDone(ids: [UUID]!): Boolean!
-  deleteTodos(ids: [UUID]!): Boolean!
+  updateTodo(params: updateTodoParams!): Todo!
+  deleteTodo(id: UUID!): Boolean!
 }
 
 scalar UUID

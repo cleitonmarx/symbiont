@@ -48,8 +48,8 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		DeleteTodos   func(childComplexity int, ids []*uuid.UUID) int
-		MarkTodosDone func(childComplexity int, ids []*uuid.UUID) int
+		DeleteTodo func(childComplexity int, id uuid.UUID) int
+		UpdateTodo func(childComplexity int, params UpdateTodoParams) int
 	}
 
 	Query struct {
@@ -74,8 +74,8 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	MarkTodosDone(ctx context.Context, ids []*uuid.UUID) (bool, error)
-	DeleteTodos(ctx context.Context, ids []*uuid.UUID) (bool, error)
+	UpdateTodo(ctx context.Context, params UpdateTodoParams) (*Todo, error)
+	DeleteTodo(ctx context.Context, id uuid.UUID) (bool, error)
 }
 type QueryResolver interface {
 	ListTodos(ctx context.Context, status *TodoStatus, page int, pageSize int) (*TodoPage, error)
@@ -100,28 +100,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 	_ = ec
 	switch typeName + "." + field {
 
-	case "Mutation.deleteTodos":
-		if e.complexity.Mutation.DeleteTodos == nil {
+	case "Mutation.deleteTodo":
+		if e.complexity.Mutation.DeleteTodo == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_deleteTodos_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_deleteTodo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeleteTodos(childComplexity, args["ids"].([]*uuid.UUID)), true
-	case "Mutation.markTodosDone":
-		if e.complexity.Mutation.MarkTodosDone == nil {
+		return e.complexity.Mutation.DeleteTodo(childComplexity, args["id"].(uuid.UUID)), true
+	case "Mutation.updateTodo":
+		if e.complexity.Mutation.UpdateTodo == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_markTodosDone_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_updateTodo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.MarkTodosDone(childComplexity, args["ids"].([]*uuid.UUID)), true
+		return e.complexity.Mutation.UpdateTodo(childComplexity, args["params"].(UpdateTodoParams)), true
 
 	case "Query.listTodos":
 		if e.complexity.Query.ListTodos == nil {
@@ -204,7 +204,9 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
-	inputUnmarshalMap := graphql.BuildUnmarshalerMap()
+	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputupdateTodoParams,
+	)
 	first := true
 
 	switch opCtx.Operation.Operation {
@@ -317,18 +319,27 @@ type TodoPage {
   previousPage: Int
 }
 
+input updateTodoParams {
+  id: UUID!
+  title: String
+  status: TodoStatus
+  due_date: String
+}
+
 enum TodoStatus {
   OPEN
   DONE
 }
+
+
 
 type Query {
   listTodos(status: TodoStatus, page: Int! = 1, pageSize: Int! = 50): TodoPage!
 }
 
 type Mutation {
-  markTodosDone(ids: [UUID]!): Boolean!
-  deleteTodos(ids: [UUID]!): Boolean!
+  updateTodo(params: updateTodoParams!): Todo!
+  deleteTodo(id: UUID!): Boolean!
 }
 
 scalar UUID
@@ -340,25 +351,25 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
-func (ec *executionContext) field_Mutation_deleteTodos_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Mutation_deleteTodo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "ids", ec.unmarshalNUUID2ᚕᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
 	if err != nil {
 		return nil, err
 	}
-	args["ids"] = arg0
+	args["id"] = arg0
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_markTodosDone_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Mutation_updateTodo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "ids", ec.unmarshalNUUID2ᚕᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "params", ec.unmarshalNupdateTodoParams2githubᚗcomᚋcleitonmarxᚋsymbiontᚋexamplesᚋtodoappᚋinternalᚋadaptersᚋinboundᚋgraphqlᚋgenᚐUpdateTodoParams)
 	if err != nil {
 		return nil, err
 	}
-	args["ids"] = arg0
+	args["params"] = arg0
 	return args, nil
 }
 
@@ -446,31 +457,45 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _Mutation_markTodosDone(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_updateTodo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Mutation_markTodosDone,
+		ec.fieldContext_Mutation_updateTodo,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().MarkTodosDone(ctx, fc.Args["ids"].([]*uuid.UUID))
+			return ec.resolvers.Mutation().UpdateTodo(ctx, fc.Args["params"].(UpdateTodoParams))
 		},
 		nil,
-		ec.marshalNBoolean2bool,
+		ec.marshalNTodo2ᚖgithubᚗcomᚋcleitonmarxᚋsymbiontᚋexamplesᚋtodoappᚋinternalᚋadaptersᚋinboundᚋgraphqlᚋgenᚐTodo,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_Mutation_markTodosDone(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_updateTodo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Todo_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Todo_title(ctx, field)
+			case "status":
+				return ec.fieldContext_Todo_status(ctx, field)
+			case "due_date":
+				return ec.fieldContext_Todo_due_date(ctx, field)
+			case "created_at":
+				return ec.fieldContext_Todo_created_at(ctx, field)
+			case "updated_at":
+				return ec.fieldContext_Todo_updated_at(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Todo", field.Name)
 		},
 	}
 	defer func() {
@@ -480,22 +505,22 @@ func (ec *executionContext) fieldContext_Mutation_markTodosDone(ctx context.Cont
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_markTodosDone_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_updateTodo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_deleteTodos(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_deleteTodo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Mutation_deleteTodos,
+		ec.fieldContext_Mutation_deleteTodo,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().DeleteTodos(ctx, fc.Args["ids"].([]*uuid.UUID))
+			return ec.resolvers.Mutation().DeleteTodo(ctx, fc.Args["id"].(uuid.UUID))
 		},
 		nil,
 		ec.marshalNBoolean2bool,
@@ -504,7 +529,7 @@ func (ec *executionContext) _Mutation_deleteTodos(ctx context.Context, field gra
 	)
 }
 
-func (ec *executionContext) fieldContext_Mutation_deleteTodos(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_deleteTodo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -521,7 +546,7 @@ func (ec *executionContext) fieldContext_Mutation_deleteTodos(ctx context.Contex
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_deleteTodos_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_deleteTodo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -2437,6 +2462,54 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputupdateTodoParams(ctx context.Context, obj any) (UpdateTodoParams, error) {
+	var it UpdateTodoParams
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "title", "status", "due_date"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOTodoStatus2ᚖgithubᚗcomᚋcleitonmarxᚋsymbiontᚋexamplesᚋtodoappᚋinternalᚋadaptersᚋinboundᚋgraphqlᚋgenᚐTodoStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
+		case "due_date":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("due_date"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DueDate = data
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -2464,16 +2537,16 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Mutation")
-		case "markTodosDone":
+		case "updateTodo":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_markTodosDone(ctx, field)
+				return ec._Mutation_updateTodo(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "deleteTodos":
+		case "deleteTodo":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_deleteTodos(ctx, field)
+				return ec._Mutation_deleteTodo(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -3084,6 +3157,10 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 	return res
 }
 
+func (ec *executionContext) marshalNTodo2githubᚗcomᚋcleitonmarxᚋsymbiontᚋexamplesᚋtodoappᚋinternalᚋadaptersᚋinboundᚋgraphqlᚋgenᚐTodo(ctx context.Context, sel ast.SelectionSet, v Todo) graphql.Marshaler {
+	return ec._Todo(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNTodo2ᚕᚖgithubᚗcomᚋcleitonmarxᚋsymbiontᚋexamplesᚋtodoappᚋinternalᚋadaptersᚋinboundᚋgraphqlᚋgenᚐTodoᚄ(ctx context.Context, sel ast.SelectionSet, v []*Todo) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -3176,30 +3253,6 @@ func (ec *executionContext) marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx
 		}
 	}
 	return res
-}
-
-func (ec *executionContext) unmarshalNUUID2ᚕᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID(ctx context.Context, v any) ([]*uuid.UUID, error) {
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]*uuid.UUID, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) marshalNUUID2ᚕᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID(ctx context.Context, sel ast.SelectionSet, v []*uuid.UUID) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	for i := range v {
-		ret[i] = ec.marshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, sel, v[i])
-	}
-
-	return ret
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -3455,6 +3508,11 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
+func (ec *executionContext) unmarshalNupdateTodoParams2githubᚗcomᚋcleitonmarxᚋsymbiontᚋexamplesᚋtodoappᚋinternalᚋadaptersᚋinboundᚋgraphqlᚋgenᚐUpdateTodoParams(ctx context.Context, v any) (UpdateTodoParams, error) {
+	res, err := ec.unmarshalInputupdateTodoParams(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3535,24 +3593,6 @@ func (ec *executionContext) marshalOTodoStatus2ᚖgithubᚗcomᚋcleitonmarxᚋs
 		return graphql.Null
 	}
 	return v
-}
-
-func (ec *executionContext) unmarshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID(ctx context.Context, v any) (*uuid.UUID, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := graphql.UnmarshalUUID(v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID(ctx context.Context, sel ast.SelectionSet, v *uuid.UUID) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	_ = sel
-	_ = ctx
-	res := graphql.MarshalUUID(*v)
-	return res
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

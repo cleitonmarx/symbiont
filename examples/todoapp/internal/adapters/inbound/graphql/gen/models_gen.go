@@ -34,6 +34,13 @@ type TodoPage struct {
 	PreviousPage *int    `json:"previousPage,omitempty"`
 }
 
+type UpdateTodoParams struct {
+	ID      uuid.UUID   `json:"id"`
+	Title   *string     `json:"title,omitempty"`
+	Status  *TodoStatus `json:"status,omitempty"`
+	DueDate *string     `json:"due_date,omitempty"`
+}
+
 type TodoStatus string
 
 const (
