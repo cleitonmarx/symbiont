@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/oapi-codegen/oapi-codegen/HEAD/configuration-schema.json
-package: openapi
+package: gen
 output: ./openapi/todo_app_api_gen.go
 generate:
   models: true

@@ -12,7 +12,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/graphql/graph"
+	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/graphql/gen"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/common"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/tracing"
@@ -38,7 +38,7 @@ func (s *TodoGraphQLServer) DeleteTodos(ctx context.Context, ids []*uuid.UUID) (
 }
 
 // ListTodos is the resolver for the listTodos field.
-func (s *TodoGraphQLServer) ListTodos(ctx context.Context, status *graph.TodoStatus, page int, pageSize int) (*graph.TodoPage, error) {
+func (s *TodoGraphQLServer) ListTodos(ctx context.Context, status *gen.TodoStatus, page int, pageSize int) (*gen.TodoPage, error) {
 	var options []domain.ListTodoOptions
 	if status != nil {
 		options = append(options, domain.WithStatus(domain.TodoStatus(*status)))
@@ -48,16 +48,16 @@ func (s *TodoGraphQLServer) ListTodos(ctx context.Context, status *graph.TodoSta
 		return nil, err
 	}
 
-	todoPage := graph.TodoPage{
-		Items: make([]*graph.Todo, len(todos)),
+	todoPage := gen.TodoPage{
+		Items: make([]*gen.Todo, len(todos)),
 		Page:  page,
 	}
 
 	for i, t := range todos {
-		todoPage.Items[i] = &graph.Todo{
+		todoPage.Items[i] = &gen.Todo{
 			ID:        t.ID,
 			Title:     t.Title,
-			Status:    graph.TodoStatus(t.Status),
+			Status:    gen.TodoStatus(t.Status),
 			DueDate:   t.DueDate.Format("2006-01-02"),
 			CreatedAt: t.CreatedAt,
 			UpdatedAt: t.UpdatedAt,
@@ -75,16 +75,16 @@ func (s *TodoGraphQLServer) ListTodos(ctx context.Context, status *graph.TodoSta
 }
 
 // Mutation returns MutationResolver implementation.
-func (s *TodoGraphQLServer) Mutation() graph.MutationResolver { return s }
+func (s *TodoGraphQLServer) Mutation() gen.MutationResolver { return s }
 
 // Query returns QueryResolver implementation.
-func (s *TodoGraphQLServer) Query() graph.QueryResolver { return s }
+func (s *TodoGraphQLServer) Query() gen.QueryResolver { return s }
 
 func (s *TodoGraphQLServer) Run(ctx context.Context) error {
 	mux := http.NewServeMux()
 
 	h := handler.New(
-		graph.NewExecutableSchema(graph.Config{Resolvers: s}),
+		gen.NewExecutableSchema(gen.Config{Resolvers: s}),
 	)
 	h.AddTransport(transport.POST{})
 	h.AddTransport(transport.GET{})

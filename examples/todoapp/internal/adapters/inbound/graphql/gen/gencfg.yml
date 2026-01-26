@@ -1,23 +1,22 @@
 # Where are all the schema files located? globs are supported eg  src/**/*.graphqls
 schema:
-  - ./../../../../api/graphql/schema.graphql
+  - ./../../../../../api/graphql/schema.graphql
 
 # Where should the generated server code go?
 exec:
-  package: graph
+  package: gen
   layout: single-file # Only other option is "follow-schema," ie multi-file.
 
   # Only for single-file layout:
-  filename: graph/todo_app_schema_gen.go
+  filename: todo_app_schema_gen.go
 
 model:
-  filename: graph/models_gen.go
-  package: graph
-
+  filename: models_gen.go
+  package: gen
 resolver:
   layout: single-file
-  filename: graph/resolvers_gen.go
-  package: graph
+  filename: resolvers_gen.go
+  package: gen
 
 models:
   UUID:

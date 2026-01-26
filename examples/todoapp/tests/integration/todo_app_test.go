@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/cleitonmarx/symbiont/depend"
-	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/http/openapi"
+	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/http/gen"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/app"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/usecases"
 	"github.com/oapi-codegen/runtime/types"
@@ -54,11 +54,11 @@ func TestTodoApp_Integration(t *testing.T) {
 		t.Fatalf("TodoApp app failed to become ready: %v", err)
 	}
 
-	apiCli, err := openapi.NewClientWithResponses("http://localhost:8080")
+	apiCli, err := gen.NewClientWithResponses("http://localhost:8080")
 	assert.NoError(t, err, "failed to create TodoApp API client")
 	t.Run("create-todos", func(t *testing.T) {
 		for i := range 5 {
-			createResp, err := apiCli.CreateTodoWithResponse(cancelCtx, openapi.CreateTodoJSONRequestBody{
+			createResp, err := apiCli.CreateTodoWithResponse(cancelCtx, gen.CreateTodoJSONRequestBody{
 				Title:   fmt.Sprintf("Test Todo %d", i+1),
 				DueDate: types.Date{Time: time.Now().Add(24 * time.Hour)},
 			})
@@ -67,9 +67,9 @@ func TestTodoApp_Integration(t *testing.T) {
 		}
 	})
 
-	var todos []openapi.Todo
+	var todos []gen.Todo
 	t.Run("list-created-todos", func(t *testing.T) {
-		resp, err := apiCli.ListTodosWithResponse(cancelCtx, &openapi.ListTodosParams{
+		resp, err := apiCli.ListTodosWithResponse(cancelCtx, &gen.ListTodosParams{
 			Page:     1,
 			Pagesize: 10,
 		})
@@ -82,14 +82,14 @@ func TestTodoApp_Integration(t *testing.T) {
 	})
 
 	t.Run("update-todos-and-check-emails", func(t *testing.T) {
-		statusDone := openapi.DONE
+		statusDone := gen.DONE
 		for _, todo := range todos {
-			updateResp, err := apiCli.UpdateTodoWithResponse(cancelCtx, todo.Id, openapi.UpdateTodoJSONRequestBody{
+			updateResp, err := apiCli.UpdateTodoWithResponse(cancelCtx, todo.Id, gen.UpdateTodoJSONRequestBody{
 				Status: &statusDone,
 			})
 			assert.NoError(t, err, "failed to call UpdateTodo endpoint")
 			assert.NotNil(t, updateResp.JSON200, "expected non-nil response for UpdateTodo")
-			assert.Equal(t, openapi.DONE, updateResp.JSON200.Status, "expected todo status to be 'completed'")
+			assert.Equal(t, gen.DONE, updateResp.JSON200.Status, "expected todo status to be 'completed'")
 		}
 	})
 
@@ -115,7 +115,7 @@ func TestTodoApp_Integration(t *testing.T) {
 		}
 
 		// Verify todos are deleted
-		listResp, err := apiCli.ListTodosWithResponse(cancelCtx, &openapi.ListTodosParams{
+		listResp, err := apiCli.ListTodosWithResponse(cancelCtx, &gen.ListTodosParams{
 			Page:     1,
 			Pagesize: 10,
 		})
