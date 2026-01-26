@@ -11,7 +11,7 @@ import (
 
 // DeleteTodo defines the interface for the DeleteTodo use case.
 type DeleteTodo interface {
-	Execute(ctx context.Context, todoID uuid.UUID) error
+	Execute(ctx context.Context, todoIDs []uuid.UUID) error
 }
 
 // DeleteTodoImpl is the implementation of the DeleteTodo use case.
@@ -29,25 +29,31 @@ func NewDeleteTodo(uow domain.UnitOfWork, timeProvider domain.CurrentTimeProvide
 }
 
 // Execute deletes a todo item by its ID.
-func (dti DeleteTodoImpl) Execute(ctx context.Context, todoID uuid.UUID) error {
+func (dti DeleteTodoImpl) Execute(ctx context.Context, todoIDs []uuid.UUID) error {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
 	return dti.uow.Execute(spanCtx, func(uow domain.UnitOfWork) error {
-		_, err := uow.Todo().GetTodo(spanCtx, todoID) // Ensure the todo exists
-		if err != nil {
-			return err
-		}
-		err = uow.Todo().DeleteTodo(spanCtx, todoID)
-		if err != nil {
-			return err
-		}
+		for _, todoID := range todoIDs {
+			_, err := uow.Todo().GetTodo(spanCtx, todoID) // Ensure the todo exists
+			if err != nil {
+				return err
+			}
+			err = uow.Todo().DeleteTodo(spanCtx, todoID)
+			if err != nil {
+				return err
+			}
 
-		return uow.Outbox().RecordEvent(spanCtx, domain.TodoEvent{
-			Type:      domain.TodoEventType_TODO_DELETED,
-			TodoID:    todoID,
-			CreatedAt: dti.timeProvider.Now(),
-		})
+			err = uow.Outbox().RecordEvent(spanCtx, domain.TodoEvent{
+				Type:      domain.TodoEventType_TODO_DELETED,
+				TodoID:    todoID,
+				CreatedAt: dti.timeProvider.Now(),
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 

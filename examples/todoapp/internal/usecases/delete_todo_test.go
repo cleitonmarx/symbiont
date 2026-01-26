@@ -33,17 +33,17 @@ func TestDeleteTodo_Execute(t *testing.T) {
 
 				uow.EXPECT().Todo().Return(todoRepo)
 				todoRepo.EXPECT().GetTodo(mock.Anything, todoID).
-					Return(domain.Todo{ID: todoID, Title: "Test Todo"}, nil)
+					Return(domain.Todo{ID: todoID, Title: "Test Todo"}, nil).Twice()
 
 				uow.EXPECT().Todo().Return(todoRepo)
-				todoRepo.EXPECT().DeleteTodo(mock.Anything, todoID).Return(nil)
+				todoRepo.EXPECT().DeleteTodo(mock.Anything, todoID).Return(nil).Twice()
 
-				uow.EXPECT().Outbox().Return(outboxRepo)
+				uow.EXPECT().Outbox().Return(outboxRepo).Twice()
 				outboxRepo.EXPECT().RecordEvent(mock.Anything, mock.MatchedBy(func(event domain.TodoEvent) bool {
 					return event.Type == domain.TodoEventType_TODO_DELETED &&
 						event.TodoID == todoID &&
 						event.CreatedAt.Equal(fixedTime)
-				})).Return(nil)
+				})).Return(nil).Twice()
 			},
 			expectErr: false,
 			validateFn: func(t *testing.T, uow *mocks.MockUnitOfWork, todoRepo *mocks.MockTodoRepository, outboxRepo *mocks.MockOutboxRepository) {
@@ -119,7 +119,7 @@ func TestDeleteTodo_Execute(t *testing.T) {
 			tt.setupMocks(uow, todoRepo, outboxRepo)
 
 			useCase := NewDeleteTodo(uow, timeProvider)
-			err := useCase.Execute(ctx, todoID)
+			err := useCase.Execute(ctx, []uuid.UUID{todoID, todoID})
 
 			if tt.expectErr {
 				assert.Error(t, err)
