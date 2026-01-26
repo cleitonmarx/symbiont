@@ -8,6 +8,7 @@ services:
       dockerfile: ./examples/todoapp/Dockerfile
     ports:
       - "8080:8080"
+      - "8085:8085"
     environment:
       - PORT=8080
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
