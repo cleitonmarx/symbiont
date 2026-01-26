@@ -26,24 +26,23 @@ func TestDeleteTodo_Execute(t *testing.T) {
 		"success-delete-todo": {
 			setupMocks: func(uow *mocks.MockUnitOfWork, todoRepo *mocks.MockTodoRepository, outboxRepo *mocks.MockOutboxRepository) {
 				uow.EXPECT().Execute(mock.Anything, mock.Anything).
-					Run(func(ctx context.Context, fn func(domain.UnitOfWork) error) {
-						fn(uow) //nolint:errcheck
-					}).
-					Return(nil)
+					RunAndReturn(func(ctx context.Context, fn func(domain.UnitOfWork) error) error {
+						return fn(uow)
+					})
 
 				uow.EXPECT().Todo().Return(todoRepo)
 				todoRepo.EXPECT().GetTodo(mock.Anything, todoID).
-					Return(domain.Todo{ID: todoID, Title: "Test Todo"}, nil).Twice()
+					Return(domain.Todo{ID: todoID, Title: "Test Todo"}, true, nil)
 
 				uow.EXPECT().Todo().Return(todoRepo)
-				todoRepo.EXPECT().DeleteTodo(mock.Anything, todoID).Return(nil).Twice()
+				todoRepo.EXPECT().DeleteTodo(mock.Anything, todoID).Return(nil)
 
-				uow.EXPECT().Outbox().Return(outboxRepo).Twice()
+				uow.EXPECT().Outbox().Return(outboxRepo)
 				outboxRepo.EXPECT().RecordEvent(mock.Anything, mock.MatchedBy(func(event domain.TodoEvent) bool {
 					return event.Type == domain.TodoEventType_TODO_DELETED &&
 						event.TodoID == todoID &&
 						event.CreatedAt.Equal(fixedTime)
-				})).Return(nil).Twice()
+				})).Return(nil)
 			},
 			expectErr: false,
 			validateFn: func(t *testing.T, uow *mocks.MockUnitOfWork, todoRepo *mocks.MockTodoRepository, outboxRepo *mocks.MockOutboxRepository) {
@@ -52,17 +51,29 @@ func TestDeleteTodo_Execute(t *testing.T) {
 				outboxRepo.AssertExpectations(t)
 			},
 		},
-		"error-getting-todo": {
+		"todo-not-found": {
 			setupMocks: func(uow *mocks.MockUnitOfWork, todoRepo *mocks.MockTodoRepository, outboxRepo *mocks.MockOutboxRepository) {
 				uow.EXPECT().Execute(mock.Anything, mock.Anything).
-					Run(func(ctx context.Context, fn func(domain.UnitOfWork) error) {
-						fn(uow) //nolint:errcheck
-					}).
-					Return(assert.AnError)
+					RunAndReturn(func(ctx context.Context, fn func(domain.UnitOfWork) error) error {
+						return fn(uow)
+					})
 
 				uow.EXPECT().Todo().Return(todoRepo)
 				todoRepo.EXPECT().GetTodo(mock.Anything, todoID).
-					Return(domain.Todo{}, assert.AnError)
+					Return(domain.Todo{}, false, nil)
+			},
+			expectErr: true,
+		},
+		"error-getting-todo": {
+			setupMocks: func(uow *mocks.MockUnitOfWork, todoRepo *mocks.MockTodoRepository, outboxRepo *mocks.MockOutboxRepository) {
+				uow.EXPECT().Execute(mock.Anything, mock.Anything).
+					RunAndReturn(func(ctx context.Context, fn func(domain.UnitOfWork) error) error {
+						return fn(uow)
+					})
+
+				uow.EXPECT().Todo().Return(todoRepo)
+				todoRepo.EXPECT().GetTodo(mock.Anything, todoID).
+					Return(domain.Todo{}, false, assert.AnError)
 			},
 			expectErr: true,
 		},
@@ -76,7 +87,7 @@ func TestDeleteTodo_Execute(t *testing.T) {
 
 				uow.EXPECT().Todo().Return(todoRepo)
 				todoRepo.EXPECT().GetTodo(mock.Anything, todoID).
-					Return(domain.Todo{ID: todoID}, nil)
+					Return(domain.Todo{ID: todoID}, true, nil)
 
 				uow.EXPECT().Todo().Return(todoRepo)
 				todoRepo.EXPECT().DeleteTodo(mock.Anything, todoID).
@@ -94,7 +105,7 @@ func TestDeleteTodo_Execute(t *testing.T) {
 
 				uow.EXPECT().Todo().Return(todoRepo)
 				todoRepo.EXPECT().GetTodo(mock.Anything, todoID).
-					Return(domain.Todo{ID: todoID}, nil)
+					Return(domain.Todo{ID: todoID}, true, nil)
 
 				uow.EXPECT().Todo().Return(todoRepo)
 				todoRepo.EXPECT().DeleteTodo(mock.Anything, todoID).Return(nil)
@@ -119,7 +130,7 @@ func TestDeleteTodo_Execute(t *testing.T) {
 			tt.setupMocks(uow, todoRepo, outboxRepo)
 
 			useCase := NewDeleteTodo(uow, timeProvider)
-			err := useCase.Execute(ctx, []uuid.UUID{todoID, todoID})
+			err := useCase.Execute(ctx, todoID)
 
 			if tt.expectErr {
 				assert.Error(t, err)

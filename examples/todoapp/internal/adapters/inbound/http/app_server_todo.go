@@ -102,7 +102,7 @@ func (api TodoAppServer) UpdateTodo(w http.ResponseWriter, r *http.Request, todo
 }
 
 func (api TodoAppServer) DeleteTodo(w http.ResponseWriter, r *http.Request, todoId openapi_types.UUID) {
-	err := api.DeleteTodoUseCase.Execute(r.Context(), []uuid.UUID{todoId})
+	err := api.DeleteTodoUseCase.Execute(r.Context(), todoId)
 	if err != nil {
 		respondError(w, toError(err))
 		return
