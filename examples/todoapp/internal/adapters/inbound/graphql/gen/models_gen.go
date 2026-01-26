@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/graphql/types"
 	"github.com/google/uuid"
 )
 
@@ -22,7 +23,7 @@ type Todo struct {
 	ID        uuid.UUID  `json:"id"`
 	Title     string     `json:"title"`
 	Status    TodoStatus `json:"status"`
-	DueDate   string     `json:"due_date"`
+	DueDate   types.Date `json:"due_date"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 }
@@ -38,7 +39,7 @@ type UpdateTodoParams struct {
 	ID      uuid.UUID   `json:"id"`
 	Title   *string     `json:"title,omitempty"`
 	Status  *TodoStatus `json:"status,omitempty"`
-	DueDate *string     `json:"due_date,omitempty"`
+	DueDate *types.Date `json:"due_date,omitempty"`
 }
 
 type TodoStatus string

@@ -2,9 +2,9 @@ package graphql
 
 import (
 	"context"
-	"time"
 
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/graphql/gen"
+	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/graphql/types"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/common"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 )
@@ -30,7 +30,7 @@ func (s *TodoGraphQLServer) ListTodos(ctx context.Context, status *gen.TodoStatu
 			ID:        t.ID,
 			Title:     t.Title,
 			Status:    gen.TodoStatus(t.Status),
-			DueDate:   t.DueDate.Format(time.DateOnly),
+			DueDate:   (types.Date)(t.DueDate),
 			CreatedAt: t.CreatedAt,
 			UpdatedAt: t.UpdatedAt,
 		}

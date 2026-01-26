@@ -2,7 +2,7 @@ type Todo {
   id: UUID!
   title: String!
   status: TodoStatus!
-  due_date: String!
+  due_date: Date!
   created_at: Time!
   updated_at: Time!
 }
@@ -18,7 +18,7 @@ input updateTodoParams {
   id: UUID!
   title: String
   status: TodoStatus
-  due_date: String
+  due_date: Date
 }
 
 enum TodoStatus {
@@ -39,3 +39,4 @@ type Mutation {
 
 scalar UUID
 scalar Time
+scalar Date

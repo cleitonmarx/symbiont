@@ -52,6 +52,7 @@ func (uti UpdateTodoImpl) Execute(ctx context.Context, id uuid.UUID, title *stri
 		if status != nil {
 			td.Status = *status
 		}
+
 		if dueDate != nil {
 			td.DueDate = *dueDate
 		}

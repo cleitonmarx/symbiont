@@ -1,7 +1,5 @@
 package graphql
 
-// THIS CODE WILL BE UPDATED WITH SCHEMA CHANGES. PREVIOUS IMPLEMENTATION FOR SCHEMA CHANGES WILL BE KEPT IN THE COMMENT SECTION. IMPLEMENTATION FOR UNCHANGED SCHEMA WILL BE KEPT.
-
 import (
 	"context"
 	"fmt"
@@ -22,6 +20,7 @@ type TodoGraphQLServer struct {
 	Logger            *log.Logger         `resolve:""`
 	ListTodosUsecase  usecases.ListTodos  `resolve:""`
 	DeleteTodoUsecase usecases.DeleteTodo `resolve:""`
+	UpdateTodoUsecase usecases.UpdateTodo `resolve:""`
 	Port              int                 `config:"GRAPHQL_SERVER_PORT" default:"8085"`
 }
 
@@ -62,4 +61,17 @@ func (s *TodoGraphQLServer) Run(ctx context.Context) error {
 	case err := <-errCh:
 		return err
 	}
+}
+
+func (s *TodoGraphQLServer) IsReady(ctx context.Context) error {
+	resp, err := http.Get(fmt.Sprintf("http://:%d", s.Port))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+	return nil
 }

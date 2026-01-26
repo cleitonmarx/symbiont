@@ -14,6 +14,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
+	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/graphql/types"
 	"github.com/google/uuid"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
@@ -307,7 +308,7 @@ var sources = []*ast.Source{
   id: UUID!
   title: String!
   status: TodoStatus!
-  due_date: String!
+  due_date: Date!
   created_at: Time!
   updated_at: Time!
 }
@@ -323,7 +324,7 @@ input updateTodoParams {
   id: UUID!
   title: String
   status: TodoStatus
-  due_date: String
+  due_date: Date
 }
 
 enum TodoStatus {
@@ -343,7 +344,8 @@ type Mutation {
 }
 
 scalar UUID
-scalar Time`, BuiltIn: false},
+scalar Time
+scalar Date`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -809,7 +811,7 @@ func (ec *executionContext) _Todo_due_date(ctx context.Context, field graphql.Co
 			return obj.DueDate, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalNDate2githubᚗcomᚋcleitonmarxᚋsymbiontᚋexamplesᚋtodoappᚋinternalᚋadaptersᚋinboundᚋgraphqlᚋtypesᚐDate,
 		true,
 		true,
 	)
@@ -822,7 +824,7 @@ func (ec *executionContext) fieldContext_Todo_due_date(_ context.Context, field 
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type Date does not have child fields")
 		},
 	}
 	return fc, nil
@@ -2499,7 +2501,7 @@ func (ec *executionContext) unmarshalInputupdateTodoParams(ctx context.Context, 
 			it.Status = data
 		case "due_date":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("due_date"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalODate2ᚖgithubᚗcomᚋcleitonmarxᚋsymbiontᚋexamplesᚋtodoappᚋinternalᚋadaptersᚋinboundᚋgraphqlᚋtypesᚐDate(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -3109,6 +3111,16 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalNDate2githubᚗcomᚋcleitonmarxᚋsymbiontᚋexamplesᚋtodoappᚋinternalᚋadaptersᚋinboundᚋgraphqlᚋtypesᚐDate(ctx context.Context, v any) (types.Date, error) {
+	var res types.Date
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDate2githubᚗcomᚋcleitonmarxᚋsymbiontᚋexamplesᚋtodoappᚋinternalᚋadaptersᚋinboundᚋgraphqlᚋtypesᚐDate(ctx context.Context, sel ast.SelectionSet, v types.Date) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, error) {
 	res, err := graphql.UnmarshalInt(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3541,6 +3553,22 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	_ = ctx
 	res := graphql.MarshalBoolean(*v)
 	return res
+}
+
+func (ec *executionContext) unmarshalODate2ᚖgithubᚗcomᚋcleitonmarxᚋsymbiontᚋexamplesᚋtodoappᚋinternalᚋadaptersᚋinboundᚋgraphqlᚋtypesᚐDate(ctx context.Context, v any) (*types.Date, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(types.Date)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalODate2ᚖgithubᚗcomᚋcleitonmarxᚋsymbiontᚋexamplesᚋtodoappᚋinternalᚋadaptersᚋinboundᚋgraphqlᚋtypesᚐDate(ctx context.Context, sel ast.SelectionSet, v *types.Date) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v any) (*int, error) {

@@ -22,11 +22,8 @@ models:
   UUID:
     model:
       - github.com/99designs/gqlgen/graphql.UUID
-  DateTime:
-    model:
-      - time.Time
   Date:
     model:
-      - builtin:string
+      - github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/graphql/types.Date
 
 

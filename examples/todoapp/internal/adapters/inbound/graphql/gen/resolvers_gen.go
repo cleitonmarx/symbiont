@@ -42,10 +42,4 @@ type queryResolver struct{ *Resolver }
 //  - You have helper methods in this file. Move them out to keep these resolver files clean.
 /*
 	type Resolver struct{}
-func (r *mutationResolver) MarkTodosDone(ctx context.Context, ids []*uuid.UUID) (bool, error) {
-	panic("not implemented")
-}
-func (r *mutationResolver) DeleteTodos(ctx context.Context, ids []*uuid.UUID) (bool, error) {
-	panic("not implemented")
-}
 */
