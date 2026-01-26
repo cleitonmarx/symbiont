@@ -188,7 +188,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 	userMsg := domain.ChatMessage{
 		ID:             userMessageID,
 		ConversationID: domain.GlobalConversationID,
-		ChatRole:       domain.ChatRole("user"),
+		ChatRole:       domain.ChatRole_User,
 		Content:        userMessage,
 		Model:          req.Model,
 		CreatedAt:      time.Now().UTC(),
@@ -202,7 +202,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 	assistantMsg := domain.ChatMessage{
 		ID:             assistantMessageID,
 		ConversationID: domain.GlobalConversationID,
-		ChatRole:       domain.ChatRole("assistant"),
+		ChatRole:       domain.ChatRole_Assistant,
 		Content:        fullContent.String(),
 		Model:          req.Model,
 		CreatedAt:      time.Now().UTC(),
