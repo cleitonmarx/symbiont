@@ -102,7 +102,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 
 	// Build chat request: system + history (excluding old system messages) + current user turn
 	messages := make([]domain.LLMChatMessage, 0, len(systemPrompt)+len(history)+1)
-	messages = append(messages, systemPrompt...) // Fresh system prompt
+	messages = append(messages, systemPrompt...)
 
 	for _, msg := range history {
 		// Skip old system messages to avoid stale todo data
