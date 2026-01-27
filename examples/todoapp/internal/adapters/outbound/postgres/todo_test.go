@@ -11,6 +11,7 @@ import (
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/google/uuid"
+	"github.com/pgvector/pgvector-go"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,12 +36,13 @@ func TestTodoRepository_CreateTodo(t *testing.T) {
 		"success": {
 			todo: todo,
 			setExpectations: func(mock sqlmock.Sqlmock) {
-				mock.ExpectExec("INSERT INTO todos (id,title,status,due_date,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6)").
+				mock.ExpectExec("INSERT INTO todos (id,title,status,due_date,embedding,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7)").
 					WithArgs(
 						todo.ID,
 						todo.Title,
 						todo.Status,
 						todo.DueDate,
+						pgvector.NewVector(toFloat32Truncated(todo.Embedding)),
 						todo.CreatedAt,
 						todo.UpdatedAt,
 					).
@@ -51,12 +53,13 @@ func TestTodoRepository_CreateTodo(t *testing.T) {
 		"database-error": {
 			todo: todo,
 			setExpectations: func(mock sqlmock.Sqlmock) {
-				mock.ExpectExec("INSERT INTO todos (id,title,status,due_date,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6)").
+				mock.ExpectExec("INSERT INTO todos (id,title,status,due_date,embedding,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7)").
 					WithArgs(
 						todo.ID,
 						todo.Title,
 						todo.Status,
 						todo.DueDate,
+						pgvector.NewVector(toFloat32Truncated(todo.Embedding)),
 						todo.CreatedAt,
 						todo.UpdatedAt,
 					).
@@ -185,11 +188,12 @@ func TestTodoRepository_UpdateTodo(t *testing.T) {
 		"success": {
 			todo: todo,
 			setExpectations: func(mock sqlmock.Sqlmock) {
-				mock.ExpectExec("UPDATE todos SET title = $1, status = $2, due_date = $3, updated_at = $4 WHERE id = $5").
+				mock.ExpectExec("UPDATE todos SET title = $1, status = $2, due_date = $3, embedding = $4, updated_at = $5 WHERE id = $6").
 					WithArgs(
 						todo.Title,
 						todo.Status,
 						todo.DueDate,
+						pgvector.NewVector(toFloat32Truncated(todo.Embedding)),
 						todo.UpdatedAt,
 						todo.ID,
 					).
@@ -200,11 +204,12 @@ func TestTodoRepository_UpdateTodo(t *testing.T) {
 		"database-error": {
 			todo: todo,
 			setExpectations: func(mock sqlmock.Sqlmock) {
-				mock.ExpectExec("UPDATE todos SET title = $1, status = $2, due_date = $3, updated_at = $4 WHERE id = $5").
+				mock.ExpectExec("UPDATE todos SET title = $1, status = $2, due_date = $3, embedding = $4, updated_at = $5 WHERE id = $6").
 					WithArgs(
 						todo.Title,
 						todo.Status,
 						todo.DueDate,
+						pgvector.NewVector(toFloat32Truncated(todo.Embedding)),
 						todo.UpdatedAt,
 						todo.ID,
 					).
