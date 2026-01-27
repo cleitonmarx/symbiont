@@ -23,8 +23,9 @@ type Todo struct {
 	Title     string     `json:"title"`
 	DueDate   time.Time  `json:"due_date"`
 	Status    TodoStatus `json:"status"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
+	Embedding []float64
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func (t Todo) Validate(now time.Time) error {
@@ -46,6 +47,11 @@ func (t Todo) Validate(now time.Time) error {
 	}
 
 	return nil
+}
+
+// ToEmbeddingInput formats the todo item as a string suitable for embedding generation.
+func (t Todo) ToEmbeddingInput() string {
+	return "Task: " + t.Title + " | Status: " + string(t.Status) + " | Due: " + t.DueDate.Format(time.DateOnly)
 }
 
 // ListTodosParams represents the parameters for listing todo items.
