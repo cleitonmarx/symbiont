@@ -251,3 +251,75 @@ func TestInitBoardSummaryRepository_Initialize(t *testing.T) {
 	_, err = depend.Resolve[domain.BoardSummaryRepository]()
 	assert.NoError(t, err)
 }
+
+func TestBoardSummaryRepository_CalculateSummaryContent(t *testing.T) {
+	tests := map[string]struct {
+		setExpectations func(mock sqlmock.Sqlmock)
+		expectedSummary domain.BoardSummaryContent
+		expectedFound   bool
+		shouldError     bool
+	}{
+		"success": {
+			setExpectations: func(mock sqlmock.Sqlmock) {
+				rows := sqlmock.NewRows([]string{"counts", "overdue", "near_deadline", "next_up"}).
+					AddRow(
+						[]byte(`{"OPEN":4,"DONE":6}`),
+						[]byte(`["File annual report","Pay credit card bill"]`),
+						[]byte(`["Book flight tickets"]`),
+						[]byte(`[{"title":"Submit tax documents","reason":"Due in 2 days"}]`),
+					)
+
+				mock.ExpectQuery(boardSummaryCTEQry + ` SELECT stats.counts, stats.overdue, stats.near_deadline, next_tasks.next_up FROM stats, next_tasks`).
+					WillReturnRows(rows)
+			},
+			expectedSummary: domain.BoardSummaryContent{
+				Counts: domain.TodoStatusCounts{
+					Open: 4,
+					Done: 6,
+				},
+				NextUp: []domain.NextUpTodoItem{
+					{
+						Title:  "Submit tax documents",
+						Reason: "Due in 2 days",
+					},
+				},
+				Overdue: []string{
+					"File annual report",
+					"Pay credit card bill",
+				},
+				NearDeadline: []string{
+					"Book flight tickets",
+				},
+			},
+			shouldError: false,
+		},
+		"database-error": {
+			setExpectations: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery(boardSummaryCTEQry + ` SELECT stats.counts, stats.overdue, stats.near_deadline, next_tasks.next_up FROM stats, next_tasks`).
+					WillReturnError(sql.ErrConnDone)
+			},
+			expectedSummary: domain.BoardSummaryContent{},
+			shouldError:     true,
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close() // nolint:errcheck
+
+			tt.setExpectations(mock)
+
+			repo := NewBoardSummaryRepository(db)
+			got, gotErr := repo.CalculateSummaryContent(context.Background())
+
+			if tt.shouldError {
+				assert.Error(t, gotErr)
+			} else {
+				assert.NoError(t, gotErr)
+				assert.Equal(t, tt.expectedSummary, got)
+			}
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
