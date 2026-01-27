@@ -95,7 +95,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 	}
 
 	// Load prior conversation to preserve context
-	history, _, err := sc.chatMessageRepo.ListChatMessages(spanCtx, 0) // full history (or paginated by repo)
+	history, _, err := sc.chatMessageRepo.ListChatMessages(spanCtx, 15)
 	if tracing.RecordErrorAndStatus(span, err) {
 		return err
 	}
