@@ -27,7 +27,7 @@ services:
       - LLM_MODEL=ai/gpt-oss
     models:
       - gpt-oss
-      - mistral
+      - qwen3-embedding
     depends_on:
       jaeger:
         condition: service_started
