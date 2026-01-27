@@ -6,7 +6,7 @@ CREATE TABLE todos (
     title              TEXT NOT NULL,
     status             TEXT NOT NULL,
     due_date           DATE NOT NULL,
-    embedding          VECTOR(1024),
+    embedding          VECTOR(1024), -- "Task: [title] | Status: [status] | Due: [due_date]"
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
