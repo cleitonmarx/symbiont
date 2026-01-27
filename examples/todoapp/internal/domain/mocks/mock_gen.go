@@ -847,6 +847,66 @@ func (_m *MockBoardSummaryRepository) EXPECT() *MockBoardSummaryRepository_Expec
 	return &MockBoardSummaryRepository_Expecter{mock: &_m.Mock}
 }
 
+// CalculateSummaryContent provides a mock function for the type MockBoardSummaryRepository
+func (_mock *MockBoardSummaryRepository) CalculateSummaryContent(ctx context.Context) (domain.BoardSummaryContent, error) {
+	ret := _mock.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CalculateSummaryContent")
+	}
+
+	var r0 domain.BoardSummaryContent
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (domain.BoardSummaryContent, error)); ok {
+		return returnFunc(ctx)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context) domain.BoardSummaryContent); ok {
+		r0 = returnFunc(ctx)
+	} else {
+		r0 = ret.Get(0).(domain.BoardSummaryContent)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockBoardSummaryRepository_CalculateSummaryContent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CalculateSummaryContent'
+type MockBoardSummaryRepository_CalculateSummaryContent_Call struct {
+	*mock.Call
+}
+
+// CalculateSummaryContent is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockBoardSummaryRepository_Expecter) CalculateSummaryContent(ctx interface{}) *MockBoardSummaryRepository_CalculateSummaryContent_Call {
+	return &MockBoardSummaryRepository_CalculateSummaryContent_Call{Call: _e.mock.On("CalculateSummaryContent", ctx)}
+}
+
+func (_c *MockBoardSummaryRepository_CalculateSummaryContent_Call) Run(run func(ctx context.Context)) *MockBoardSummaryRepository_CalculateSummaryContent_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBoardSummaryRepository_CalculateSummaryContent_Call) Return(boardSummaryContent domain.BoardSummaryContent, err error) *MockBoardSummaryRepository_CalculateSummaryContent_Call {
+	_c.Call.Return(boardSummaryContent, err)
+	return _c
+}
+
+func (_c *MockBoardSummaryRepository_CalculateSummaryContent_Call) RunAndReturn(run func(ctx context.Context) (domain.BoardSummaryContent, error)) *MockBoardSummaryRepository_CalculateSummaryContent_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetLatestSummary provides a mock function for the type MockBoardSummaryRepository
 func (_mock *MockBoardSummaryRepository) GetLatestSummary(ctx context.Context) (domain.BoardSummary, bool, error) {
 	ret := _mock.Called(ctx)
