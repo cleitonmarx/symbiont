@@ -25,6 +25,7 @@ services:
       - PUBSUB_SUBSCRIPTION_ID=todo_summary_generator
       - LLM_MODEL_HOST=http://model-runner.docker.internal
       - LLM_MODEL=ai/gpt-oss
+      - LLM_EMBEDDING_MODEL=ai/qwen3-embedding
     models:
       - gpt-oss
       - qwen3-embedding
