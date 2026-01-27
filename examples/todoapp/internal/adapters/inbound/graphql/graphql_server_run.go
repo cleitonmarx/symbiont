@@ -35,10 +35,12 @@ func (s *TodoGraphQLServer) Run(ctx context.Context) error {
 	h.AddTransport(transport.GET{})
 	h.Use(extension.Introspection{})
 
-	mux.Handle("/v1/query", otelhttp.NewHandler(
-		h,
-		"",
-		otelhttp.WithSpanNameFormatter(tracing.SpanNameFormatter),
+	mux.Handle("/v1/query", corsMiddleware(
+		otelhttp.NewHandler(
+			h,
+			"",
+			otelhttp.WithSpanNameFormatter(tracing.SpanNameFormatter),
+		),
 	))
 
 	mux.Handle("/", playground.Handler("TodoApp GraphQL", "/v1/query"))
@@ -76,4 +78,18 @@ func (s *TodoGraphQLServer) IsReady(ctx context.Context) error {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 	return nil
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
