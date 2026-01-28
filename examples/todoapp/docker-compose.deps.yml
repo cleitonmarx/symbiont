@@ -2,6 +2,9 @@ services:
   postgres:
     #image: postgres:15
     image:  pgvector/pgvector:pg18-trixie
+    entrypoint: >
+      sh -c "echo 'CREATE EXTENSION IF NOT EXISTS vector;' > /docker-entrypoint-initdb.d/init_vector.sql 
+      && exec docker-entrypoint.sh postgres"
     environment:
       POSTGRES_USER: todoapp
       POSTGRES_PASSWORD: todoapppass
@@ -61,6 +64,13 @@ models:
   gpt-oss:
     model: ai/gpt-oss:latest
     context_size: 8192
+    runtime_flags:
+      - "--keepalive"
+      - "1h"  # Model unloads only after 60 minutes of zero activity
   qwen3-embedding:
     model: ai/qwen3-embedding:latest
+    runtime_flags:
+      - "--embeddings"
+      - "--keepalive"
+      - "1h" # Model unloads only after 60 minutes of zero activity
   

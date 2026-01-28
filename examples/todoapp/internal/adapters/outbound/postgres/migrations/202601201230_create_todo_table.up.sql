@@ -1,6 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS vector;
-
-
 CREATE TABLE todos (
     id                 UUID PRIMARY KEY,
     title              TEXT NOT NULL,
