@@ -48,7 +48,16 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: ./examples/todoapp/go.mod
+      
+      - name: Install Docker Model Plugin
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-model-plugin
+
+      - name: Verify Plugin
+        run: docker model version
+
       - name: Run TodoApp E2E Tests
         run: |
           cd examples/todoapp
-          go test -tags=integration -timeout=5m ./tests/integration/...
+          go test -tags=integration -v -timeout=5m ./tests/integration/...
