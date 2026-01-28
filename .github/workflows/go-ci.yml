@@ -40,3 +40,15 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  todoapp-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Run TodoApp E2E Tests
+        run: |
+          cd examples/todoapp
+          go test ./... go test -tags=integration -timeout=5m ./tests/integration/...
