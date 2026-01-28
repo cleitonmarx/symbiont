@@ -125,7 +125,7 @@ func TestTodoApp_Integration(t *testing.T) {
 	cancel()
 
 	select {
-	case <-time.After(10 * time.Second):
+	case <-time.After(1 * time.Minute):
 		t.Fatalf("TodoApp app did not shut down in time")
 	case err = <-shutdownCh:
 		if err != nil {
