@@ -67,7 +67,7 @@ func (uti UpdateTodoImpl) Execute(ctx context.Context, id uuid.UUID, title *stri
 			return err
 		}
 
-		embedding, err := uti.llmClient.Embed(spanCtx, uti.model, td.ToEmbeddingInput())
+		embedding, err := uti.llmClient.Embed(spanCtx, uti.model, td.ToLLMInput())
 		if err != nil {
 			return err
 		}
