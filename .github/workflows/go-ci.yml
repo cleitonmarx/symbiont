@@ -69,11 +69,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y docker-model-plugin
 
-      - name: Pull Models
+      - name: Pull Model
         run: |
           docker model pull gpt-oss:latest
           docker model pull qwen3-embedding:latest
 
       - name: Run TodoApp E2E Tests
         run: |
-          go test -tags=integration -v ./examples/todoapp/tests/integration/...
+          cd examples/todoapp
+          go test -tags=integration -v ./tests/integration/...
