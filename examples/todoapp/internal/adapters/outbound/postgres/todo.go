@@ -62,6 +62,13 @@ func (tr TodoRepository) ListTodos(ctx context.Context, page int, pageSize int, 
 		qry = qry.Where(squirrel.Eq{"status": *params.Status})
 	}
 
+	if len(params.EmbeddingQuery) > 0 {
+		qry = qry.OrderByClause(squirrel.Expr(
+			"embedding <-> ? ASC",
+			pgvector.NewVector(toFloat32Truncated(params.EmbeddingQuery)),
+		))
+	}
+
 	rows, err := qry.QueryContext(spanCtx)
 	if tracing.RecordErrorAndStatus(span, err) {
 		return nil, false, err

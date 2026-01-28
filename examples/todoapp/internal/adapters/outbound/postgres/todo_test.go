@@ -370,10 +370,7 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 			page:     1,
 			pageSize: 10,
 			opts: []domain.ListTodoOptions{
-				func(params *domain.ListTodosParams) {
-					status := domain.TodoStatus_DONE
-					params.Status = &status
-				},
+				domain.WithStatus(domain.TodoStatus_DONE),
 			},
 			setExpectations: func(mock sqlmock.Sqlmock) {
 				rows := sqlmock.NewRows(todoFields).
@@ -395,24 +392,28 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 			expectedHasMore: false,
 			expectedErr:     false,
 		},
-		"large-page-size": {
+		"filter-by-embedding": {
 			page:     1,
-			pageSize: 1000,
+			pageSize: 10,
+			opts: []domain.ListTodoOptions{
+				domain.WithEmbedding([]float64{0.1, 0.2, 0.3}),
+			},
 			setExpectations: func(mock sqlmock.Sqlmock) {
 				rows := sqlmock.NewRows(todoFields).
 					AddRow(
-						fixedUUID1,
-						"Todo 1",
+						fixedUUID2,
+						"Todo 2",
 						domain.TodoStatus_OPEN,
 						fixedDueDate,
 						fixedTime,
 						fixedTime,
 					)
-				mock.ExpectQuery("SELECT id, title, status, due_date, created_at, updated_at FROM todos ORDER BY created_at DESC LIMIT 1001 OFFSET 0").
+				mock.ExpectQuery("SELECT id, title, status, due_date, created_at, updated_at FROM todos ORDER BY created_at DESC, embedding <-> $1 ASC LIMIT 11 OFFSET 0").
+					WithArgs(pgvector.NewVector([]float32{0.1, 0.2, 0.3})).
 					WillReturnRows(rows)
 			},
 			expectedTodos: []domain.Todo{
-				{ID: fixedUUID1, Title: "Todo 1", Status: domain.TodoStatus_OPEN, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
+				{ID: fixedUUID2, Title: "Todo 2", Status: domain.TodoStatus_OPEN, DueDate: fixedDueDate, CreatedAt: fixedTime, UpdatedAt: fixedTime},
 			},
 			expectedHasMore: false,
 			expectedErr:     false,

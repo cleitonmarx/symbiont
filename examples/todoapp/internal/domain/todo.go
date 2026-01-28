@@ -56,7 +56,8 @@ func (t Todo) ToEmbeddingInput() string {
 
 // ListTodosParams represents the parameters for listing todo items.
 type ListTodosParams struct {
-	Status *TodoStatus
+	Status         *TodoStatus
+	EmbeddingQuery []float64
 }
 
 // ListTodoOptions defines a function type for modifying ListTodosParams.
@@ -66,6 +67,13 @@ type ListTodoOptions func(*ListTodosParams)
 func WithStatus(status TodoStatus) ListTodoOptions {
 	return func(params *ListTodosParams) {
 		params.Status = &status
+	}
+}
+
+// WithEmbedding is a ListTodoOptions that filters todos by their embedding similarity to the provided embedding.
+func WithEmbedding(embedding []float64) ListTodoOptions {
+	return func(params *ListTodosParams) {
+		params.EmbeddingQuery = embedding
 	}
 }
 
