@@ -1,10 +1,9 @@
-//go:build integration
+//--go:build integration
 
 package integration
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/http/gen"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/app"
+	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/common"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/usecases"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/require"
@@ -42,7 +42,7 @@ func TestTodoApp_Integration(t *testing.T) {
 		&InitDockerCompose{},
 	)
 
-	summaryQueue := make(usecases.CompletedSummaryQueue, 5)
+	summaryQueue := make(usecases.CompletedSummaryQueue, 1)
 	depend.Register(summaryQueue)
 
 	cancelCtx, cancel := context.WithCancel(context.Background())
@@ -58,19 +58,18 @@ func TestTodoApp_Integration(t *testing.T) {
 
 	apiCli, err := gen.NewClientWithResponses("http://localhost:8080")
 	require.NoError(t, err, "failed to create TodoApp API client")
-	t.Run("create-todos", func(t *testing.T) {
-		for i := range 5 {
-			createResp, err := apiCli.CreateTodoWithResponse(cancelCtx, gen.CreateTodoJSONRequestBody{
-				Title:   fmt.Sprintf("Test Todo %d", i+1),
-				DueDate: types.Date{Time: time.Now().Add(24 * time.Hour)},
-			})
-			require.NoError(t, err, "failed to call CreateTodo endpoint")
-			require.NotNil(t, createResp.JSON201, "expected non-nil response for CreateTodo")
-		}
+	t.Run("create-todo", func(t *testing.T) {
+		createResp, err := apiCli.CreateTodoWithResponse(cancelCtx, gen.CreateTodoJSONRequestBody{
+			Title:   "Integration Test Todo",
+			DueDate: types.Date{Time: time.Now().Add(24 * time.Hour)},
+		})
+		require.NoError(t, err, "failed to call CreateTodo endpoint")
+		require.NotNil(t, createResp.JSON201, "expected non-nil response for CreateTodo")
+
 	})
 
 	var todos []gen.Todo
-	t.Run("list-created-todos", func(t *testing.T) {
+	t.Run("list-created-todo", func(t *testing.T) {
 		resp, err := apiCli.ListTodosWithResponse(cancelCtx, &gen.ListTodosParams{
 			Page:     1,
 			Pagesize: 10,
@@ -78,16 +77,15 @@ func TestTodoApp_Integration(t *testing.T) {
 
 		require.NoError(t, err, "failed to call ListTodos endpoint")
 		require.NotNil(t, resp.JSON200, "expected non-nil response for ListTodos")
-		require.Equal(t, 5, len(resp.JSON200.Items), "expected 5 todos in the list")
+		require.Equal(t, 1, len(resp.JSON200.Items), "expected 1 todo in the list")
 
 		todos = resp.JSON200.Items
 	})
 
 	t.Run("update-todos", func(t *testing.T) {
-		statusDone := gen.DONE
 		for _, todo := range todos {
 			updateResp, err := apiCli.UpdateTodoWithResponse(cancelCtx, todo.Id, gen.UpdateTodoJSONRequestBody{
-				Status: &statusDone,
+				Status: common.Ptr(gen.DONE),
 			})
 			require.NoError(t, err, "failed to call UpdateTodo endpoint")
 			require.NotNil(t, updateResp.JSON200, "expected non-nil response for UpdateTodo")
@@ -98,10 +96,7 @@ func TestTodoApp_Integration(t *testing.T) {
 	t.Run("check-board-summary-generated", func(t *testing.T) {
 		select {
 		case summary := <-summaryQueue:
-			require.True(
-				t,
-				summary.Content.Counts.Done >= 1 ||
-					summary.Content.Counts.Open >= 1,
+			require.Equal(t, 1, summary.Content.Counts.Done,
 				"expected board summary to have at least one done or open todo",
 			)
 		case <-time.After(5 * time.Minute):
@@ -131,12 +126,12 @@ func TestTodoApp_Integration(t *testing.T) {
 
 	select {
 	case <-time.After(10 * time.Second):
-		t.Fatalf("TodoMailer app did not shut down in time")
+		t.Fatalf("TodoApp app did not shut down in time")
 	case err = <-shutdownCh:
 		if err != nil {
-			t.Fatalf("TodoMailer app shutdown with error: %v", err)
+			t.Fatalf("TodoApp app shutdown with error: %v", err)
 		} else {
-			t.Logf("TodoMailer app shut down gracefully")
+			t.Logf("TodoApp app shut down gracefully")
 		}
 	}
 }
