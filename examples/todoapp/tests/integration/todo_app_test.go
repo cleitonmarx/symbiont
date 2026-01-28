@@ -36,7 +36,7 @@ func TestTodoApp_Integration(t *testing.T) {
 				"PUBSUB_SUBSCRIPTION_ID":      "todo_summary_generator",
 				"LLM_MODEL_HOST":              "http://localhost:12434",
 				"LLM_MODEL":                   "gpt-oss:20B-UD-Q4_K_XL",
-				"LLM_EMBEDDING_MODEL":         "qwen3-embedding:4B",
+				"LLM_EMBEDDING_MODEL":         "embeddinggemma:300M-Q8_0",
 			},
 		},
 		&InitDockerCompose{},
