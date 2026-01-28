@@ -11,7 +11,7 @@ TodoApp is a comprehensive example application demonstrating the capabilities of
 - 📊 **Observability**: OpenTelemetry tracing with Jaeger
 - 🗄️ **PostgreSQL**: Persistent storage with migrations
 - 🎨 **Modern UI**: React + TypeScript frontend
-- 🗃️ **Batch GraphQL Operations**: Efficiently update or delete multiple todos in a single GraphQL request using aliases, powered by a dedicated batch runner
+- 🗃️ **Batch GraphQL Operations**: Efficiently update or delete multiple todos in a single GraphQL request using aliases.
 - 🧠 **AI-Enhanced Search**: PostgreSQL with [pgvector](https://github.com/pgvector/pgvector) extension for semantic search in AI Chat
 
 ## Architecture
@@ -264,7 +264,7 @@ graph TD
 ## Prerequisites
 
 - Docker and Docker Compose
-- Go 1.24 or higher (for local development)
+- Go 1.25 or higher (for local development)
 - Node.js 18+ (for webapp development)
 
 ## Quick Start
@@ -278,7 +278,7 @@ docker compose up -d
 The application will be available at:
 - **Web UI**: http://localhost:8080
 - **API**: http://localhost:8080/api/v1
-- **GraphQL Palyground**: http://localhost:8085/
+- **GraphQL Playground**: http://localhost:8085/
 - **GraphQL API**: http://localhost:8085/v1/query
 - **Jaeger Tracing**: http://localhost:16686
 
