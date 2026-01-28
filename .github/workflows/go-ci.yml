@@ -46,7 +46,14 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
-          go-version-file: ./examples/todoapp/go.mod      
+          go-version-file: ./examples/todoapp/go.mod
+          cache: true
+          cache-dependency-path: ./examples/todoapp/go.sum
+
+      - name: Cache Docker Images
+        uses: ScribeMD/docker-cache@0.5.0
+        with:
+          key: docker-${{ runner.os }}-${{ hashFiles('./examples/todoapp/docker-compose.deps.yml') }}
 
       - name: Install Docker Model Plugin
         run: |
