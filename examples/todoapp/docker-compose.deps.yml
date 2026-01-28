@@ -66,11 +66,11 @@ models:
     context_size: 8192
     runtime_flags:
       - "--keepalive"
-      - "30m"  # Model unloads only after 60 minutes of zero activity
+      - "30m" 
   qwen3-embedding:
     model: ai/qwen3-embedding:latest
     runtime_flags:
       - "--embeddings"
       - "--keepalive"
-      - "30m" # Model unloads only after 60 minutes of zero activity
+      - "30m"
   
