@@ -257,7 +257,7 @@ func TestBoardSummaryRepository_CalculateSummaryContent(t *testing.T) {
 						[]byte(`[{"title":"Submit tax documents","reason":"Due in 2 days"}]`),
 					)
 
-				mock.ExpectQuery(boardSummaryCTEQry + ` SELECT stats.counts, stats.overdue, stats.near_deadline, next_tasks.next_up FROM stats, next_tasks`).
+				mock.ExpectQuery(boardSummaryCTEQry + ` SELECT stats.counts, near_deadline.overdue, near_deadline.near_deadline, next_tasks.next_up FROM stats, near_deadline, next_tasks`).
 					WillReturnRows(rows)
 			},
 			expectedSummary: domain.BoardSummaryContent{
@@ -283,7 +283,7 @@ func TestBoardSummaryRepository_CalculateSummaryContent(t *testing.T) {
 		},
 		"database-error": {
 			setExpectations: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(boardSummaryCTEQry + ` SELECT stats.counts, stats.overdue, stats.near_deadline, next_tasks.next_up FROM stats, next_tasks`).
+				mock.ExpectQuery(boardSummaryCTEQry + ` SELECT stats.counts, near_deadline.overdue, near_deadline.near_deadline, next_tasks.next_up FROM stats, near_deadline, next_tasks`).
 					WillReturnError(sql.ErrConnDone)
 			},
 			expectedSummary: domain.BoardSummaryContent{},

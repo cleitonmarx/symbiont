@@ -129,11 +129,11 @@ func (bsr BoardSummaryRepository) CalculateSummaryContent(ctx context.Context) (
 	err := bsr.pqsql.
 		Select(
 			"stats.counts",
-			"stats.overdue",
-			"stats.near_deadline",
+			"near_deadline.overdue",
+			"near_deadline.near_deadline",
 			"next_tasks.next_up",
 		).
-		From("stats, next_tasks").
+		From("stats, near_deadline, next_tasks").
 		Prefix(boardSummaryCTEQry).
 		QueryRowContext(spanCtx).
 		Scan(&countsJSON, &overdueJSON, &nearDeadlineJSON, &nextUpJSON)
@@ -178,24 +178,31 @@ stats AS (
         jsonb_build_object(
             'DONE', COUNT(*) FILTER (WHERE status = 'DONE'),
             'OPEN', COUNT(*) FILTER (WHERE status = 'OPEN')
-        ) as counts,
-        COALESCE(jsonb_agg(title) FILTER (WHERE category = 'overdue'), '[]') as overdue,
-        COALESCE(jsonb_agg(title) FILTER (WHERE category = 'near_deadline'), '[]') as near_deadline
+        ) as counts
     FROM task_data
 ),
+near_deadline AS (
+    SELECT
+        (SELECT COALESCE(jsonb_agg(title), '[]') FROM (
+            SELECT title FROM task_data WHERE category = 'overdue' ORDER BY due_date ASC LIMIT 5
+        ) t) as overdue,
+        (SELECT COALESCE(jsonb_agg(title), '[]') FROM (
+            SELECT title FROM task_data WHERE category = 'near_deadline' ORDER BY due_date ASC LIMIT 5
+        ) t) as near_deadline
+),
 next_tasks AS (
-    SELECT jsonb_agg(jsonb_build_object(
+    SELECT COALESCE(jsonb_agg(jsonb_build_object(
         'title', title,
         'reason', CASE 
             WHEN due_date <= CURRENT_DATE + 7 THEN 'due within 7 days'
             WHEN due_date > CURRENT_DATE + 7 AND due_date < CURRENT_DATE + 30 THEN 'upcoming'
             ELSE 'future'
         END
-    )) as next_up
+    )), '[]') as next_up
     FROM (
         SELECT title, due_date FROM task_data 
         WHERE category IN ('near_deadline', 'next_up')
-        LIMIT 10
+        LIMIT 5
     ) sub
 )`
 
