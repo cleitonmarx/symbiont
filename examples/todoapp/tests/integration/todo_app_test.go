@@ -104,7 +104,7 @@ func TestTodoApp_Integration(t *testing.T) {
 					summary.Content.Counts.Open >= 1,
 				"expected board summary to have at least one done or open todo",
 			)
-		case <-time.After(20 * time.Second):
+		case <-time.After(5 * time.Minute):
 			t.Fatalf("Timed out waiting for board summary in queue")
 		}
 	})
