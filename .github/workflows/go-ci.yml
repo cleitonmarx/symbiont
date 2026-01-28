@@ -46,9 +46,9 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
-          go-version-file: ./examples/todoapp/go.mod
-      
-      - name: Set up Docker APT Repository
+          go-version-file: ./examples/todoapp/go.mod      
+
+      - name: Install Docker Model Plugin
         run: |
           # Add Docker's official GPG key
           sudo apt-get update
@@ -62,9 +62,8 @@ jobs:
             "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
             $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
             sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-      - name: Install Docker Model Plugin
-        run: |
+          
+          # Install Docker Model Plugin
           sudo apt-get update
           sudo apt-get install -y docker-model-plugin
 
@@ -72,7 +71,7 @@ jobs:
         run: |
           # docker model pull gpt-oss:latest
           # docker model pull qwen3-embedding:latest
-          docker-compose -f ./examples/todoapp/docker-compose.deps.yml pull --parallel
+          docker compose -f ./examples/todoapp/docker-compose.deps.yml pull --parallel
 
       - name: Run TodoApp E2E Tests
         run: |
