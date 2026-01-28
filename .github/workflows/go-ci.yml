@@ -1,13 +1,12 @@
 name: Go CI
 
 on:
-  push:
-    branches: [main, master]
   pull_request:
     branches: [main, master]
 
 permissions:
   contents: read
+
 
 jobs:
   lint:
@@ -69,10 +68,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y docker-model-plugin
 
-      - name: Pull Models
+      - name: Pull Images And Models 
         run: |
-          docker model pull gpt-oss:latest
-          docker model pull qwen3-embedding:latest
+          # docker model pull gpt-oss:latest
+          # docker model pull qwen3-embedding:latest
+          docker-compose -f ./examples/todoapp/docker-compose.deps.yml pull --parallel
 
       - name: Run TodoApp E2E Tests
         run: |
