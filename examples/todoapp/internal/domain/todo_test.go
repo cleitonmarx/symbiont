@@ -9,14 +9,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTodo_ToEmbeddingInput(t *testing.T) {
+func TestTodo_ToLLMInput(t *testing.T) {
 	todo := Todo{
 		Title:   "Finish the report",
 		Status:  TodoStatus_OPEN,
 		DueDate: time.Date(2024, 7, 15, 0, 0, 0, 0, time.UTC),
 	}
 
-	result := todo.ToEmbeddingInput()
+	result := todo.ToLLMInput()
 	assert.Equal(t, "Task: Finish the report | Status: OPEN | Due: 2024-07-15", result)
 }
 

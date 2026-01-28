@@ -55,7 +55,7 @@ func (cti CreateTodoImpl) Execute(ctx context.Context, title string, dueDate tim
 		return domain.Todo{}, err
 	}
 
-	embedding, err := cti.llmClient.Embed(spanCtx, cti.llmModel, todo.ToEmbeddingInput())
+	embedding, err := cti.llmClient.Embed(spanCtx, cti.llmModel, todo.ToLLMInput())
 	if err != nil {
 		return domain.Todo{}, err
 	}

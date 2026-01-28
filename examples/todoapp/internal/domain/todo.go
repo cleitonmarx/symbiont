@@ -49,15 +49,15 @@ func (t Todo) Validate(now time.Time) error {
 	return nil
 }
 
-// ToEmbeddingInput formats the todo item as a string suitable for embedding generation.
-func (t Todo) ToEmbeddingInput() string {
+// ToLLMInput formats the todo item as a string suitable for LLM input.
+func (t Todo) ToLLMInput() string {
 	return "Task: " + t.Title + " | Status: " + string(t.Status) + " | Due: " + t.DueDate.Format(time.DateOnly)
 }
 
 // ListTodosParams represents the parameters for listing todo items.
 type ListTodosParams struct {
-	Status         *TodoStatus
-	EmbeddingQuery []float64
+	Status    *TodoStatus
+	Embedding []float64
 }
 
 // ListTodoOptions defines a function type for modifying ListTodosParams.
@@ -73,7 +73,7 @@ func WithStatus(status TodoStatus) ListTodoOptions {
 // WithEmbedding is a ListTodoOptions that filters todos by their embedding similarity to the provided embedding.
 func WithEmbedding(embedding []float64) ListTodoOptions {
 	return func(params *ListTodosParams) {
-		params.EmbeddingQuery = embedding
+		params.Embedding = embedding
 	}
 }
 
