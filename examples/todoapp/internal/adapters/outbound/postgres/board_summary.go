@@ -195,7 +195,7 @@ next_tasks AS (
     FROM (
         SELECT title, due_date FROM task_data 
         WHERE category IN ('near_deadline', 'next_up')
-        LIMIT 20
+        LIMIT 10
     ) sub
 )`
 

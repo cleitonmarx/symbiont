@@ -15,7 +15,7 @@
     INSTRUCTIONS:
     - Compare the current summary with the previous one.
     - If new tasks have been completed since the last summary, celebrate or acknowledge this progress.
-    - Do NOT output JSON, markdown, code blocks, or any extra formatting—just the summary sentence.
+    - IMPORTANT: Do NOT output JSON, markdown, code blocks, or any extra formatting—just the summary sentence.
     - Avoid repeating information from the previous summary unless it’s important for context or motivation.
     - The system already displays the number of open or done tasks. Only mention it if it’s relevant for motivation or context (otherwise, skip the counts).
     - Highlight overdue or near deadline tasks as priorities.

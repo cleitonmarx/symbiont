@@ -240,18 +240,6 @@ func TestBoardSummaryRepository_GetLatestSummary(t *testing.T) {
 	}
 }
 
-func TestInitBoardSummaryRepository_Initialize(t *testing.T) {
-	i := &InitBoardSummaryRepository{
-		DB: &sql.DB{},
-	}
-
-	_, err := i.Initialize(context.Background())
-	assert.NoError(t, err)
-
-	_, err = depend.Resolve[domain.BoardSummaryRepository]()
-	assert.NoError(t, err)
-}
-
 func TestBoardSummaryRepository_CalculateSummaryContent(t *testing.T) {
 	tests := map[string]struct {
 		setExpectations func(mock sqlmock.Sqlmock)
@@ -322,4 +310,16 @@ func TestBoardSummaryRepository_CalculateSummaryContent(t *testing.T) {
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
+}
+
+func TestInitBoardSummaryRepository_Initialize(t *testing.T) {
+	i := &InitBoardSummaryRepository{
+		DB: &sql.DB{},
+	}
+
+	_, err := i.Initialize(context.Background())
+	assert.NoError(t, err)
+
+	_, err = depend.Resolve[domain.BoardSummaryRepository]()
+	assert.NoError(t, err)
 }
