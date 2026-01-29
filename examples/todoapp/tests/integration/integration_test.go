@@ -40,7 +40,6 @@ func TestMain(m *testing.M) {
 				"DB_HOST":                     "localhost",
 				"DB_PORT":                     "5432",
 				"DB_NAME":                     "todoappdb",
-				"EMAIL_SENDER_INTERVAL":       "1s",
 				"PUBSUB_EMULATOR_HOST":        "localhost:8681",
 				"PUBSUB_PROJECT_ID":           "local-dev",
 				"PUBSUB_TOPIC_ID":             "Todo",
