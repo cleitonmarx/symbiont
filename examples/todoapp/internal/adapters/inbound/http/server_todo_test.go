@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -119,6 +121,7 @@ func TestTodoAppServer_CreateTodo(t *testing.T) {
 
 			server := &TodoAppServer{
 				CreateTodoUseCase: mockCreateTodo,
+				Logger:            log.New(io.Discard, "", 0),
 			}
 
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(tt.requestBody))
@@ -254,6 +257,7 @@ func TestTodoAppServer_ListTodos(t *testing.T) {
 
 			server := &TodoAppServer{
 				ListTodosUseCase: mockListTodos,
+				Logger:           log.New(io.Discard, "", 0),
 			}
 
 			u, err := url.Parse("http://localhost/api/v1/todos")
@@ -384,6 +388,7 @@ func TestTodoAppServer_UpdateTodo(t *testing.T) {
 			tt.setupMocks(mockUpdateTodo)
 			server := &TodoAppServer{
 				UpdateTodoUseCase: mockUpdateTodo,
+				Logger:            log.New(io.Discard, "", 0),
 			}
 
 			req := httptest.NewRequest(http.MethodPatch, "/api/v1/todos/"+tt.todoID, bytes.NewReader(tt.requestBody))

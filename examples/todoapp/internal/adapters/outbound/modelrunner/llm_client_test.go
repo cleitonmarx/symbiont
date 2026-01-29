@@ -325,7 +325,7 @@ func TestLLMClientAdapter_Embed(t *testing.T) {
 		model       string
 		input       string
 		expectErr   bool
-		expectedVec []float32
+		expectedVec []float64
 	}{
 		"success": {
 			response: `{
@@ -343,7 +343,7 @@ func TestLLMClientAdapter_Embed(t *testing.T) {
 			statusCode:  http.StatusOK,
 			model:       "ai/qwen3-embedding",
 			input:       "A dog is an animal",
-			expectedVec: []float32{1.1, 2.2, 3.3},
+			expectedVec: []float64{1.1, 2.2, 3.3},
 		},
 		"no-embedding-data": {
 			response: `{
