@@ -1,4 +1,4 @@
-name: Go CI
+name: Todo App CI
 
 on:
   pull_request:
@@ -7,33 +7,28 @@ on:
 permissions:
   contents: read
 
-
 jobs:
-  lint:
+  todoapp-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
-        with:
-          version: v2.8
-
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
+          go-version-file: ./examples/todoapp/go.mod
+          cache: true
+          cache-dependency-path: ./examples/todoapp/go.sum
       - name: go vet
-        run: go vet -x ./...
+        run: |
+          cd examples/todoapp
+          go vet -x ./...
       - name: Check Formatting
-        run: test -z "$(gofmt -s -l . | tee /dev/stderr)"
-      - name: Run Tests with Coverage
-        run: go test -v -race -covermode=atomic -coverprofile=coverage.txt ./...
+        run: |
+          cd examples/todoapp
+          test -z "$(gofmt -s -l . | tee /dev/stderr)"
+      - name: Run TodoApp Unit Tests with Coverage
+        run: |
+          cd examples/todoapp
+          go test -v -race -covermode=atomic -coverprofile=coverage.txt ./...
       - name: Upload coverage reports to Codecov
         if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
         uses: codecov/codecov-action@v5
@@ -52,20 +47,15 @@ jobs:
       
       - name: Install Docker Model Plugin
         run: |
-          # Add Docker's official GPG key
           sudo apt-get update
           sudo apt-get install -y ca-certificates curl gnupg
           sudo install -m 0755 -d /etc/apt/keyrings
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
           sudo chmod a+r /etc/apt/keyrings/docker.gpg
-
-          # Add the repository to Apt sources
           echo \
             "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
             $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
             sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-          
-          # Install Docker Model Plugin
           sudo apt-get update
           sudo apt-get install -y docker-model-plugin
 
