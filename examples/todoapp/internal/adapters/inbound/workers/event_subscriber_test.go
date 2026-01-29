@@ -91,8 +91,8 @@ func TestTodoEventSubscriber_Run(t *testing.T) {
 
 	// Setup mocks
 	gbs := mocks.NewMockGenerateBoardSummary(t)
-	gbs.EXPECT().Execute(ctx).Return(nil).Once()
-	gbs.EXPECT().Execute(ctx).Return(assert.AnError).Once()
+	gbs.EXPECT().Execute(ctx).Return(nil)
+	gbs.EXPECT().Execute(ctx).Return(assert.AnError)
 
 	signalChan := make(chan struct{})
 
