@@ -1,4 +1,4 @@
-//-- go:build integration
+//--go:build integration
 
 package integration
 
@@ -109,7 +109,8 @@ func TestTodoApp_RestAPI(t *testing.T) {
 
 	t.Run("update-todos", func(t *testing.T) {
 		for _, todo := range todos {
-			dueDate := time.Now().Add(48 * time.Hour).Truncate(24 * time.Hour)
+			now := time.Now().Add(48 * time.Hour)
+			dueDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 			updateResp, err := apiCli.UpdateTodoWithResponse(t.Context(), todo.Id, gen.UpdateTodoJSONRequestBody{
 				DueDate: &types.Date{Time: dueDate},
 			})
@@ -122,8 +123,8 @@ func TestTodoApp_RestAPI(t *testing.T) {
 	t.Run("check-board-summary-generated", func(t *testing.T) {
 		select {
 		case summary := <-summaryQueue:
-			require.Equal(t, 1, summary.Content.Counts.Done,
-				"expected board summary to have at least one done or open todo",
+			require.Equal(t, 1, summary.Content.Counts.Open,
+				"expected board summary to have at least one open todo",
 			)
 		case <-time.After(5 * time.Minute):
 			t.Fatalf("Timed out waiting for board summary in queue")
