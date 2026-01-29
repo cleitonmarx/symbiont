@@ -16,7 +16,7 @@ import (
 type request struct {
 	Query     string `json:"query"`
 	Variables any    `json:"variables,omitempty"`
-	URL       string `json:"-"`
+	url       string `json:"-"`
 }
 
 // location represents the location of an error in a GraphQL query.
@@ -56,7 +56,7 @@ func NewClient(endpoint string) *Client {
 // UpdateTodos updates multiple todos based on the provided parameters.
 func (c *Client) UpdateTodos(ctx context.Context, params []gen.UpdateTodoParams) ([]*gen.Todo, error) {
 	req := request{
-		URL: c.url,
+		url: c.url,
 	}
 	sb := &strings.Builder{}
 	variables := make(map[string]any)
@@ -93,7 +93,7 @@ func (c *Client) UpdateTodos(ctx context.Context, params []gen.UpdateTodoParams)
 // DeleteTodos deletes multiple todos by their IDs.
 func (c *Client) DeleteTodos(ctx context.Context, ids []uuid.UUID) ([]bool, error) {
 	req := request{
-		URL: c.url,
+		url: c.url,
 	}
 	sb := &strings.Builder{}
 	variables := make(map[string]any)
@@ -132,7 +132,7 @@ func (c *Client) ListTodos(ctx context.Context, status *gen.TodoStatus, page int
 	req := request{
 		Query:     listTodosQuery,
 		Variables: map[string]any{"status": status, "page": page, "pageSize": pageSize},
-		URL:       c.url,
+		url:       c.url,
 	}
 
 	resp, err := makeRequest[*gen.TodoPage](ctx, req)
@@ -150,7 +150,7 @@ func makeRequest[T any](ctx context.Context, req request) (response[T], error) {
 		return response[T]{}, err
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, req.URL, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, req.url, bytes.NewReader(body))
 	if err != nil {
 		return response[T]{}, err
 	}
