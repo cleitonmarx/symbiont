@@ -407,14 +407,3 @@ func TestInitLLMClient_Initialize(t *testing.T) {
 	assert.NotNil(t, r)
 	assert.NoError(t, err)
 }
-
-func Test(t *testing.T) {
-	client := NewDRMAPIClient("http://localhost:12434", "", http.DefaultClient)
-
-	adapter := NewLLMClientAdapter(client)
-	resp, err := adapter.Embed(context.Background(), "qwen3-embedding", "A dog is an animal")
-	assert.NoError(t, err)
-
-	fmt.Println("Embedding:", resp)
-
-}
