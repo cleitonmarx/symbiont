@@ -109,12 +109,13 @@ func TestTodoApp_RestAPI(t *testing.T) {
 
 	t.Run("update-todos", func(t *testing.T) {
 		for _, todo := range todos {
+			dueDate := time.Now().Add(48 * time.Hour).Truncate(24 * time.Hour)
 			updateResp, err := apiCli.UpdateTodoWithResponse(t.Context(), todo.Id, gen.UpdateTodoJSONRequestBody{
-				DueDate: &types.Date{Time: time.Now().Add(48 * time.Hour)},
+				DueDate: &types.Date{Time: dueDate},
 			})
 			require.NoError(t, err, "failed to call UpdateTodo endpoint")
 			require.NotNil(t, updateResp.JSON200, "expected non-nil response for UpdateTodo")
-			require.Equal(t, gen.DONE, updateResp.JSON200.Status, "expected todo status to be 'completed'")
+			require.Equal(t, dueDate, updateResp.JSON200.DueDate.Time, "expected todo status to be 'completed'")
 		}
 	})
 

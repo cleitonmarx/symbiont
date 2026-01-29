@@ -69,10 +69,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y docker-model-plugin
 
-      - name: Pull Docker Images And Models 
-        run: |
-          docker compose -f ./examples/todoapp/docker-compose.deps.yml pull
-
       - name: Run TodoApp E2E Tests
         run: |
           cd examples/todoapp
