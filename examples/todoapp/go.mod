@@ -2,8 +2,6 @@ module github.com/cleitonmarx/symbiont/examples/todoapp
 
 go 1.25.3
 
-//replace github.com/cleitonmarx/symbiont => ../../
-
 require (
 	cloud.google.com/go/pubsub/v2 v2.3.0
 	github.com/99designs/gqlgen v0.17.86
