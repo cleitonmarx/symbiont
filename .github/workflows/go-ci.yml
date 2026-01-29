@@ -40,7 +40,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  todoapp-e2e:
+  todoapp-integration-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -49,12 +49,7 @@ jobs:
           go-version-file: ./examples/todoapp/go.mod
           cache: true
           cache-dependency-path: ./examples/todoapp/go.sum
-
-      - name: Cache Docker Images
-        uses: ScribeMD/docker-cache@0.5.0
-        with:
-          key: docker-${{ runner.os }}-${{ hashFiles('./examples/todoapp/docker-compose.deps.yml') }}
-
+      
       - name: Install Docker Model Plugin
         run: |
           # Add Docker's official GPG key
@@ -76,10 +71,7 @@ jobs:
 
       - name: Pull Docker Images And Models 
         run: |
-          docker model pull gpt-oss:20B-UD-Q4_K_XL &
-          docker model pull embeddinggemma:300M-Q8_0 &
-          docker compose -f ./examples/todoapp/docker-compose.deps.yml pull &
-          wait
+          docker compose -f ./examples/todoapp/docker-compose.deps.yml pull
 
       - name: Run TodoApp E2E Tests
         run: |

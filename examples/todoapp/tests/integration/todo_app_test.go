@@ -1,9 +1,10 @@
-//--go:build integration
+//-- go:build integration
 
 package integration
 
 import (
 	"context"
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -11,13 +12,15 @@ import (
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/http/gen"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/app"
-	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/common"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/usecases"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/require"
 )
 
-func TestTodoApp_Integration(t *testing.T) {
+// summaryQueue is used to receive completed board summaries for verification in tests.
+var summaryQueue usecases.CompletedSummaryQueue
+
+func TestMain(m *testing.M) {
 	todoApp := app.NewTodoApp(
 		&initEnvVars{
 			envVars: map[string]string{
@@ -42,7 +45,7 @@ func TestTodoApp_Integration(t *testing.T) {
 		&InitDockerCompose{},
 	)
 
-	summaryQueue := make(usecases.CompletedSummaryQueue, 1)
+	summaryQueue = make(usecases.CompletedSummaryQueue, 5)
 	depend.Register(summaryQueue)
 
 	cancelCtx, cancel := context.WithCancel(context.Background())
@@ -53,13 +56,35 @@ func TestTodoApp_Integration(t *testing.T) {
 	err := todoApp.WaitForReadiness(cancelCtx, 10*time.Minute)
 	if err != nil {
 		cancel()
-		t.Fatalf("TodoApp app failed to become ready: %v", err)
+		log.Fatalf("TodoApp app failed to become ready: %v", err)
 	}
+
+	// Run tests
+	code := m.Run()
+
+	// Shutdown the app
+	cancel()
+
+	select {
+	case <-time.After(1 * time.Minute):
+		log.Fatalf("TodoApp app did not shut down in time")
+	case err = <-shutdownCh:
+		if err != nil {
+			log.Fatalf("TodoApp app shutdown with error: %v", err)
+		} else {
+			log.Printf("TodoApp app shut down gracefully")
+		}
+	}
+
+	os.Exit(code)
+}
+
+func TestTodoApp_RestAPI(t *testing.T) {
 
 	apiCli, err := gen.NewClientWithResponses("http://localhost:8080")
 	require.NoError(t, err, "failed to create TodoApp API client")
 	t.Run("create-todo", func(t *testing.T) {
-		createResp, err := apiCli.CreateTodoWithResponse(cancelCtx, gen.CreateTodoJSONRequestBody{
+		createResp, err := apiCli.CreateTodoWithResponse(t.Context(), gen.CreateTodoJSONRequestBody{
 			Title:   "Integration Test Todo",
 			DueDate: types.Date{Time: time.Now().Add(24 * time.Hour)},
 		})
@@ -70,7 +95,7 @@ func TestTodoApp_Integration(t *testing.T) {
 
 	var todos []gen.Todo
 	t.Run("list-created-todo", func(t *testing.T) {
-		resp, err := apiCli.ListTodosWithResponse(cancelCtx, &gen.ListTodosParams{
+		resp, err := apiCli.ListTodosWithResponse(t.Context(), &gen.ListTodosParams{
 			Page:     1,
 			Pagesize: 10,
 		})
@@ -84,8 +109,8 @@ func TestTodoApp_Integration(t *testing.T) {
 
 	t.Run("update-todos", func(t *testing.T) {
 		for _, todo := range todos {
-			updateResp, err := apiCli.UpdateTodoWithResponse(cancelCtx, todo.Id, gen.UpdateTodoJSONRequestBody{
-				Status: common.Ptr(gen.DONE),
+			updateResp, err := apiCli.UpdateTodoWithResponse(t.Context(), todo.Id, gen.UpdateTodoJSONRequestBody{
+				DueDate: &types.Date{Time: time.Now().Add(48 * time.Hour)},
 			})
 			require.NoError(t, err, "failed to call UpdateTodo endpoint")
 			require.NotNil(t, updateResp.JSON200, "expected non-nil response for UpdateTodo")
@@ -106,13 +131,13 @@ func TestTodoApp_Integration(t *testing.T) {
 
 	t.Run("delete-todos", func(t *testing.T) {
 		for _, todo := range todos {
-			deleteResp, err := apiCli.DeleteTodoWithResponse(cancelCtx, todo.Id)
+			deleteResp, err := apiCli.DeleteTodoWithResponse(t.Context(), todo.Id)
 			require.NoError(t, err, "failed to call DeleteTodo endpoint")
 			require.Equal(t, 204, deleteResp.StatusCode(), "expected 204 No Content response for DeleteTodo")
 		}
 
 		// Verify todos are deleted
-		listResp, err := apiCli.ListTodosWithResponse(cancelCtx, &gen.ListTodosParams{
+		listResp, err := apiCli.ListTodosWithResponse(t.Context(), &gen.ListTodosParams{
 			Page:     1,
 			Pagesize: 10,
 		})
@@ -120,35 +145,4 @@ func TestTodoApp_Integration(t *testing.T) {
 		require.NotNil(t, listResp.JSON200, "expected non-nil response for ListTodos after deletions")
 		require.Equal(t, 0, len(listResp.JSON200.Items), "expected 0 todos in the list after deletions")
 	})
-
-	// Shutdown the app
-	cancel()
-
-	select {
-	case <-time.After(1 * time.Minute):
-		t.Fatalf("TodoApp app did not shut down in time")
-	case err = <-shutdownCh:
-		if err != nil {
-			t.Fatalf("TodoApp app shutdown with error: %v", err)
-		} else {
-			t.Logf("TodoApp app shut down gracefully")
-		}
-	}
-}
-
-type initEnvVars struct {
-	envVars map[string]string
-}
-
-func (i *initEnvVars) Initialize(ctx context.Context) (context.Context, error) {
-	for key, value := range i.envVars {
-		os.Setenv(key, value) //nolint:errcheck
-	}
-	return ctx, nil
-}
-
-func (i *initEnvVars) Close() {
-	for key := range i.envVars {
-		os.Unsetenv(key) //nolint:errcheck
-	}
 }
