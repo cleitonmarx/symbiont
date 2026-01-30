@@ -19,13 +19,13 @@ const (
 
 // Todo represents a todo item in the system.
 type Todo struct {
-	ID        uuid.UUID  `json:"id"`
-	Title     string     `json:"title"`
-	DueDate   time.Time  `json:"due_date"`
-	Status    TodoStatus `json:"status"`
+	ID        uuid.UUID
+	Title     string
+	DueDate   time.Time
+	Status    TodoStatus
 	Embedding []float64
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (t Todo) Validate(now time.Time) error {
