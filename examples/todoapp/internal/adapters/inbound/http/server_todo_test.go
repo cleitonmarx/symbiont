@@ -155,18 +155,18 @@ func TestTodoAppServer_CreateTodo(t *testing.T) {
 
 func TestTodoAppServer_ListTodos(t *testing.T) {
 	tests := map[string]struct {
-		page           int
-		pageSize       int
-		todoStatus     *gen.TodoStatus
-		setupMocks     func(*mocks.MockListTodos)
-		expectedStatus int
-		expectedBody   *gen.ListTodosResp
-		expectedError  *gen.ErrorResp
+		page            int
+		pageSize        int
+		todoStatus      *gen.TodoStatus
+		setExpectations func(*mocks.MockListTodos)
+		expectedStatus  int
+		expectedBody    *gen.ListTodosResp
+		expectedError   *gen.ErrorResp
 	}{
 		"success-with-todos": {
 			page:     1,
 			pageSize: 1,
-			setupMocks: func(m *mocks.MockListTodos) {
+			setExpectations: func(m *mocks.MockListTodos) {
 				m.EXPECT().
 					Query(mock.Anything, 1, 1, mock.Anything).
 					Return([]domain.Todo{domainTodo}, false, nil)
@@ -180,7 +180,7 @@ func TestTodoAppServer_ListTodos(t *testing.T) {
 		"success-with-no-todos": {
 			page:     1,
 			pageSize: 1,
-			setupMocks: func(m *mocks.MockListTodos) {
+			setExpectations: func(m *mocks.MockListTodos) {
 				m.EXPECT().
 					Query(mock.Anything, 1, 1, mock.Anything).
 					Return([]domain.Todo{}, false, nil)
@@ -194,7 +194,7 @@ func TestTodoAppServer_ListTodos(t *testing.T) {
 		"success-with-next-and-previous-page": {
 			page:     2,
 			pageSize: 1,
-			setupMocks: func(m *mocks.MockListTodos) {
+			setExpectations: func(m *mocks.MockListTodos) {
 				m.EXPECT().
 					Query(mock.Anything, 2, 1, mock.Anything).
 					Return([]domain.Todo{domainTodo}, true, nil)
@@ -214,7 +214,7 @@ func TestTodoAppServer_ListTodos(t *testing.T) {
 				s := gen.DONE
 				return &s
 			}(),
-			setupMocks: func(m *mocks.MockListTodos) {
+			setExpectations: func(m *mocks.MockListTodos) {
 				m.EXPECT().
 					Query(mock.Anything, 1, 10, mock.Anything).
 					Run(func(_ context.Context, _ int, _ int, opts ...domain.ListTodoOptions) {
@@ -235,7 +235,7 @@ func TestTodoAppServer_ListTodos(t *testing.T) {
 		"use-case-error": {
 			page:     1,
 			pageSize: 10,
-			setupMocks: func(m *mocks.MockListTodos) {
+			setExpectations: func(m *mocks.MockListTodos) {
 				m.EXPECT().
 					Query(mock.Anything, 1, 10, mock.Anything).
 					Return(nil, false, errors.New("database error"))
@@ -253,7 +253,7 @@ func TestTodoAppServer_ListTodos(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			mockListTodos := mocks.NewMockListTodos(t)
-			tt.setupMocks(mockListTodos)
+			tt.setExpectations(mockListTodos)
 
 			server := &TodoAppServer{
 				ListTodosUseCase: mockListTodos,
