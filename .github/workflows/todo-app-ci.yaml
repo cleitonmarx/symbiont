@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  todoapp-lint:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -21,7 +21,7 @@ jobs:
           version: v2.8
           working-directory: ./examples/todoapp
           
-  todoapp-tests:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -38,7 +38,7 @@ jobs:
         run: |
           cd examples/todoapp
           test -z "$(gofmt -s -l . | tee /dev/stderr)"
-      - name: Run TodoApp Unit Tests with Coverage
+      - name: Run Unit Tests with Coverage
         run: |
           cd examples/todoapp
           go test -v -race -covermode=atomic -coverprofile=coverage.txt ./...
@@ -49,7 +49,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./examples/todoapp/coverage.txt
 
-  todoapp-integration-tests:
+  integration-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -73,7 +73,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y docker-model-plugin
 
-      - name: Run TodoApp Integration Tests
+      - name: Run Integration Tests
         run: |
           cd examples/todoapp
           go test -tags=integration -v ./tests/integration/...
