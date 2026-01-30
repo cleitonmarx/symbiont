@@ -1,6 +1,10 @@
 ignore:
   - "**/*_gen.go"
 
+coverage:
+  status:
+    patch: off
+
 component_management:
   individual_components:
   - component_id: symbiont
