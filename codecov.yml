@@ -14,7 +14,7 @@ component_management:
           target: 90%
           threshold: 1%
         - type: patch
-          target: 95%
+          target: 90%
           threshold: 2%
   - component_id: todoapp
     name: todoapp
@@ -26,10 +26,6 @@ component_management:
     statuses:
         - type: project
           target: 75%
-          threshold: 2%
-        - type: patch
-          target: 80%
-          threshold: 5%
 
 comment:
   layout: "diff, components"

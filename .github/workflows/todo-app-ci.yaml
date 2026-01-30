@@ -47,6 +47,7 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./examples/todoapp/coverage.txt
 
   todoapp-integration-tests:
     runs-on: ubuntu-latest
