@@ -10,6 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel/codes"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -20,11 +22,6 @@ func TestSpanNameFormatter(t *testing.T) {
 
 	req.Pattern = ""
 	assert.Equal(t, "GET /foo/bar", SpanNameFormatter("", req))
-}
-
-func TestGetCallerName(t *testing.T) {
-	name := getCallerName(0)
-	assert.NotEmpty(t, name)
 }
 
 func TestRecordErrorAndStatus(t *testing.T) {
@@ -73,4 +70,25 @@ func (m *mockSpan) RecordError(err error, _ ...trace.EventOption) {
 func (m *mockSpan) SetStatus(code codes.Code, msg string) {
 	m.statusCode = code
 	m.statusMsg = msg
+}
+
+func TestStart(t *testing.T) {
+	// Create in-memory exporter
+	exporter := tracetest.NewInMemoryExporter()
+
+	// Set up TracerProvider with the exporter
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSpanProcessor(sdktrace.NewSimpleSpanProcessor(exporter)),
+	)
+	tracer = tp.Tracer("test-tracer")
+
+	_, span := Start(t.Context())
+	span.End()
+
+	// Assert the name
+	spans := exporter.GetSpans()
+	assert.Equal(t, 1, len(spans))
+
+	assert.Equal(t, "tracing::TestStart", spans[0].Name)
+
 }
