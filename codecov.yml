@@ -1,4 +1,4 @@
 ignore:
   - "**/*_gen.go"
-  - "**/examples/todoapp/tests/integration/**"
+  - "**/tests/integration"
   - "**/main.go"
