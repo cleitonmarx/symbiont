@@ -11,6 +11,7 @@ import (
 	"cloud.google.com/go/pubsub/v2/pstest"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/usecases/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -84,79 +85,69 @@ func waitForBatchSignals(t *testing.T, signalChan chan struct{}, expectedBatches
 // messages from Pub/Sub and triggers the GenerateBoardSummary use case when batch is full
 // or interval expires.
 func TestTodoEventSubscriber_Run(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	client, topicName := setupPubSubServer(t, ctx, "test-topic", "test-subscription")
-
-	// Setup mocks
-	gbs := mocks.NewMockGenerateBoardSummary(t)
-	gbs.EXPECT().Execute(ctx).Return(nil)
-	gbs.EXPECT().Execute(ctx).Return(assert.AnError)
-
-	signalChan := make(chan struct{})
-
-	subscriber := TodoEventSubscriber{
-		Logger:               log.Default(),
-		Client:               client,
-		Interval:             50 * time.Millisecond,
-		BatchSize:            5,
-		SubscriptionID:       "test-subscription",
-		GenerateBoardSummary: gbs,
-		workerExecutionChan:  signalChan,
+	tests := map[string]struct {
+		batchSize       int
+		interval        time.Duration
+		publishCount    int
+		expectedBatches int
+		mockExecCount   int
+		setExpectations func(*mocks.MockGenerateBoardSummary)
+	}{
+		"batch-full-triggers-processing": {
+			batchSize:       5,
+			interval:        50 * time.Millisecond,
+			publishCount:    20,
+			expectedBatches: 2,
+			mockExecCount:   2,
+			setExpectations: func(gbs *mocks.MockGenerateBoardSummary) {
+				gbs.EXPECT().Execute(mock.Anything).Return(nil)
+				gbs.EXPECT().Execute(mock.Anything).Return(assert.AnError)
+			},
+		},
+		"interval-flush-triggers-processing": {
+			batchSize:       10,
+			interval:        100 * time.Millisecond,
+			publishCount:    3,
+			expectedBatches: 1,
+			mockExecCount:   1,
+			setExpectations: func(gbs *mocks.MockGenerateBoardSummary) {
+				gbs.EXPECT().Execute(mock.Anything).Return(nil)
+			},
+		},
 	}
 
-	// Run subscriber in background
-	go func() {
-		err := subscriber.Run(ctx)
-		assert.NoError(t, err)
-	}()
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			client, topicName := setupPubSubServer(t, ctx, "test-topic-"+name, "test-subscription-"+name)
 
-	// Publish 20 messages (4 batches of 5)
-	publishMessages(ctx, client, topicName, 20)
+			gbs := mocks.NewMockGenerateBoardSummary(t)
+			if tt.setExpectations != nil {
+				tt.setExpectations(gbs)
+			}
 
-	// Wait for 2 batch processing signals
-	waitForBatchSignals(t, signalChan, 2, 5*time.Second)
+			signalChan := make(chan struct{})
 
-	gbs.AssertExpectations(t)
-	cancel()
-}
+			subscriber := TodoEventSubscriber{
+				Logger:               log.Default(),
+				Client:               client,
+				Interval:             tt.interval,
+				BatchSize:            tt.batchSize,
+				SubscriptionID:       "test-subscription-" + name,
+				GenerateBoardSummary: gbs,
+				workerExecutionChan:  signalChan,
+			}
 
-// TestTodoEventSubscriber_BatchFlush verifies that messages are processed even when
-// batch size is not reached if the interval timer expires.
-func TestTodoEventSubscriber_BatchFlush(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+			go func() {
+				err := subscriber.Run(ctx)
+				assert.NoError(t, err)
+			}()
 
-	client, topicName := setupPubSubServer(t, ctx, "test-topic", "test-subscription")
-
-	// Mock should be called exactly once (timer-based flush)
-	gbs := mocks.NewMockGenerateBoardSummary(t)
-	gbs.EXPECT().Execute(ctx).Return(nil).Once()
-
-	signalChan := make(chan struct{})
-
-	subscriber := TodoEventSubscriber{
-		Logger:               log.Default(),
-		Client:               client,
-		Interval:             100 * time.Millisecond,
-		BatchSize:            10,
-		SubscriptionID:       "test-subscription",
-		GenerateBoardSummary: gbs,
-		workerExecutionChan:  signalChan,
+			publishMessages(ctx, client, topicName, tt.publishCount)
+			waitForBatchSignals(t, signalChan, tt.expectedBatches, 1*time.Second)
+			cancel()
+		})
 	}
 
-	go func() {
-		err := subscriber.Run(ctx)
-		assert.NoError(t, err)
-	}()
-
-	// Publish only 3 messages (less than BatchSize of 10)
-	publishMessages(ctx, client, topicName, 3)
-
-	// Wait for 1 signal (timer-based flush)
-	waitForBatchSignals(t, signalChan, 1, 2*time.Second)
-
-	gbs.AssertExpectations(t)
-	cancel()
 }
