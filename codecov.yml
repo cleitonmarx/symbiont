@@ -1,0 +1,37 @@
+ignore:
+  - "**/*_gen.go"
+
+github_checks: false
+
+coverage:
+  status:
+    patch: off
+
+component_management:
+  individual_components:
+  - component_id: symbiont
+    name: symbiont
+    paths:
+      - "**/*.go"
+    paths_not:
+      - "examples/**"
+    statuses:
+        - type: project
+          target: 90%
+          threshold: 1%
+        - type: patch
+          target: 90%
+          threshold: 2%
+  - component_id: todoapp
+    name: todoapp
+    paths:
+      - "examples/todoapp/**/*.go"
+    paths_not:
+        - "**/tests/integration/**"
+        - "**/main.go"
+    statuses:
+        - type: project
+          target: 75%
+
+comment:
+  layout: "reach, components"
