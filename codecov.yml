@@ -2,3 +2,15 @@ ignore:
   - "**/*_gen.go"
   - "**/tests/integration/**"
   - "**/main.go"
+
+coverage:
+  status:
+    project:
+      symbiont:
+        target: 90%           # Set your desired target for the main library
+        paths:
+          - "!examples/"      # Exclude examples folder
+      examples:
+        target: 80%           # Set a lower target for examples
+        paths:
+          - "examples/"
