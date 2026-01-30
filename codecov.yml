@@ -28,4 +28,4 @@ component_management:
           target: 75%
 
 comment:
-  layout: "diff, components"
+  layout: "reach, components"
