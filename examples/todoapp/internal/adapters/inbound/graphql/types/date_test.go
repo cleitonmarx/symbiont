@@ -117,3 +117,30 @@ func TestDate_UnmarshalJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestDate_MarshalJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    Date
+		expected string
+	}{
+		{
+			name:     "marshal-valid-date",
+			input:    Date(time.Date(2024, 1, 29, 0, 0, 0, 0, time.UTC)),
+			expected: `"2024-01-29"`,
+		},
+		{
+			name:     "marshal-zero-date",
+			input:    Date(time.Time{}),
+			expected: `"0001-01-01"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := tt.input.MarshalJSON()
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, string(b))
+		})
+	}
+}

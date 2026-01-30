@@ -35,3 +35,8 @@ func (d *Date) UnmarshalJSON(b []byte) error {
 	}
 	return d.UnmarshalGQL(s)
 }
+
+func (d Date) MarshalJSON() ([]byte, error) {
+	t := time.Time(d)
+	return fmt.Appendf(nil, `"%s"`, t.Format(time.DateOnly)), nil
+}
