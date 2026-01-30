@@ -67,18 +67,18 @@ func publishMessages(ctx context.Context, client *pubsubV2.Client, topicName str
 }
 
 // waitForBatchSignals waits for the expected number of batch processing signals or timeout.
-func waitForBatchSignals(t *testing.T, signalChan chan struct{}, expectedBatches int, timeout time.Duration) {
+func waitForBatchSignals(t *testing.T, signalChan chan struct{}, expectedBatches int, timeout time.Duration) int {
 	batchesProcessed := 0
-	timeoutChan := time.After(timeout)
 
 	for batchesProcessed < expectedBatches {
 		select {
 		case <-signalChan:
 			batchesProcessed++
-		case <-timeoutChan:
+		case <-time.After(timeout):
 			t.Fatalf("timeout waiting for batch processing; got %d batches, expected %d", batchesProcessed, expectedBatches)
 		}
 	}
+	return batchesProcessed
 }
 
 // TestTodoEventSubscriber_Run verifies that the TodoEventSubscriber correctly batches
@@ -90,7 +90,6 @@ func TestTodoEventSubscriber_Run(t *testing.T) {
 		interval        time.Duration
 		publishCount    int
 		expectedBatches int
-		mockExecCount   int
 		setExpectations func(*mocks.MockGenerateBoardSummary)
 	}{
 		"batch-full-triggers-processing": {
@@ -98,7 +97,6 @@ func TestTodoEventSubscriber_Run(t *testing.T) {
 			interval:        50 * time.Millisecond,
 			publishCount:    20,
 			expectedBatches: 2,
-			mockExecCount:   2,
 			setExpectations: func(gbs *mocks.MockGenerateBoardSummary) {
 				gbs.EXPECT().Execute(mock.Anything).Return(nil)
 				gbs.EXPECT().Execute(mock.Anything).Return(assert.AnError)
@@ -109,7 +107,6 @@ func TestTodoEventSubscriber_Run(t *testing.T) {
 			interval:        100 * time.Millisecond,
 			publishCount:    3,
 			expectedBatches: 1,
-			mockExecCount:   1,
 			setExpectations: func(gbs *mocks.MockGenerateBoardSummary) {
 				gbs.EXPECT().Execute(mock.Anything).Return(nil)
 			},
@@ -128,6 +125,7 @@ func TestTodoEventSubscriber_Run(t *testing.T) {
 			}
 
 			signalChan := make(chan struct{})
+			doneChan := make(chan struct{})
 
 			subscriber := TodoEventSubscriber{
 				Logger:               log.Default(),
@@ -142,11 +140,22 @@ func TestTodoEventSubscriber_Run(t *testing.T) {
 			go func() {
 				err := subscriber.Run(ctx)
 				assert.NoError(t, err)
+				doneChan <- struct{}{}
+
 			}()
 
 			publishMessages(ctx, client, topicName, tt.publishCount)
-			waitForBatchSignals(t, signalChan, tt.expectedBatches, 1*time.Second)
+			got := waitForBatchSignals(t, signalChan, tt.expectedBatches, 1*time.Second)
+			assert.Equal(t, tt.expectedBatches, got)
+
 			cancel()
+
+			select {
+			case <-doneChan:
+				// success
+			case <-time.After(1 * time.Second):
+				t.Fatal("subscriber did not shut down in time")
+			}
 		})
 	}
 
