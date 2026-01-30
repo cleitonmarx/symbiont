@@ -23,7 +23,7 @@ component_management:
   - component_id: todoapp
     name: todoapp
     paths:
-      - "examples/todoapp/**"
+      - "examples/todoapp/**/*.go"
     paths_not:
         - "**/tests/integration/**"
         - "**/main.go"
