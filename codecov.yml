@@ -1,16 +1,35 @@
 ignore:
   - "**/*_gen.go"
-  - "**/tests/integration/**"
-  - "**/main.go"
 
-coverage:
-  status:
-    project:
-      symbiont:
-        target: 90%           # Set your desired target for the main library
-        paths:
-          - "!examples/"      # Exclude examples folder
-      examples:
-        target: 80%           # Set a lower target for examples
-        paths:
-          - "examples/"
+component_management:
+  individual_components:
+  - component_id: symbiont
+    name: symbiont
+    paths:
+      - "**/*.go"
+    paths_not:
+      - "examples/**"
+    statuses:
+        - type: project
+          target: 90%
+          threshold: 1%
+        - type: patch
+          target: 95%
+          threshold: 2%
+  - component_id: todoapp
+    name: todoapp
+    paths:
+      - "examples/todoapp/**"
+    paths_not:
+        - "**/tests/integration/**"
+        - "**/main.go"
+    statuses:
+        - type: project
+          target: 75%
+          threshold: 2%
+        - type: patch
+          target: 80%
+          threshold: 5%
+
+comment:
+  layout: "diff, components"
