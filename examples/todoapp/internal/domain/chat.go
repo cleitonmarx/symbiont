@@ -16,6 +16,7 @@ const (
 	ChatRole_User      ChatRole = "user"
 	ChatRole_Assistant ChatRole = "assistant"
 	ChatRole_System    ChatRole = "system"
+	ChatRole_Developer ChatRole = "developer"
 )
 
 // ChatMessage represents an AI chat message in a conversation
