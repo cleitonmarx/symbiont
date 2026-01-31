@@ -11,9 +11,10 @@ import (
 type LLMStreamEventType string
 
 const (
-	LLMStreamEventType_Meta  LLMStreamEventType = "meta"
-	LLMStreamEventType_Delta LLMStreamEventType = "delta"
-	LLMStreamEventType_Done  LLMStreamEventType = "done"
+	LLMStreamEventType_Meta         LLMStreamEventType = "meta"
+	LLMStreamEventType_Delta        LLMStreamEventType = "delta"
+	LLMStreamEventType_FunctionCall LLMStreamEventType = "function_call"
+	LLMStreamEventType_Done         LLMStreamEventType = "done"
 )
 
 // LLMChatMessage represents a message in a chat request to the LLM API
@@ -31,6 +32,33 @@ type LLMChatRequest struct {
 	Temperature *float64
 	TopP        *float64
 	MaxTokens   *int
+	Tools       []LLMTool
+}
+
+// LLMTool represents a tool that can be used by the LLM
+type LLMTool struct {
+	Type     string
+	Function LLMToolFunction
+}
+
+// LLMToolFunction represents a function tool for the LLM
+type LLMToolFunction struct {
+	Description string
+	Name        string
+	Parameters  LLMToolFunctionParameters
+}
+
+// LLMToolFunctionParameters represents the parameters schema for a function tool
+type LLMToolFunctionParameters struct {
+	Type       string
+	Properties map[string]LLMToolFunctionParameterDetail
+}
+
+// LLMToolFunctionParameterDetail represents a single parameter in the function tool schema
+type LLMToolFunctionParameterDetail struct {
+	Type        string
+	Description string
+	Required    bool
 }
 
 // LLMUsage represents token usage information from the LLM
@@ -51,6 +79,14 @@ type LLMStreamEventMeta struct {
 // LLMStreamEventDelta contains a text delta from the stream
 type LLMStreamEventDelta struct {
 	Text string `json:"text"`
+}
+
+type LLMStreamEventFunctionCall struct {
+	ID            string
+	Index         int
+	Function      string
+	ArgumentsJSON string
+	Arguments     map[string]any
 }
 
 // LLMStreamEventDone contains completion metadata and token usage
