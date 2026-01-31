@@ -5,7 +5,6 @@ import (
 	"embed"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/common"
@@ -13,6 +12,13 @@ import (
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/tracing"
 	"github.com/google/uuid"
 	"go.yaml.in/yaml/v3"
+)
+
+const (
+	// Maximum number of chat history messages to include in the context
+	MAX_CHAT_HISTORY_MESSAGES = 10
+	// Maximum number of todos to include in the context
+	MAX_TODO_CONTEXT = 20
 )
 
 // StreamChat defines the interface for the StreamChat use case
@@ -24,16 +30,25 @@ type StreamChat interface {
 type StreamChatImpl struct {
 	chatMessageRepo    domain.ChatMessageRepository
 	todoRepo           domain.TodoRepository
+	timeProvider       domain.CurrentTimeProvider
 	llmClient          domain.LLMClient
 	llmModel           string
 	llmEmbreddingModel string
 }
 
 // NewStreamChatImpl creates a new instance of StreamChatImpl
-func NewStreamChatImpl(chatMessageRepo domain.ChatMessageRepository, todoRepo domain.TodoRepository, llmClient domain.LLMClient, llmModel string, llmEmbeddingModel string) StreamChatImpl {
+func NewStreamChatImpl(
+	chatMessageRepo domain.ChatMessageRepository,
+	todoRepo domain.TodoRepository,
+	timeProvider domain.CurrentTimeProvider,
+	llmClient domain.LLMClient,
+	llmModel string,
+	llmEmbeddingModel string,
+) StreamChatImpl {
 	return StreamChatImpl{
 		chatMessageRepo:    chatMessageRepo,
 		todoRepo:           todoRepo,
+		timeProvider:       timeProvider,
 		llmClient:          llmClient,
 		llmModel:           llmModel,
 		llmEmbreddingModel: llmEmbeddingModel,
@@ -60,7 +75,7 @@ func (sc StreamChatImpl) buildSystemPrompt(ctx context.Context, userMsg string) 
 	}
 
 	// Fetch all todos related to the embedding
-	todos, _, err := sc.todoRepo.ListTodos(ctx, 1, 30, domain.WithEmbedding(embed))
+	todos, _, err := sc.todoRepo.ListTodos(ctx, 1, MAX_TODO_CONTEXT, domain.WithEmbedding(embed))
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +96,7 @@ func (sc StreamChatImpl) buildSystemPrompt(ctx context.Context, userMsg string) 
 	}
 
 	for i, msg := range messages {
-		if msg.Role == domain.ChatRole_System {
+		if msg.Role == domain.ChatRole_Developer {
 			msg.Content = fmt.Sprintf(msg.Content,
 				todosInput,
 			)
@@ -104,7 +119,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 	}
 
 	// Load prior conversation to preserve context
-	history, _, err := sc.chatMessageRepo.ListChatMessages(spanCtx, 15)
+	history, _, err := sc.chatMessageRepo.ListChatMessages(spanCtx, MAX_CHAT_HISTORY_MESSAGES)
 	if tracing.RecordErrorAndStatus(span, err) {
 		return err
 	}
@@ -132,9 +147,8 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 		Model:       sc.llmModel,
 		Messages:    messages,
 		Stream:      true,
-		Temperature: common.Ptr(0.7),  // Controls randomness (0.0 = deterministic, 1.0 = creative)
-		MaxTokens:   common.Ptr(2048), // Maximum number of tokens to generate in response
-		TopP:        common.Ptr(0.9),  // Nucleus sampling (keeps top 90% probability tokens)
+		Temperature: common.Ptr(0.7), // Controls randomness (0.0 = deterministic, 1.0 = creative)
+		TopP:        common.Ptr(0.9), // Nucleus sampling (keeps top 90% probability tokens)
 	}
 
 	// Track metadata and accumulate content
@@ -146,6 +160,15 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 		chatTries          = 0
 		gotContent         = false
 	)
+
+	// Create and persist the user message
+	userMsg := domain.ChatMessage{
+		ConversationID: domain.GlobalConversationID,
+		ChatRole:       domain.ChatRole_User,
+		Content:        userMessage,
+		Model:          req.Model,
+		CreatedAt:      sc.timeProvider.Now().UTC(),
+	}
 
 	for chatTries < 3 && !gotContent {
 		chatTries++
@@ -193,16 +216,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 		return fmt.Errorf("LLM returned empty response after %d retries", chatTries)
 	}
 
-	// Create and persist the user message
-	userMsg := domain.ChatMessage{
-		ID:             userMessageID,
-		ConversationID: domain.GlobalConversationID,
-		ChatRole:       domain.ChatRole_User,
-		Content:        userMessage,
-		Model:          req.Model,
-		CreatedAt:      time.Now().UTC(),
-	}
-
+	userMsg.ID = userMessageID
 	if err := sc.chatMessageRepo.CreateChatMessage(spanCtx, userMsg); tracing.RecordErrorAndStatus(span, err) {
 		return err
 	}
@@ -214,7 +228,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 		ChatRole:       domain.ChatRole_Assistant,
 		Content:        fullContent.String(),
 		Model:          req.Model,
-		CreatedAt:      time.Now().UTC(),
+		CreatedAt:      sc.timeProvider.Now().UTC(),
 	}
 
 	if finalUsage != nil {
@@ -233,6 +247,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 type InitStreamChat struct {
 	ChatMessageRepo domain.ChatMessageRepository `resolve:""`
 	TodoRepo        domain.TodoRepository        `resolve:""`
+	TimeProvider    domain.CurrentTimeProvider   `resolve:""`
 	LLMClient       domain.LLMClient             `resolve:""`
 	LLMModel        string                       `config:"LLM_MODEL"`
 	EmbeddingModel  string                       `config:"LLM_EMBEDDING_MODEL"`
@@ -240,6 +255,13 @@ type InitStreamChat struct {
 
 // Initialize registers the StreamChat use case in the dependency container
 func (i InitStreamChat) Initialize(ctx context.Context) (context.Context, error) {
-	depend.Register[StreamChat](NewStreamChatImpl(i.ChatMessageRepo, i.TodoRepo, i.LLMClient, i.LLMModel, i.EmbeddingModel))
+	depend.Register[StreamChat](NewStreamChatImpl(
+		i.ChatMessageRepo,
+		i.TodoRepo,
+		i.TimeProvider,
+		i.LLMClient,
+		i.LLMModel,
+		i.EmbeddingModel,
+	))
 	return ctx, nil
 }

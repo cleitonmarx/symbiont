@@ -20,20 +20,30 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 	fixedTime := time.Date(2026, 1, 24, 15, 0, 0, 0, time.UTC)
 
 	tests := map[string]struct {
-		userMessage     string
-		setupMocks      func(*mocks.MockChatMessageRepository, *mocks.MockTodoRepository, *mocks.MockLLMClient)
+		userMessage string
+		setupMocks  func(
+			*mocks.MockChatMessageRepository,
+			*mocks.MockTodoRepository,
+			*mocks.MockCurrentTimeProvider,
+			*mocks.MockLLMClient,
+		)
 		expectErr       bool
 		expectedContent string
 	}{
 		"success-with-usage": {
 			userMessage: "Hello, how are you?",
-			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
+			setupMocks: func(
+				chatRepo *mocks.MockChatMessageRepository,
+				todoRepo *mocks.MockTodoRepository,
+				timeProvider *mocks.MockCurrentTimeProvider,
+				client *mocks.MockLLMClient,
+			) {
 				client.EXPECT().
 					Embed(mock.Anything, "test-embedding-model", "Hello, how are you?").
 					Return([]float64{0.1, 0.2, 0.3}, nil)
 
 				todoRepo.EXPECT().
-					ListTodos(mock.Anything, 1, 30, mock.Anything).
+					ListTodos(mock.Anything, 1, MAX_TODO_CONTEXT, mock.Anything).
 					Run(func(ctx context.Context, page, pageSize int, opts ...domain.ListTodoOptions) {
 						// Verify that the embedding option is provided
 						params := &domain.ListTodosParams{}
@@ -42,17 +52,23 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 						}
 						assert.NotNil(t, params.Embedding)
 					}).
-					Return([]domain.Todo{{Title: "Test Todo"}}, false, nil)
+					Return([]domain.Todo{{Title: "Test Todo", DueDate: fixedTime, Status: "OPEN"}}, false, nil)
+
+				timeProvider.EXPECT().
+					Now().
+					Return(fixedTime).Twice()
 
 				// history: empty
 				chatRepo.EXPECT().
-					ListChatMessages(mock.Anything, mock.Anything).
+					ListChatMessages(mock.Anything, MAX_CHAT_HISTORY_MESSAGES).
 					Return([]domain.ChatMessage{}, false, nil).
 					Once()
 
 				client.EXPECT().
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					Run(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) {
+						assert.Contains(t, req.Messages[0].Content, "Task: Test Todo | Status: OPEN | Due: 2026-01-24")
+
 						// Simulate events
 						_ = onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
 							ConversationID:     domain.GlobalConversationID,
@@ -89,7 +105,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 				chatRepo.EXPECT().
 					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole("assistant")
+						return msg.ChatRole == domain.ChatRole_Assistant
 					})).
 					Run(func(ctx context.Context, msg domain.ChatMessage) {
 						assert.Equal(t, assistantMsgID, msg.ID)
@@ -105,17 +121,26 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 		},
 		"success-without-usage": {
 			userMessage: "Test",
-			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
+			setupMocks: func(
+				chatRepo *mocks.MockChatMessageRepository,
+				todoRepo *mocks.MockTodoRepository,
+				timeProvider *mocks.MockCurrentTimeProvider,
+				client *mocks.MockLLMClient,
+			) {
 				client.EXPECT().
 					Embed(mock.Anything, "test-embedding-model", "Test").
 					Return([]float64{0.1, 0.2, 0.3}, nil)
 
 				todoRepo.EXPECT().
-					ListTodos(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					ListTodos(mock.Anything, 1, MAX_TODO_CONTEXT, mock.Anything).
 					Return([]domain.Todo{}, false, nil)
 
+				timeProvider.EXPECT().
+					Now().
+					Return(fixedTime).Twice()
+
 				chatRepo.EXPECT().
-					ListChatMessages(mock.Anything, mock.Anything).
+					ListChatMessages(mock.Anything, MAX_CHAT_HISTORY_MESSAGES).
 					Return([]domain.ChatMessage{}, false, nil).
 					Once()
 
@@ -160,20 +185,30 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 		},
 		"list-todos-error": {
 			userMessage: "Test",
-			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
+			setupMocks: func(
+				chatRepo *mocks.MockChatMessageRepository,
+				todoRepo *mocks.MockTodoRepository,
+				timeProvider *mocks.MockCurrentTimeProvider,
+				client *mocks.MockLLMClient,
+			) {
 				client.EXPECT().
 					Embed(mock.Anything, "test-embedding-model", "Test").
 					Return([]float64{0.1, 0.2, 0.3}, nil)
 
 				todoRepo.EXPECT().
-					ListTodos(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					ListTodos(mock.Anything, 1, MAX_TODO_CONTEXT, mock.Anything).
 					Return(nil, false, errors.New("list todos error"))
 			},
 			expectErr: true,
 		},
 		"llm-embed-error": {
 			userMessage: "Test",
-			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
+			setupMocks: func(
+				chatRepo *mocks.MockChatMessageRepository,
+				todoRepo *mocks.MockTodoRepository,
+				timeProvider *mocks.MockCurrentTimeProvider,
+				client *mocks.MockLLMClient,
+			) {
 				client.EXPECT().
 					Embed(mock.Anything, "test-embedding-model", "Test").
 					Return(nil, errors.New("embed error"))
@@ -182,17 +217,26 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 		},
 		"llm-chat-error": {
 			userMessage: "Test",
-			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
+			setupMocks: func(
+				chatRepo *mocks.MockChatMessageRepository,
+				todoRepo *mocks.MockTodoRepository,
+				timeProvider *mocks.MockCurrentTimeProvider,
+				client *mocks.MockLLMClient,
+			) {
 				client.EXPECT().
 					Embed(mock.Anything, "test-embedding-model", "Test").
 					Return([]float64{0.1, 0.2, 0.3}, nil)
 
 				todoRepo.EXPECT().
-					ListTodos(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					ListTodos(mock.Anything, 1, MAX_TODO_CONTEXT, mock.Anything).
 					Return([]domain.Todo{}, false, nil)
 
+				timeProvider.EXPECT().
+					Now().
+					Return(fixedTime)
+
 				chatRepo.EXPECT().
-					ListChatMessages(mock.Anything, mock.Anything).
+					ListChatMessages(mock.Anything, MAX_CHAT_HISTORY_MESSAGES).
 					Return([]domain.ChatMessage{}, false, nil).
 					Once()
 
@@ -204,17 +248,26 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 		},
 		"user-message-save-error": {
 			userMessage: "Test",
-			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
+			setupMocks: func(
+				chatRepo *mocks.MockChatMessageRepository,
+				todoRepo *mocks.MockTodoRepository,
+				timeProvider *mocks.MockCurrentTimeProvider,
+				client *mocks.MockLLMClient,
+			) {
 				client.EXPECT().
 					Embed(mock.Anything, "test-embedding-model", "Test").
 					Return([]float64{0.1, 0.2, 0.3}, nil)
 
 				todoRepo.EXPECT().
-					ListTodos(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					ListTodos(mock.Anything, 1, MAX_TODO_CONTEXT, mock.Anything).
 					Return([]domain.Todo{}, false, nil)
 
+				timeProvider.EXPECT().
+					Now().
+					Return(fixedTime)
+
 				chatRepo.EXPECT().
-					ListChatMessages(mock.Anything, mock.Anything).
+					ListChatMessages(mock.Anything, MAX_CHAT_HISTORY_MESSAGES).
 					Return([]domain.ChatMessage{}, false, nil).
 					Once()
 
@@ -246,17 +299,26 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 		},
 		"assistant-message-save-error": {
 			userMessage: "Test",
-			setupMocks: func(chatRepo *mocks.MockChatMessageRepository, todoRepo *mocks.MockTodoRepository, client *mocks.MockLLMClient) {
+			setupMocks: func(
+				chatRepo *mocks.MockChatMessageRepository,
+				todoRepo *mocks.MockTodoRepository,
+				timeProvider *mocks.MockCurrentTimeProvider,
+				client *mocks.MockLLMClient,
+			) {
 				client.EXPECT().
 					Embed(mock.Anything, "test-embedding-model", "Test").
 					Return([]float64{0.1, 0.2, 0.3}, nil)
 
 				todoRepo.EXPECT().
-					ListTodos(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					ListTodos(mock.Anything, 1, MAX_TODO_CONTEXT, mock.Anything).
 					Return([]domain.Todo{}, false, nil)
 
+				timeProvider.EXPECT().
+					Now().
+					Return(fixedTime)
+
 				chatRepo.EXPECT().
-					ListChatMessages(mock.Anything, mock.Anything).
+					ListChatMessages(mock.Anything, MAX_CHAT_HISTORY_MESSAGES).
 					Return([]domain.ChatMessage{}, false, nil).
 					Once()
 
@@ -299,11 +361,12 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			chatRepo := mocks.NewMockChatMessageRepository(t)
 			todoRepo := mocks.NewMockTodoRepository(t)
+			timeProvider := mocks.NewMockCurrentTimeProvider(t)
 			client := mocks.NewMockLLMClient(t)
 
-			tt.setupMocks(chatRepo, todoRepo, client)
+			tt.setupMocks(chatRepo, todoRepo, timeProvider, client)
 
-			useCase := NewStreamChatImpl(chatRepo, todoRepo, client, "test-model", "test-embedding-model")
+			useCase := NewStreamChatImpl(chatRepo, todoRepo, timeProvider, client, "test-model", "test-embedding-model")
 
 			var capturedContent string
 			err := useCase.Execute(context.Background(), tt.userMessage, func(eventType domain.LLMStreamEventType, data any) error {
