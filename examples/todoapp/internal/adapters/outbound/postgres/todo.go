@@ -49,6 +49,7 @@ func (tr TodoRepository) ListTodos(ctx context.Context, page int, pageSize int, 
 		Select(
 			todoFields...,
 		).From("todos").
+		OrderBy("created_at DESC").
 		Limit(uint64(pageSize + 1)). // fetch one extra to determine if there's more
 		Offset(uint64((page - 1) * pageSize))
 
@@ -62,10 +63,10 @@ func (tr TodoRepository) ListTodos(ctx context.Context, page int, pageSize int, 
 	}
 
 	if len(params.Embedding) > 0 {
-		qry = qry.OrderByClause(squirrel.Expr(
-			"embedding <-> ? ASC",
+		qry = qry.Where(squirrel.Expr(
+			"(embedding <=> ?) < 0.5",
 			pgvector.NewVector(toFloat32Truncated(params.Embedding)),
-		)).OrderBy("created_at DESC")
+		))
 	} else {
 		qry = qry.OrderBy("created_at DESC")
 	}
