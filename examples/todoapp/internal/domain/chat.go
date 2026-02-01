@@ -17,18 +17,19 @@ const (
 	ChatRole_Assistant ChatRole = "assistant"
 	ChatRole_System    ChatRole = "system"
 	ChatRole_Developer ChatRole = "developer"
+	ChatRole_Tool      ChatRole = "tool"
 )
 
 // ChatMessage represents an AI chat message in a conversation
 type ChatMessage struct {
-	ID               uuid.UUID
-	ConversationID   string
-	ChatRole         ChatRole
-	Content          string
-	Model            string
-	PromptTokens     int
-	CompletionTokens int
-	CreatedAt        time.Time
+	ID             uuid.UUID
+	ConversationID string
+	ChatRole       ChatRole
+	Content        string
+	ToolCallID     *string
+	ToolCalls      []LLMStreamEventFunctionCall
+	Model          string
+	CreatedAt      time.Time
 }
 
 // ChatMessageRepository defines the interface for chat message persistence

@@ -19,8 +19,10 @@ const (
 
 // LLMChatMessage represents a message in a chat request to the LLM API
 type LLMChatMessage struct {
-	Role    ChatRole
-	Content string
+	Role       ChatRole
+	Content    string
+	ToolCallID *string
+	ToolCalls  []LLMStreamEventFunctionCall
 }
 
 // LLMChatRequest represents a request to the LLM API
@@ -61,13 +63,6 @@ type LLMToolFunctionParameterDetail struct {
 	Required    bool
 }
 
-// LLMUsage represents token usage information from the LLM
-type LLMUsage struct {
-	PromptTokens     int
-	CompletionTokens int
-	TotalTokens      int
-}
-
 // LLMStreamEventMeta contains metadata for a streaming chat session
 type LLMStreamEventMeta struct {
 	ConversationID     string
@@ -82,18 +77,16 @@ type LLMStreamEventDelta struct {
 }
 
 type LLMStreamEventFunctionCall struct {
-	ID            string
-	Index         int
-	Function      string
-	ArgumentsJSON string
-	Arguments     map[string]any
+	ID        string
+	Index     int
+	Function  string
+	Arguments string
 }
 
 // LLMStreamEventDone contains completion metadata and token usage
 type LLMStreamEventDone struct {
 	AssistantMessageID string
 	CompletedAt        string
-	Usage              *LLMUsage
 }
 
 // LLMStreamEventCallback is called for each event in the stream
