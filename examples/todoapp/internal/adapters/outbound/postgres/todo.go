@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cleitonmarx/symbiont/depend"
@@ -45,11 +46,17 @@ func (tr TodoRepository) ListTodos(ctx context.Context, page int, pageSize int, 
 	))
 	defer span.End()
 
+	if pageSize <= 0 {
+		return nil, false, errors.New("page_size must be greater than 0")
+	}
+	if page <= 0 {
+		return nil, false, errors.New("page must be greater than 0")
+	}
+
 	qry := tr.sb.
 		Select(
 			todoFields...,
 		).From("todos").
-		OrderBy("created_at DESC").
 		Limit(uint64(pageSize + 1)). // fetch one extra to determine if there's more
 		Offset(uint64((page - 1) * pageSize))
 
@@ -66,7 +73,7 @@ func (tr TodoRepository) ListTodos(ctx context.Context, page int, pageSize int, 
 		qry = qry.Where(squirrel.Expr(
 			"(embedding <=> ?) < 0.5",
 			pgvector.NewVector(toFloat32Truncated(params.Embedding)),
-		))
+		)).OrderByClause("embedding <#> ? ", pgvector.NewVector(toFloat32Truncated(params.Embedding)))
 	} else {
 		qry = qry.OrderBy("created_at DESC")
 	}

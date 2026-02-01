@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"sort"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cleitonmarx/symbiont/depend"
@@ -17,9 +19,9 @@ var chatFields = []string{
 	"conversation_id",
 	"chat_role",
 	"content",
+	"tool_call_id",
+	"tool_calls",
 	"model",
-	"prompt_tokens",
-	"completion_tokens",
 	"created_at",
 }
 
@@ -40,7 +42,12 @@ func (r ChatMessageRepository) CreateChatMessage(ctx context.Context, message do
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
-	_, err := r.sb.
+	toolCallsJSON, err := json.Marshal(message.ToolCalls)
+	if tracing.RecordErrorAndStatus(span, err) {
+		return err
+	}
+
+	_, err = r.sb.
 		Insert("ai_chat_messages").
 		Columns(chatFields...).
 		Values(
@@ -48,9 +55,9 @@ func (r ChatMessageRepository) CreateChatMessage(ctx context.Context, message do
 			message.ConversationID,
 			message.ChatRole,
 			message.Content,
+			message.ToolCallID,
+			toolCallsJSON,
 			message.Model,
-			message.PromptTokens,
-			message.CompletionTokens,
 			message.CreatedAt,
 		).
 		ExecContext(spanCtx)
@@ -87,18 +94,27 @@ func (r ChatMessageRepository) ListChatMessages(ctx context.Context, limit int) 
 
 	var msgs []domain.ChatMessage
 	for rows.Next() {
-		var m domain.ChatMessage
+		var (
+			m      domain.ChatMessage
+			tcJSON []byte
+		)
+
 		if err := rows.Scan(
 			&m.ID,
 			&m.ConversationID,
 			&m.ChatRole,
 			&m.Content,
+			&m.ToolCallID,
+			&tcJSON,
 			&m.Model,
-			&m.PromptTokens,
-			&m.CompletionTokens,
 			&m.CreatedAt,
 		); tracing.RecordErrorAndStatus(span, err) {
 			return nil, false, err
+		}
+		if len(tcJSON) > 0 {
+			if err := json.Unmarshal(tcJSON, &m.ToolCalls); tracing.RecordErrorAndStatus(span, err) {
+				return nil, false, err
+			}
 		}
 		msgs = append(msgs, m)
 	}
@@ -113,9 +129,9 @@ func (r ChatMessageRepository) ListChatMessages(ctx context.Context, limit int) 
 	}
 
 	// Currently ordered DESC; reverse to ASC for chronological order
-	for i, j := 0, len(msgs)-1; i < j; i, j = i+1, j-1 {
-		msgs[i], msgs[j] = msgs[j], msgs[i]
-	}
+	sort.SliceStable(msgs, func(i, j int) bool {
+		return msgs[i].CreatedAt.Before(msgs[j].CreatedAt)
+	})
 
 	return msgs, hasMore, nil
 }
