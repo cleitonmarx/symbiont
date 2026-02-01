@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -51,7 +52,7 @@ func (t Todo) Validate(now time.Time) error {
 
 // ToLLMInput formats the todo item as a string suitable for LLM input.
 func (t Todo) ToLLMInput() string {
-	return "Task: " + t.Title + " | Status: " + string(t.Status) + " | Due: " + t.DueDate.Format(time.DateOnly)
+	return fmt.Sprintf("ID: %s | Title: %s | Due Date: %s | Status: %s", t.ID.String(), t.Title, t.DueDate.Format("2006-01-02"), t.Status)
 }
 
 // ListTodosParams represents the parameters for listing todo items.
