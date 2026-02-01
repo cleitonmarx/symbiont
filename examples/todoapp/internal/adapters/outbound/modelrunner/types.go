@@ -39,8 +39,10 @@ type ToolFuncParameterDetail struct {
 
 // ChatMessage is an OpenAI-compatible message
 type ChatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string     `json:"role"`
+	Content    string     `json:"content,omitempty"`
+	ToolCallID *string    `json:"tool_call_id,omitempty"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
 }
 
 // ChatResponse is an OpenAI-compatible response
@@ -50,7 +52,6 @@ type ChatResponse struct {
 	Created int64    `json:"created"`
 	Model   string   `json:"model"`
 	Choices []Choice `json:"choices"`
-	Usage   *Usage   `json:"usage,omitempty"`
 }
 
 // Choice represents a completion choice
@@ -63,7 +64,7 @@ type Choice struct {
 // Message represents the assistant message
 type Message struct {
 	Role      string     `json:"role"`
-	Content   string     `json:"content"`
+	Content   string     `json:"content,omitempty"`
 	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 }
 
@@ -72,20 +73,13 @@ type ToolCall struct {
 	Type     string           `json:"type"`
 	Function ToolCallFunction `json:"function"`
 	ID       string           `json:"id"`
-	Index    int              `json:"index"`
+	Index    int              `json:"index,omitempty"`
 }
 
 // ToolCallFunction represents the function call details
 type ToolCallFunction struct {
-	Name      string         `json:"name"`
-	Arguments map[string]any `json:"arguments"`
-}
-
-// Usage represents token usage
-type Usage struct {
-	PromptTokens     int `json:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"`
-	TotalTokens      int `json:"total_tokens"`
+	Name      string `json:"name"`
+	Arguments string `json:"arguments,omitempty"`
 }
 
 // StreamChunk represents a streaming response chunk from llama.cpp
@@ -95,7 +89,6 @@ type StreamChunk struct {
 	Created int64               `json:"created"`
 	Model   string              `json:"model"`
 	Choices []StreamChunkChoice `json:"choices"`
-	Usage   *Usage              `json:"usage,omitempty"`
 	Timings *Timings            `json:"timings,omitempty"`
 }
 
@@ -109,7 +102,7 @@ type StreamChunkChoice struct {
 // StreamChunkDelta represents the delta content
 type StreamChunkDelta struct {
 	Role      *string         `json:"role,omitempty"`
-	Content   string          `json:"content"`
+	Content   string          `json:"content,omitempty"`
 	ToolCalls []ToolCallChunk `json:"tool_calls,omitempty"`
 }
 
