@@ -14,11 +14,13 @@ type TodoDeleter interface {
 	Delete(ctx context.Context, uow domain.UnitOfWork, id uuid.UUID) error
 }
 
+// TodoDeleterImpl is the implementation of the TodoDeleter interface.
 type TodoDeleterImpl struct {
 	uow          domain.UnitOfWork
 	timeProvider domain.CurrentTimeProvider
 }
 
+// NewTodoDeleterImpl creates a new instance of TodoDeleterImpl.
 func NewTodoDeleterImpl(uow domain.UnitOfWork, timeProvider domain.CurrentTimeProvider) TodoDeleterImpl {
 	return TodoDeleterImpl{
 		uow:          uow,
