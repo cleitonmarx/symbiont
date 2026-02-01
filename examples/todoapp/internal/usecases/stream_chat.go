@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/common"
@@ -21,6 +22,9 @@ const (
 	MAX_TODO_CONTEXT = 20
 )
 
+//go:embed prompts/chat.yml
+var chatPrompt embed.FS
+
 // StreamChat defines the interface for the StreamChat use case
 type StreamChat interface {
 	Execute(ctx context.Context, userMessage string, onEvent domain.LLMStreamEventCallback) error
@@ -28,61 +32,162 @@ type StreamChat interface {
 
 // StreamChatImpl is the implementation of the StreamChat use case
 type StreamChatImpl struct {
-	chatMessageRepo    domain.ChatMessageRepository
-	todoRepo           domain.TodoRepository
-	timeProvider       domain.CurrentTimeProvider
-	llmClient          domain.LLMClient
-	llmModel           string
-	llmEmbreddingModel string
+	chatMessageRepo   domain.ChatMessageRepository
+	timeProvider      domain.CurrentTimeProvider
+	llmClient         domain.LLMClient
+	llmToolRegistry   LLMToolRegistry
+	llmModel          string
+	llmEmbeddingModel string
 }
 
 // NewStreamChatImpl creates a new instance of StreamChatImpl
 func NewStreamChatImpl(
 	chatMessageRepo domain.ChatMessageRepository,
-	todoRepo domain.TodoRepository,
 	timeProvider domain.CurrentTimeProvider,
 	llmClient domain.LLMClient,
+	llmToolRegistry LLMToolRegistry,
 	llmModel string,
 	llmEmbeddingModel string,
 ) StreamChatImpl {
 	return StreamChatImpl{
-		chatMessageRepo:    chatMessageRepo,
-		todoRepo:           todoRepo,
-		timeProvider:       timeProvider,
-		llmClient:          llmClient,
-		llmModel:           llmModel,
-		llmEmbreddingModel: llmEmbeddingModel,
+		chatMessageRepo:   chatMessageRepo,
+		timeProvider:      timeProvider,
+		llmClient:         llmClient,
+		llmToolRegistry:   llmToolRegistry,
+		llmModel:          llmModel,
+		llmEmbeddingModel: llmEmbeddingModel,
 	}
 }
 
-// buildTodosInput creates the
-func buildTodosInput(todos []domain.Todo) string {
-	b := strings.Builder{}
-	for _, t := range todos {
-		b.WriteString(t.ToLLMInput() + "\n")
-	}
-	return b.String()
-}
+// Execute streams a chat response and persists the conversation
+func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEvent domain.LLMStreamEventCallback) error {
+	spanCtx, span := tracing.Start(ctx)
+	defer span.End()
 
-//go:embed prompts/chat.yml
-var chatPrompt embed.FS
+	// Fetch chat history and append user message
+	messages, err := sc.fetchChatHistory(spanCtx)
+	if tracing.RecordErrorAndStatus(span, err) {
+		return err
+	}
+	messages = append(messages, domain.LLMChatMessage{
+		Role:    domain.ChatRole_User,
+		Content: userMessage,
+	})
+
+	req := domain.LLMChatRequest{
+		Model:       sc.llmModel,
+		Messages:    messages,
+		Stream:      true,
+		Temperature: common.Ptr(0.7),
+		TopP:        common.Ptr(0.9),
+		Tools:       sc.llmToolRegistry.List(),
+	}
+
+	var (
+		assistantMsgContent strings.Builder
+		chatMessages        []*domain.ChatMessage
+		assistantMsgID      uuid.UUID
+	)
+
+	// Append user message first
+	userMsg := &domain.ChatMessage{
+		ConversationID: domain.GlobalConversationID,
+		ChatRole:       domain.ChatRole_User,
+		Content:        userMessage,
+		Model:          req.Model,
+		CreatedAt:      sc.timeProvider.Now().UTC(),
+	}
+	chatMessages = append(chatMessages, userMsg)
+
+	for continueChatStreaming := true; continueChatStreaming; {
+		continueChatStreaming = false
+		err = sc.llmClient.ChatStream(spanCtx, req, func(eventType domain.LLMStreamEventType, data any) error {
+			switch eventType {
+			case domain.LLMStreamEventType_Meta:
+				meta := data.(domain.LLMStreamEventMeta)
+				assistantMsgID = meta.AssistantMessageID
+				userMsg.ID = meta.UserMessageID
+
+			case domain.LLMStreamEventType_FunctionCall:
+				if err := onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{Text: "⏳ Processing request...\n\n"}); err != nil {
+					return err
+				}
+				continueChatStreaming = true
+				fc := data.(domain.LLMStreamEventFunctionCall)
+				// Append assistant message for function call
+				assistantMsg := &domain.ChatMessage{
+					ID:             uuid.New(),
+					ConversationID: domain.GlobalConversationID,
+					ChatRole:       domain.ChatRole_Assistant,
+					ToolCalls:      []domain.LLMStreamEventFunctionCall{fc},
+					Model:          req.Model,
+					CreatedAt:      sc.timeProvider.Now().UTC(),
+				}
+				chatMessages = append(chatMessages, assistantMsg)
+
+				// Process and append tool message
+				toolMessage := sc.llmToolRegistry.Call(spanCtx, fc)
+				toolMsg := &domain.ChatMessage{
+					ID:             uuid.New(),
+					ConversationID: domain.GlobalConversationID,
+					ChatRole:       domain.ChatRole_Tool,
+					ToolCallID:     &fc.ID,
+					Content:        toolMessage.Content,
+					Model:          req.Model,
+					// Increment CreatedAt to ensure ordering
+					CreatedAt: sc.timeProvider.Now().UTC().Add(3 * time.Millisecond),
+				}
+				chatMessages = append(chatMessages, toolMsg)
+
+				req.Messages = append(req.Messages,
+					domain.LLMChatMessage{
+						Role:      domain.ChatRole_Assistant,
+						ToolCalls: []domain.LLMStreamEventFunctionCall{fc},
+					},
+					toolMessage,
+				)
+			case domain.LLMStreamEventType_Delta:
+				delta := data.(domain.LLMStreamEventDelta)
+				assistantMsgContent.WriteString(delta.Text)
+				if err := onEvent(eventType, data); err != nil {
+					return err
+				}
+			case domain.LLMStreamEventType_Done:
+				if err := onEvent(eventType, data); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if tracing.RecordErrorAndStatus(span, err) {
+			return err
+		}
+	}
+
+	// Append the final assistant message with the full content only if there is content
+	if assistantContent := assistantMsgContent.String(); assistantContent != "" {
+		assistantMsg := &domain.ChatMessage{
+			ID:             assistantMsgID,
+			ConversationID: domain.GlobalConversationID,
+			ChatRole:       domain.ChatRole_Assistant,
+			Content:        assistantContent,
+			Model:          req.Model,
+			CreatedAt:      sc.timeProvider.Now().UTC(),
+		}
+		chatMessages = append(chatMessages, assistantMsg)
+	}
+
+	// Persist all messages in order
+	for _, msg := range chatMessages {
+		if err := sc.chatMessageRepo.CreateChatMessage(spanCtx, *msg); tracing.RecordErrorAndStatus(span, err) {
+			return err
+		}
+	}
+	return nil
+}
 
 // buildSystemPrompt creates a system prompt with current todos context
-func (sc StreamChatImpl) buildSystemPrompt(ctx context.Context, userMsg string) ([]domain.LLMChatMessage, error) {
-	embed, err := sc.llmClient.Embed(ctx, sc.llmEmbreddingModel, userMsg)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fetch all todos related to the embedding
-	todos, _, err := sc.todoRepo.ListTodos(ctx, 1, MAX_TODO_CONTEXT, domain.WithEmbedding(embed))
-	if err != nil {
-		return nil, err
-	}
-
-	// Build todos input
-	todosInput := buildTodosInput(todos)
-
+func (sc StreamChatImpl) buildSystemPrompt() ([]domain.LLMChatMessage, error) {
 	file, err := chatPrompt.Open("prompts/chat.yml")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open chat prompt: %w", err)
@@ -94,160 +199,68 @@ func (sc StreamChatImpl) buildSystemPrompt(ctx context.Context, userMsg string) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode summary prompt: %w", err)
 	}
-
 	for i, msg := range messages {
 		if msg.Role == domain.ChatRole_Developer {
-			msg.Content = fmt.Sprintf(msg.Content,
-				todosInput,
+			messages[i].Content = fmt.Sprintf(
+				msg.Content,
+				sc.timeProvider.Now().Unix(),
+				sc.timeProvider.Now().Format(time.DateOnly),
 			)
-			messages[i] = msg
 		}
 	}
+	// Fetch current todos for context
 
 	return messages, nil
 }
 
-// Execute streams a chat response and persists the conversation
-func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEvent domain.LLMStreamEventCallback) error {
-	spanCtx, span := tracing.Start(ctx)
-	defer span.End()
-
+func (sc StreamChatImpl) fetchChatHistory(ctx context.Context) ([]domain.LLMChatMessage, error) {
 	// Build system prompt with todo context
-	systemPrompt, err := sc.buildSystemPrompt(spanCtx, userMessage)
-	if tracing.RecordErrorAndStatus(span, err) {
-		return err
+	systemPrompt, err := sc.buildSystemPrompt()
+	if err != nil {
+		return nil, err
 	}
 
 	// Load prior conversation to preserve context
-	history, _, err := sc.chatMessageRepo.ListChatMessages(spanCtx, MAX_CHAT_HISTORY_MESSAGES)
-	if tracing.RecordErrorAndStatus(span, err) {
-		return err
+	history, _, err := sc.chatMessageRepo.ListChatMessages(ctx, MAX_CHAT_HISTORY_MESSAGES)
+	if err != nil {
+		return nil, err
 	}
 
 	// Build chat request: system + history (excluding old system messages) + current user turn
 	messages := make([]domain.LLMChatMessage, 0, len(systemPrompt)+len(history)+1)
 	messages = append(messages, systemPrompt...)
 
+	//Remove orfaned tool messages from history
+	// If the first message in history is a tool message, remove it
+	if len(history) > 0 {
+		if history[0].ChatRole == domain.ChatRole_Tool {
+			history = history[1:]
+		}
+	}
+
+	// Append prior conversation history, skipping previous system messages
 	for _, msg := range history {
-		// Skip old system messages to avoid stale todo data
 		if msg.ChatRole != domain.ChatRole_System {
 			messages = append(messages, domain.LLMChatMessage{
-				Role:    msg.ChatRole,
-				Content: msg.Content,
+				Role:       msg.ChatRole,
+				Content:    msg.Content,
+				ToolCallID: msg.ToolCallID,
+				ToolCalls:  msg.ToolCalls,
 			})
 		}
 	}
-
-	messages = append(messages, domain.LLMChatMessage{
-		Role:    domain.ChatRole_User,
-		Content: userMessage,
-	})
-
-	req := domain.LLMChatRequest{
-		Model:       sc.llmModel,
-		Messages:    messages,
-		Stream:      true,
-		Temperature: common.Ptr(0.7), // Controls randomness (0.0 = deterministic, 1.0 = creative)
-		TopP:        common.Ptr(0.9), // Nucleus sampling (keeps top 90% probability tokens)
-	}
-
-	// Track metadata and accumulate content
-	var (
-		assistantMessageID uuid.UUID
-		userMessageID      uuid.UUID
-		finalUsage         *domain.LLMUsage
-		fullContent        strings.Builder
-		chatTries          = 0
-		gotContent         = false
-	)
-
-	// Create and persist the user message
-	userMsg := domain.ChatMessage{
-		ConversationID: domain.GlobalConversationID,
-		ChatRole:       domain.ChatRole_User,
-		Content:        userMessage,
-		Model:          req.Model,
-		CreatedAt:      sc.timeProvider.Now().UTC(),
-	}
-
-	for chatTries < 3 && !gotContent {
-		chatTries++
-		fullContent.Reset() // Reset content on retry
-
-		// Stream from LLM client
-		err = sc.llmClient.ChatStream(spanCtx, req, func(eventType domain.LLMStreamEventType, data any) error {
-			// Forward all events to the caller
-			if err := onEvent(eventType, data); err != nil {
-				return err
-			}
-
-			// Capture metadata from meta event
-			if eventType == domain.LLMStreamEventType_Meta {
-				meta := data.(domain.LLMStreamEventMeta)
-				assistantMessageID = meta.AssistantMessageID
-				userMessageID = meta.UserMessageID
-			}
-
-			// Accumulate content from delta events
-			if eventType == domain.LLMStreamEventType_Delta {
-				delta := data.(domain.LLMStreamEventDelta)
-				fullContent.WriteString(delta.Text)
-			}
-
-			// Capture usage from done event
-			if eventType == domain.LLMStreamEventType_Done {
-				done := data.(domain.LLMStreamEventDone)
-				finalUsage = done.Usage
-			}
-
-			return nil
-		})
-
-		if tracing.RecordErrorAndStatus(span, err) {
-			return err
-		}
-		if fullContent.Len() > 0 {
-			gotContent = true
-		}
-	}
-
-	// If still no content after retries, return error
-	if !gotContent {
-		return fmt.Errorf("LLM returned empty response after %d retries", chatTries)
-	}
-
-	userMsg.ID = userMessageID
-	if err := sc.chatMessageRepo.CreateChatMessage(spanCtx, userMsg); tracing.RecordErrorAndStatus(span, err) {
-		return err
-	}
-
-	// Create and persist the assistant message
-	assistantMsg := domain.ChatMessage{
-		ID:             assistantMessageID,
-		ConversationID: domain.GlobalConversationID,
-		ChatRole:       domain.ChatRole_Assistant,
-		Content:        fullContent.String(),
-		Model:          req.Model,
-		CreatedAt:      sc.timeProvider.Now().UTC(),
-	}
-
-	if finalUsage != nil {
-		assistantMsg.PromptTokens = finalUsage.PromptTokens
-		assistantMsg.CompletionTokens = finalUsage.CompletionTokens
-	}
-
-	if err := sc.chatMessageRepo.CreateChatMessage(spanCtx, assistantMsg); tracing.RecordErrorAndStatus(span, err) {
-		return err
-	}
-
-	return nil
+	return messages, nil
 }
 
 // InitStreamChat is the initializer for the StreamChat use case
 type InitStreamChat struct {
 	ChatMessageRepo domain.ChatMessageRepository `resolve:""`
-	TodoRepo        domain.TodoRepository        `resolve:""`
 	TimeProvider    domain.CurrentTimeProvider   `resolve:""`
+	Uow             domain.UnitOfWork            `resolve:""`
+	TodoCreator     TodoCreator                  `resolve:""`
+	TodoUpdater     TodoUpdater                  `resolve:""`
+	TodoDeleter     TodoDeleter                  `resolve:""`
+	TodoRepo        domain.TodoRepository        `resolve:""`
 	LLMClient       domain.LLMClient             `resolve:""`
 	LLMModel        string                       `config:"LLM_MODEL"`
 	EmbeddingModel  string                       `config:"LLM_EMBEDDING_MODEL"`
@@ -257,9 +270,27 @@ type InitStreamChat struct {
 func (i InitStreamChat) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[StreamChat](NewStreamChatImpl(
 		i.ChatMessageRepo,
-		i.TodoRepo,
 		i.TimeProvider,
 		i.LLMClient,
+		NewLLMToolManager(
+			NewTodoFetcherTool(
+				i.TodoRepo,
+				i.LLMClient,
+				i.EmbeddingModel,
+			),
+			NewTodoCreatorTool(
+				i.Uow,
+				i.TodoCreator,
+			),
+			NewTodoUpdaterTool(
+				i.Uow,
+				i.TodoUpdater,
+			),
+			NewTodoDeleterTool(
+				i.Uow,
+				i.TodoDeleter,
+			),
+		),
 		i.LLMModel,
 		i.EmbeddingModel,
 	))
