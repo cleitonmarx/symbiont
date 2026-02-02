@@ -35,7 +35,7 @@ type StreamChatImpl struct {
 	chatMessageRepo   domain.ChatMessageRepository
 	timeProvider      domain.CurrentTimeProvider
 	llmClient         domain.LLMClient
-	llmToolRegistry   LLMToolRegistry
+	llmToolRegistry   domain.LLMToolRegistry
 	llmModel          string
 	llmEmbeddingModel string
 }
@@ -45,7 +45,7 @@ func NewStreamChatImpl(
 	chatMessageRepo domain.ChatMessageRepository,
 	timeProvider domain.CurrentTimeProvider,
 	llmClient domain.LLMClient,
-	llmToolRegistry LLMToolRegistry,
+	llmToolRegistry domain.LLMToolRegistry,
 	llmModel string,
 	llmEmbeddingModel string,
 ) StreamChatImpl {
@@ -87,6 +87,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 		assistantMsgContent strings.Builder
 		chatMessages        []*domain.ChatMessage
 		assistantMsgID      uuid.UUID
+		tracker             = newToolCycleTracker(7, 5)
 	)
 
 	// Append user message first
@@ -101,33 +102,52 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 
 	for continueChatStreaming := true; continueChatStreaming; {
 		continueChatStreaming = false
+
 		err = sc.llmClient.ChatStream(spanCtx, req, func(eventType domain.LLMStreamEventType, data any) error {
 			switch eventType {
 			case domain.LLMStreamEventType_Meta:
-				meta := data.(domain.LLMStreamEventMeta)
-				assistantMsgID = meta.AssistantMessageID
-				userMsg.ID = meta.UserMessageID
+				// Capture message IDs from meta event
+				if assistantMsgID == uuid.Nil {
+					meta := data.(domain.LLMStreamEventMeta)
+					assistantMsgID = meta.AssistantMessageID
+					userMsg.ID = meta.UserMessageID
+					if err := onEvent(eventType, data); err != nil {
+						return err
+					}
+				}
 
 			case domain.LLMStreamEventType_FunctionCall:
-				if err := onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{Text: "⏳ Processing request...\n\n"}); err != nil {
-					return err
-				}
 				continueChatStreaming = true
+
 				fc := data.(domain.LLMStreamEventFunctionCall)
+				if tracker.hasExceededMaxCycles() || tracker.hasExceededMaxToolCalls(fc.Function, fc.Arguments) {
+					continueChatStreaming = false
+					return nil
+				}
+
 				// Append assistant message for function call
-				assistantMsg := &domain.ChatMessage{
+				chatMessages = append(chatMessages, &domain.ChatMessage{
 					ID:             uuid.New(),
 					ConversationID: domain.GlobalConversationID,
 					ChatRole:       domain.ChatRole_Assistant,
 					ToolCalls:      []domain.LLMStreamEventFunctionCall{fc},
 					Model:          req.Model,
 					CreatedAt:      sc.timeProvider.Now().UTC(),
-				}
-				chatMessages = append(chatMessages, assistantMsg)
+				})
 
 				// Process and append tool message
-				toolMessage := sc.llmToolRegistry.Call(spanCtx, fc)
-				toolMsg := &domain.ChatMessage{
+				if err := onEvent(
+					domain.LLMStreamEventType_Delta,
+					domain.LLMStreamEventDelta{
+						Text: sc.llmToolRegistry.StatusMessage(fc.Function),
+					},
+				); err != nil {
+					return err
+				}
+
+				toolMessage := sc.llmToolRegistry.Call(spanCtx, fc, req.Messages)
+
+				chatMessages = append(chatMessages, &domain.ChatMessage{
 					ID:             uuid.New(),
 					ConversationID: domain.GlobalConversationID,
 					ChatRole:       domain.ChatRole_Tool,
@@ -136,8 +156,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 					Model:          req.Model,
 					// Increment CreatedAt to ensure ordering
 					CreatedAt: sc.timeProvider.Now().UTC().Add(3 * time.Millisecond),
-				}
-				chatMessages = append(chatMessages, toolMsg)
+				})
 
 				req.Messages = append(req.Messages,
 					domain.LLMChatMessage{
@@ -152,10 +171,6 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 				if err := onEvent(eventType, data); err != nil {
 					return err
 				}
-			case domain.LLMStreamEventType_Done:
-				if err := onEvent(eventType, data); err != nil {
-					return err
-				}
 			}
 			return nil
 		})
@@ -164,24 +179,42 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 		}
 	}
 
+	assistantMsg := &domain.ChatMessage{
+		ID:             assistantMsgID,
+		ConversationID: domain.GlobalConversationID,
+		ChatRole:       domain.ChatRole_Assistant,
+		Content:        assistantMsgContent.String(),
+		Model:          req.Model,
+		CreatedAt:      sc.timeProvider.Now().UTC(),
+	}
+	chatMessages = append(chatMessages, assistantMsg)
 	// Append the final assistant message with the full content only if there is content
-	if assistantContent := assistantMsgContent.String(); assistantContent != "" {
-		assistantMsg := &domain.ChatMessage{
-			ID:             assistantMsgID,
-			ConversationID: domain.GlobalConversationID,
-			ChatRole:       domain.ChatRole_Assistant,
-			Content:        assistantContent,
-			Model:          req.Model,
-			CreatedAt:      sc.timeProvider.Now().UTC(),
+	if assistantMsg.Content == "" {
+		assistantMsg.Content = "Sorry, I could not process your request. Please try again."
+		if err := onEvent(domain.LLMStreamEventType_Delta,
+			domain.LLMStreamEventDelta{
+				Text: assistantMsg.Content + "\n",
+			},
+		); err != nil {
+			return err
 		}
-		chatMessages = append(chatMessages, assistantMsg)
 	}
 
 	// Persist all messages in order
-	for _, msg := range chatMessages {
-		if err := sc.chatMessageRepo.CreateChatMessage(spanCtx, *msg); tracing.RecordErrorAndStatus(span, err) {
-			return err
-		}
+	msgs := make([]domain.ChatMessage, len(chatMessages))
+	for i, m := range chatMessages {
+		msgs[i] = *m
+	}
+	if err := sc.chatMessageRepo.CreateChatMessages(spanCtx, msgs); tracing.RecordErrorAndStatus(span, err) {
+		return err
+	}
+
+	// Send done event
+	if err := onEvent(domain.LLMStreamEventType_Done, domain.LLMStreamEventDone{
+		AssistantMessageID: assistantMsgID.String(),
+		CompletedAt:        sc.timeProvider.Now().UTC().Format(time.RFC3339),
+	}); err != nil {
+		return err
 	}
 	return nil
 }
@@ -203,8 +236,8 @@ func (sc StreamChatImpl) buildSystemPrompt() ([]domain.LLMChatMessage, error) {
 		if msg.Role == domain.ChatRole_Developer {
 			messages[i].Content = fmt.Sprintf(
 				msg.Content,
-				sc.timeProvider.Now().Unix(),
 				sc.timeProvider.Now().Format(time.DateOnly),
+				sc.timeProvider.Now().Unix(),
 			)
 		}
 	}
@@ -213,6 +246,7 @@ func (sc StreamChatImpl) buildSystemPrompt() ([]domain.LLMChatMessage, error) {
 	return messages, nil
 }
 
+// fetchChatHistory retrieves the chat history excluding old system messages
 func (sc StreamChatImpl) fetchChatHistory(ctx context.Context) ([]domain.LLMChatMessage, error) {
 	// Build system prompt with todo context
 	systemPrompt, err := sc.buildSystemPrompt()
@@ -252,11 +286,46 @@ func (sc StreamChatImpl) fetchChatHistory(ctx context.Context) ([]domain.LLMChat
 	return messages, nil
 }
 
+// toolCycleTracker helps track repeated tool calls to prevent infinite loops
+type toolCycleTracker struct {
+	maxToolCycles          int
+	maxRepeatedToolCallHit int
+	toolCycles             int
+	lastToolCallSignature  string
+	repeatToolCallCount    int
+}
+
+// newToolCycleTracker creates a new toolCycleTracker
+func newToolCycleTracker(maxToolCycles, maxRepeatedToolCallHit int) *toolCycleTracker {
+	return &toolCycleTracker{
+		maxToolCycles:          maxToolCycles,
+		maxRepeatedToolCallHit: maxRepeatedToolCallHit,
+	}
+}
+
+// hasExceededMaxCycles checks if the maximum number of tool cycles has been exceeded
+func (t *toolCycleTracker) hasExceededMaxCycles() bool {
+	t.toolCycles++
+	return t.toolCycles >= t.maxToolCycles
+}
+
+// hasExceededMaxToolCalls checks if the same tool call has been repeated too many times
+func (t *toolCycleTracker) hasExceededMaxToolCalls(functionName, arguments string) bool {
+	signature := functionName + ":" + arguments
+	if signature == t.lastToolCallSignature {
+		t.repeatToolCallCount++
+		return t.repeatToolCallCount >= t.maxRepeatedToolCallHit
+	}
+	t.lastToolCallSignature = signature
+	t.repeatToolCallCount = 0
+	return false
+}
+
 // InitStreamChat is the initializer for the StreamChat use case
 type InitStreamChat struct {
 	ChatMessageRepo domain.ChatMessageRepository `resolve:""`
 	TimeProvider    domain.CurrentTimeProvider   `resolve:""`
-	LLMToolRegistry LLMToolRegistry              `resolve:""`
+	LLMToolRegistry domain.LLMToolRegistry       `resolve:""`
 	LLMClient       domain.LLMClient             `resolve:""`
 	LLMModel        string                       `config:"LLM_MODEL"`
 	EmbeddingModel  string                       `config:"LLM_EMBEDDING_MODEL"`

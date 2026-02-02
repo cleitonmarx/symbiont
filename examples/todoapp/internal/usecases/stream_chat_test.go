@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -24,7 +25,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 			*domain.MockChatMessageRepository,
 			*domain.MockCurrentTimeProvider,
 			*domain.MockLLMClient,
-			*MockLLMToolRegistry,
+			*domain.MockLLMToolRegistry,
 		)
 		expectErr       bool
 		expectedContent string
@@ -35,7 +36,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 				chatRepo *domain.MockChatMessageRepository,
 				timeProvider *domain.MockCurrentTimeProvider,
 				client *domain.MockLLMClient,
-				toolRegistry *MockLLMToolRegistry,
+				toolRegistry *domain.MockLLMToolRegistry,
 			) {
 
 				toolRegistry.EXPECT().
@@ -84,23 +85,14 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 				// user and assistant saves...
 				chatRepo.EXPECT().
-					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole_User
+					CreateChatMessages(mock.Anything, mock.MatchedBy(func(msgs []domain.ChatMessage) bool {
+						return len(msgs) == 2
 					})).
-					Run(func(ctx context.Context, msg domain.ChatMessage) {
-						assert.Equal(t, userMsgID, msg.ID)
-						assert.Equal(t, "Hello, how are you?", msg.Content)
-					}).
-					Return(nil).
-					Once()
-
-				chatRepo.EXPECT().
-					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole_Assistant
-					})).
-					Run(func(ctx context.Context, msg domain.ChatMessage) {
-						assert.Equal(t, assistantMsgID, msg.ID)
-						assert.Equal(t, "I'm doing great!", msg.Content)
+					Run(func(ctx context.Context, msgs []domain.ChatMessage) {
+						assert.Equal(t, userMsgID, msgs[0].ID)
+						assert.Equal(t, "Hello, how are you?", msgs[0].Content)
+						assert.Equal(t, assistantMsgID, msgs[1].ID)
+						assert.Equal(t, "I'm doing great!", msgs[1].Content)
 					}).
 					Return(nil).
 					Once()
@@ -114,11 +106,15 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 				chatRepo *domain.MockChatMessageRepository,
 				timeProvider *domain.MockCurrentTimeProvider,
 				client *domain.MockLLMClient,
-				toolRegistry *MockLLMToolRegistry,
+				toolRegistry *domain.MockLLMToolRegistry,
 			) {
 				toolRegistry.EXPECT().
 					List().
 					Return([]domain.LLMTool{})
+
+				toolRegistry.EXPECT().
+					StatusMessage("list_todos").
+					Return("calling list_todos")
 
 				toolRegistry.EXPECT().
 					Call(
@@ -129,6 +125,9 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 							Function:  "list_todos",
 							Arguments: "{\"page\": 1, \"page_size\": 5, \"search_term\": \"searchTerm\"}",
 						},
+						mock.MatchedBy(func(msgs []domain.LLMChatMessage) bool {
+							return len(msgs) > 0 && msgs[len(msgs)-1].Content == "Call a tool"
+						}),
 					).
 					Return(domain.LLMChatMessage{Role: domain.ChatRole_Tool})
 
@@ -149,33 +148,23 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 				// user and assistant saves...
 				chatRepo.EXPECT().
-					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole_User && msg.Content == "Call a tool"
+					CreateChatMessages(mock.Anything, mock.MatchedBy(func(msgs []domain.ChatMessage) bool {
+						return assert.Equal(t, 4, len(msgs))
 					})).
-					Return(nil).
-					Once()
+					Run(func(ctx context.Context, msgs []domain.ChatMessage) {
+						assert.Equal(t, domain.ChatRole_User, msgs[0].ChatRole)
+						assert.Equal(t, "Call a tool", msgs[0].Content)
 
-				chatRepo.EXPECT().
-					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole_Assistant && len(msg.ToolCalls) > 0
-					})).
-					Return(nil).
-					Once()
+						assert.Equal(t, domain.ChatRole_Assistant, msgs[1].ChatRole)
+						assert.Len(t, msgs[1].ToolCalls, 1)
 
-				chatRepo.EXPECT().
-					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole_Tool &&
-							msg.ToolCallID != nil &&
-							*msg.ToolCallID == "func-123"
-					})).
-					Return(nil).
-					Once()
+						assert.Equal(t, domain.ChatRole_Tool, msgs[2].ChatRole)
+						assert.Equal(t, "func-123", *msgs[2].ToolCallID)
 
-				chatRepo.EXPECT().
-					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole_Assistant &&
-							msg.Content == "Tool called successfully."
-					})).
+						assert.Equal(t, domain.ChatRole_Assistant, msgs[3].ChatRole)
+						assert.Equal(t, "Tool called successfully.", msgs[3].Content)
+
+					}).
 					Return(nil).
 					Once()
 			},
@@ -189,7 +178,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 				chatRepo *domain.MockChatMessageRepository,
 				timeProvider *domain.MockCurrentTimeProvider,
 				client *domain.MockLLMClient,
-				toolRegistry *MockLLMToolRegistry,
+				toolRegistry *domain.MockLLMToolRegistry,
 			) {
 
 				toolRegistry.EXPECT().
@@ -217,7 +206,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 				chatRepo *domain.MockChatMessageRepository,
 				timeProvider *domain.MockCurrentTimeProvider,
 				client *domain.MockLLMClient,
-				toolRegistry *MockLLMToolRegistry,
+				toolRegistry *domain.MockLLMToolRegistry,
 			) {
 
 				toolRegistry.EXPECT().
@@ -251,8 +240,8 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					Return(nil)
 
 				chatRepo.EXPECT().
-					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole_User
+					CreateChatMessages(mock.Anything, mock.MatchedBy(func(msgs []domain.ChatMessage) bool {
+						return msgs[0].ChatRole == domain.ChatRole_User
 					})).
 					Return(errors.New("db error")).
 					Once()
@@ -265,7 +254,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 				chatRepo *domain.MockChatMessageRepository,
 				timeProvider *domain.MockCurrentTimeProvider,
 				client *domain.MockLLMClient,
-				toolRegistry *MockLLMToolRegistry,
+				toolRegistry *domain.MockLLMToolRegistry,
 			) {
 
 				toolRegistry.EXPECT().
@@ -299,20 +288,155 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					Return(nil)
 
 				chatRepo.EXPECT().
-					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole_User
-					})).
-					Return(nil).
-					Once()
-
-				chatRepo.EXPECT().
-					CreateChatMessage(mock.Anything, mock.MatchedBy(func(msg domain.ChatMessage) bool {
-						return msg.ChatRole == domain.ChatRole_Assistant
-					})).
+					CreateChatMessages(mock.Anything, mock.Anything).
+					Run(func(ctx context.Context, msgs []domain.ChatMessage) {
+						assert.Equal(t, domain.ChatRole_User, msgs[0].ChatRole)
+						assert.Equal(t, domain.ChatRole_Assistant, msgs[1].ChatRole)
+					}).
 					Return(errors.New("db error")).
 					Once()
 			},
 			expectErr: true,
+		},
+		"max-tool-cycles-exceeded": {
+			userMessage: "Keep calling tools",
+			setupDomain: func(
+				chatRepo *domain.MockChatMessageRepository,
+				timeProvider *domain.MockCurrentTimeProvider,
+				client *domain.MockLLMClient,
+				toolRegistry *domain.MockLLMToolRegistry,
+			) {
+				toolRegistry.EXPECT().
+					List().
+					Return([]domain.LLMTool{})
+
+				timeProvider.EXPECT().
+					Now().
+					Return(fixedTime)
+
+				chatRepo.EXPECT().
+					ListChatMessages(mock.Anything, MAX_CHAT_HISTORY_MESSAGES).
+					Return([]domain.ChatMessage{}, false, nil).
+					Once()
+
+				// Expect 7 tool calls (max cycles is 7, on the 8th it stops)
+				toolRegistry.EXPECT().
+					StatusMessage(mock.Anything).
+					Return("calling tool...\n").
+					Times(6)
+
+				toolRegistry.EXPECT().
+					Call(mock.Anything, mock.Anything, mock.Anything).
+					Return(domain.LLMChatMessage{Role: domain.ChatRole_Tool, Content: "tool result"}).
+					Times(6)
+
+				callCount := 0
+				client.EXPECT().
+					ChatStream(mock.Anything, mock.Anything, mock.Anything).
+					RunAndReturn(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) error {
+						if callCount == 0 {
+							if err := onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
+								ConversationID:     domain.GlobalConversationID,
+								UserMessageID:      userMsgID,
+								AssistantMessageID: assistantMsgID,
+								StartedAt:          fixedTime,
+							}); err != nil {
+								return err
+							}
+						}
+
+						callCount++
+
+						return onEvent(domain.LLMStreamEventType_FunctionCall, domain.LLMStreamEventFunctionCall{
+							ID:        fmt.Sprintf("func-%d", callCount),
+							Index:     0,
+							Function:  "fetch_todos",
+							Arguments: fmt.Sprintf(`{"page": %d}`, callCount),
+						})
+					}).
+					Times(7)
+
+				// Final assistant message - contains the warning only
+				chatRepo.EXPECT().
+					CreateChatMessages(mock.Anything, mock.Anything).
+					Run(func(ctx context.Context, msgs []domain.ChatMessage) {
+						assert.Len(t, msgs, 14)
+						assert.Equal(t, domain.ChatRole_User, msgs[0].ChatRole)
+					}).
+					Return(nil).
+					Once()
+
+			},
+			expectErr:       false,
+			expectedContent: "calling tool...\ncalling tool...\ncalling tool...\ncalling tool...\ncalling tool...\ncalling tool...\nSorry, I could not process your request. Please try again.\n",
+		},
+		"repeated-tool-call-loop": {
+			userMessage: "Call the same tool repeatedly",
+			setupDomain: func(
+				chatRepo *domain.MockChatMessageRepository,
+				timeProvider *domain.MockCurrentTimeProvider,
+				client *domain.MockLLMClient,
+				toolRegistry *domain.MockLLMToolRegistry,
+			) {
+				toolRegistry.EXPECT().
+					List().
+					Return([]domain.LLMTool{})
+
+				timeProvider.EXPECT().
+					Now().
+					Return(fixedTime)
+
+				chatRepo.EXPECT().
+					ListChatMessages(mock.Anything, MAX_CHAT_HISTORY_MESSAGES).
+					Return([]domain.ChatMessage{}, false, nil).
+					Once()
+
+				toolRegistry.EXPECT().
+					StatusMessage("fetch_todos").
+					Return("calling fetch_todos...\n").
+					Times(5)
+
+				toolRegistry.EXPECT().
+					Call(mock.Anything, mock.Anything, mock.Anything).
+					Return(domain.LLMChatMessage{Role: domain.ChatRole_Tool, Content: "same result"}).
+					Times(5)
+
+				callCount := 0
+				client.EXPECT().
+					ChatStream(mock.Anything, mock.Anything, mock.Anything).
+					RunAndReturn(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) error {
+						if callCount == 0 {
+							if err := onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
+								ConversationID:     domain.GlobalConversationID,
+								UserMessageID:      userMsgID,
+								AssistantMessageID: assistantMsgID,
+								StartedAt:          fixedTime,
+							}); err != nil {
+								return err
+							}
+						}
+
+						callCount++
+						return onEvent(domain.LLMStreamEventType_FunctionCall, domain.LLMStreamEventFunctionCall{
+							ID:        fmt.Sprintf("func-%d", callCount),
+							Index:     0,
+							Function:  "fetch_todos",
+							Arguments: `{"page": 1}`,
+						})
+					}).
+					Times(6)
+
+				chatRepo.EXPECT().
+					CreateChatMessages(mock.Anything, mock.Anything).
+					Run(func(ctx context.Context, msgs []domain.ChatMessage) {
+						assert.Len(t, msgs, 12)
+						assert.Equal(t, domain.ChatRole_User, msgs[0].ChatRole)
+					}).
+					Return(nil).
+					Once()
+			},
+			expectErr:       false,
+			expectedContent: "calling fetch_todos...\ncalling fetch_todos...\ncalling fetch_todos...\ncalling fetch_todos...\ncalling fetch_todos...\nSorry, I could not process your request. Please try again.\n",
 		},
 	}
 
@@ -322,7 +446,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 			chatRepo := domain.NewMockChatMessageRepository(t)
 			timeProvider := domain.NewMockCurrentTimeProvider(t)
 			llmClient := domain.NewMockLLMClient(t)
-			lltToolRegistry := NewMockLLMToolRegistry(t)
+			lltToolRegistry := domain.NewMockLLMToolRegistry(t)
 			tt.setupDomain(chatRepo, timeProvider, llmClient, lltToolRegistry)
 
 			useCase := NewStreamChatImpl(chatRepo, timeProvider, llmClient, lltToolRegistry, "test-model", "test-embedding-model")
