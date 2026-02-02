@@ -11,7 +11,7 @@ interface UseChatReturn {
   clearChat: () => Promise<void>;
 }
 
-export const useChat = (): UseChatReturn => {
+export const useChat = (onChatDone?: () => void): UseChatReturn => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,6 +113,8 @@ export const useChat = (): UseChatReturn => {
               assistantMessageId = data.AssistantMessageID;
             }
             setLoading(false);
+            // Call the callback when done
+            onChatDone?.();
             return;
           }
 
@@ -144,7 +146,7 @@ export const useChat = (): UseChatReturn => {
       setError(err instanceof Error ? err.message : 'Failed to send message');
       setLoading(false);
     }
-  }, []);
+  }, [onChatDone]); // Add onChatDone to dependency array
 
   const clearChat = useCallback(async () => {
     try {
