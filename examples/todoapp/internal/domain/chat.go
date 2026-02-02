@@ -34,8 +34,8 @@ type ChatMessage struct {
 
 // ChatMessageRepository defines the interface for chat message persistence
 type ChatMessageRepository interface {
-	// CreateChatMessage persists a chat message for the global conversation
-	CreateChatMessage(ctx context.Context, message ChatMessage) error
+	// CreateChatMessages persists chat messages for the global conversation
+	CreateChatMessages(ctx context.Context, messages []ChatMessage) error
 
 	// ListChatMessages retrieves messages for the global conversation ordered by creation time.
 	// If limit is greater than 0, only the last N messages are returned.

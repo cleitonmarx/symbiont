@@ -17,6 +17,26 @@ const (
 	LLMStreamEventType_Done         LLMStreamEventType = "done"
 )
 
+// LLMToolExecutor represents a tool that can be executed by the LLM
+type LLMToolExecutor interface {
+	// Tool returns the LLMTool definition
+	Tool() LLMTool
+	// StatusMessage returns a user-friendly status line for this tool
+	StatusMessage() string
+	// Call executes the tool with the given function call and chat messages
+	Call(context.Context, LLMStreamEventFunctionCall, []LLMChatMessage) LLMChatMessage
+}
+
+// LLMToolRegistry defines the interface for calling registered LLM tools.
+type LLMToolRegistry interface {
+	// Call executes the tool with the given function call and chat messages
+	Call(context.Context, LLMStreamEventFunctionCall, []LLMChatMessage) LLMChatMessage
+	// StatusMessage returns a friendly status message for the given tool name.
+	StatusMessage(functionName string) string
+	// List returns all registered LLM tools.
+	List() []LLMTool
+}
+
 // LLMChatMessage represents a message in a chat request to the LLM API
 type LLMChatMessage struct {
 	Role       ChatRole
@@ -77,11 +97,10 @@ type LLMStreamEventDelta struct {
 }
 
 type LLMStreamEventFunctionCall struct {
-	ID              string
-	Index           int
-	Function        string
-	Arguments       string
-	LastUserMessage string `json:"-"`
+	ID        string
+	Index     int
+	Function  string
+	Arguments string
 }
 
 // LLMStreamEventDone contains completion metadata and token usage
