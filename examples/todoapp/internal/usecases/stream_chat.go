@@ -256,11 +256,7 @@ func (sc StreamChatImpl) fetchChatHistory(ctx context.Context) ([]domain.LLMChat
 type InitStreamChat struct {
 	ChatMessageRepo domain.ChatMessageRepository `resolve:""`
 	TimeProvider    domain.CurrentTimeProvider   `resolve:""`
-	Uow             domain.UnitOfWork            `resolve:""`
-	TodoCreator     TodoCreator                  `resolve:""`
-	TodoUpdater     TodoUpdater                  `resolve:""`
-	TodoDeleter     TodoDeleter                  `resolve:""`
-	TodoRepo        domain.TodoRepository        `resolve:""`
+	LLMToolRegistry LLMToolRegistry              `resolve:""`
 	LLMClient       domain.LLMClient             `resolve:""`
 	LLMModel        string                       `config:"LLM_MODEL"`
 	EmbeddingModel  string                       `config:"LLM_EMBEDDING_MODEL"`
@@ -272,25 +268,7 @@ func (i InitStreamChat) Initialize(ctx context.Context) (context.Context, error)
 		i.ChatMessageRepo,
 		i.TimeProvider,
 		i.LLMClient,
-		NewLLMToolManager(
-			NewTodoFetcherTool(
-				i.TodoRepo,
-				i.LLMClient,
-				i.EmbeddingModel,
-			),
-			NewTodoCreatorTool(
-				i.Uow,
-				i.TodoCreator,
-			),
-			NewTodoUpdaterTool(
-				i.Uow,
-				i.TodoUpdater,
-			),
-			NewTodoDeleterTool(
-				i.Uow,
-				i.TodoDeleter,
-			),
-		),
+		i.LLMToolRegistry,
 		i.LLMModel,
 		i.EmbeddingModel,
 	))
