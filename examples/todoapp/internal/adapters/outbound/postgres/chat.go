@@ -37,20 +37,21 @@ func NewChatMessageRepository(br squirrel.BaseRunner) ChatMessageRepository {
 	}
 }
 
-// CreateChatMessage persists a chat message for the global conversation.
-func (r ChatMessageRepository) CreateChatMessage(ctx context.Context, message domain.ChatMessage) error {
+// CreateChatMessages persists chat messages for the global conversation.
+func (r ChatMessageRepository) CreateChatMessages(ctx context.Context, messages []domain.ChatMessage) error {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
-	toolCallsJSON, err := json.Marshal(message.ToolCalls)
-	if tracing.RecordErrorAndStatus(span, err) {
-		return err
-	}
-
-	_, err = r.sb.
+	insertQry := r.sb.
 		Insert("ai_chat_messages").
-		Columns(chatFields...).
-		Values(
+		Columns(chatFields...)
+
+	for _, message := range messages {
+		toolCallsJSON, err := json.Marshal(message.ToolCalls)
+		if tracing.RecordErrorAndStatus(span, err) {
+			return err
+		}
+		insertQry = insertQry.Values(
 			message.ID,
 			message.ConversationID,
 			message.ChatRole,
@@ -59,9 +60,10 @@ func (r ChatMessageRepository) CreateChatMessage(ctx context.Context, message do
 			toolCallsJSON,
 			message.Model,
 			message.CreatedAt,
-		).
-		ExecContext(spanCtx)
+		)
+	}
 
+	_, err := insertQry.ExecContext(spanCtx)
 	if tracing.RecordErrorAndStatus(span, err) {
 		return err
 	}

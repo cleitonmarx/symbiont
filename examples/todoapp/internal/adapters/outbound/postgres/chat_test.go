@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestChatMessageRepository_CreateChatMessage(t *testing.T) {
+func TestChatMessageRepository_CreateChatMessages(t *testing.T) {
 	fixedID := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
 	fixedTime := time.Date(2026, 1, 24, 12, 0, 0, 0, time.UTC)
 	msg := domain.ChatMessage{
@@ -84,7 +84,7 @@ func TestChatMessageRepository_CreateChatMessage(t *testing.T) {
 			tt.expect(mock)
 
 			repo := NewChatMessageRepository(db)
-			gotErr := repo.CreateChatMessage(context.Background(), msg)
+			gotErr := repo.CreateChatMessages(context.Background(), []domain.ChatMessage{msg})
 			assert.Equal(t, tt.err, gotErr)
 			assert.NoError(t, mock.ExpectationsWereMet())
 		})
