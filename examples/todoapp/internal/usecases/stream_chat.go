@@ -18,8 +18,9 @@ import (
 const (
 	// Maximum number of chat history messages to include in the context
 	MAX_CHAT_HISTORY_MESSAGES = 10
-	// Maximum number of todos to include in the context
-	MAX_TODO_CONTEXT = 20
+
+	// Maximum number of repeated tool call hits to prevent infinite loops
+	MAX_REPEATED_TOOL_CALL_HIT = 5
 )
 
 //go:embed prompts/chat.yml
@@ -38,6 +39,7 @@ type StreamChatImpl struct {
 	llmToolRegistry   domain.LLMToolRegistry
 	llmModel          string
 	llmEmbeddingModel string
+	maxToolCycles     int
 }
 
 // NewStreamChatImpl creates a new instance of StreamChatImpl
@@ -48,6 +50,7 @@ func NewStreamChatImpl(
 	llmToolRegistry domain.LLMToolRegistry,
 	llmModel string,
 	llmEmbeddingModel string,
+	maxToolCycles int,
 ) StreamChatImpl {
 	return StreamChatImpl{
 		chatMessageRepo:   chatMessageRepo,
@@ -56,6 +59,7 @@ func NewStreamChatImpl(
 		llmToolRegistry:   llmToolRegistry,
 		llmModel:          llmModel,
 		llmEmbeddingModel: llmEmbeddingModel,
+		maxToolCycles:     maxToolCycles,
 	}
 }
 
@@ -87,7 +91,10 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 		assistantMsgContent strings.Builder
 		chatMessages        []*domain.ChatMessage
 		assistantMsgID      uuid.UUID
-		tracker             = newToolCycleTracker(7, 5)
+		tracker             = newToolCycleTracker(
+			sc.maxToolCycles,
+			MAX_REPEATED_TOOL_CALL_HIT,
+		)
 	)
 
 	// Append user message first
@@ -306,7 +313,7 @@ func newToolCycleTracker(maxToolCycles, maxRepeatedToolCallHit int) *toolCycleTr
 // hasExceededMaxCycles checks if the maximum number of tool cycles has been exceeded
 func (t *toolCycleTracker) hasExceededMaxCycles() bool {
 	t.toolCycles++
-	return t.toolCycles >= t.maxToolCycles
+	return t.toolCycles > t.maxToolCycles
 }
 
 // hasExceededMaxToolCalls checks if the same tool call has been repeated too many times
@@ -329,6 +336,9 @@ type InitStreamChat struct {
 	LLMClient       domain.LLMClient             `resolve:""`
 	LLMModel        string                       `config:"LLM_MODEL"`
 	EmbeddingModel  string                       `config:"LLM_EMBEDDING_MODEL"`
+	// Maximum number of tool cycles to prevent infinite loops
+	// It restricts how many times the LLM can invoke tools in a single chat session
+	MaxToolCycles int `config:"LLM_MAX_TOOL_CYCLES" default:"30"`
 }
 
 // Initialize registers the StreamChat use case in the dependency container
@@ -340,6 +350,7 @@ func (i InitStreamChat) Initialize(ctx context.Context) (context.Context, error)
 		i.LLMToolRegistry,
 		i.LLMModel,
 		i.EmbeddingModel,
+		i.MaxToolCycles,
 	))
 	return ctx, nil
 }

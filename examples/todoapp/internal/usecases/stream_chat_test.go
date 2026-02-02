@@ -323,12 +323,12 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 				toolRegistry.EXPECT().
 					StatusMessage(mock.Anything).
 					Return("calling tool...\n").
-					Times(6)
+					Times(7)
 
 				toolRegistry.EXPECT().
 					Call(mock.Anything, mock.Anything, mock.Anything).
 					Return(domain.LLMChatMessage{Role: domain.ChatRole_Tool, Content: "tool result"}).
-					Times(6)
+					Times(7)
 
 				callCount := 0
 				client.EXPECT().
@@ -354,13 +354,13 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 							Arguments: fmt.Sprintf(`{"page": %d}`, callCount),
 						})
 					}).
-					Times(7)
+					Times(8)
 
 				// Final assistant message - contains the warning only
 				chatRepo.EXPECT().
 					CreateChatMessages(mock.Anything, mock.Anything).
 					Run(func(ctx context.Context, msgs []domain.ChatMessage) {
-						assert.Len(t, msgs, 14)
+						assert.Len(t, msgs, 16)
 						assert.Equal(t, domain.ChatRole_User, msgs[0].ChatRole)
 					}).
 					Return(nil).
@@ -368,7 +368,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 			},
 			expectErr:       false,
-			expectedContent: "calling tool...\ncalling tool...\ncalling tool...\ncalling tool...\ncalling tool...\ncalling tool...\nSorry, I could not process your request. Please try again.\n",
+			expectedContent: "calling tool...\ncalling tool...\ncalling tool...\ncalling tool...\ncalling tool...\ncalling tool...\ncalling tool...\nSorry, I could not process your request. Please try again.\n",
 		},
 		"repeated-tool-call-loop": {
 			userMessage: "Call the same tool repeatedly",
@@ -449,7 +449,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 			lltToolRegistry := domain.NewMockLLMToolRegistry(t)
 			tt.setupDomain(chatRepo, timeProvider, llmClient, lltToolRegistry)
 
-			useCase := NewStreamChatImpl(chatRepo, timeProvider, llmClient, lltToolRegistry, "test-model", "test-embedding-model")
+			useCase := NewStreamChatImpl(chatRepo, timeProvider, llmClient, lltToolRegistry, "test-model", "test-embedding-model", 7)
 
 			var capturedContent string
 			err := useCase.Execute(context.Background(), tt.userMessage, func(eventType domain.LLMStreamEventType, data any) error {
