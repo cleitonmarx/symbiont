@@ -73,14 +73,15 @@ type LLMStreamEventMeta struct {
 
 // LLMStreamEventDelta contains a text delta from the stream
 type LLMStreamEventDelta struct {
-	Text string `json:"text"`
+	Text string
 }
 
 type LLMStreamEventFunctionCall struct {
-	ID        string
-	Index     int
-	Function  string
-	Arguments string
+	ID              string
+	Index           int
+	Function        string
+	Arguments       string
+	LastUserMessage string `json:"-"`
 }
 
 // LLMStreamEventDone contains completion metadata and token usage
