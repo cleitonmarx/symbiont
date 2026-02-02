@@ -52,7 +52,7 @@ func TestTodoUpdaterImpl_Update(t *testing.T) {
 				llmClient.EXPECT().Embed(
 					mock.Anything,
 					"model-name",
-					"ID: 123e4567-e89b-12d3-a456-426614174000 | Title: Updated Todo | Due Date: unix(1704110400), iso8601(2024-01-01) | Status: OPEN",
+					"ID: 123e4567-e89b-12d3-a456-426614174000 | Title: Updated Todo | Due Date: 2024-01-01 | Status: OPEN",
 				).Return([]float64{0.4, 0.5, 0.6}, nil)
 
 				repo := domain.NewMockTodoRepository(t)
@@ -108,7 +108,7 @@ func TestTodoUpdaterImpl_Update(t *testing.T) {
 				llmClient.EXPECT().Embed(
 					mock.Anything,
 					"model-name",
-					"ID: 123e4567-e89b-12d3-a456-426614174000 | Title: Updated Todo | Due Date: unix(1704110400), iso8601(2024-01-01) | Status: OPEN",
+					"ID: 123e4567-e89b-12d3-a456-426614174000 | Title: Updated Todo | Due Date: 2024-01-01 | Status: OPEN",
 				).Return(nil, errors.New("embedding service error"))
 
 				repo := domain.NewMockTodoRepository(t)
@@ -166,7 +166,7 @@ func TestTodoUpdaterImpl_Update(t *testing.T) {
 				llmClient.EXPECT().Embed(
 					mock.Anything,
 					"model-name",
-					"ID: 123e4567-e89b-12d3-a456-426614174000 | Title: Updated Todo | Due Date: unix(1704110400), iso8601(2024-01-01) | Status: OPEN",
+					"ID: 123e4567-e89b-12d3-a456-426614174000 | Title: Updated Todo | Due Date: 2024-01-01 | Status: OPEN",
 				).Return([]float64{0.4, 0.5, 0.6}, nil)
 
 				repo := domain.NewMockTodoRepository(t)
