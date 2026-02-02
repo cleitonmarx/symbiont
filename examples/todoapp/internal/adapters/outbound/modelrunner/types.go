@@ -27,8 +27,9 @@ type ToolFunc struct {
 
 // ToolFuncParameters represents the parameters schema for a function tool (OpenAI JSON Schema)
 type ToolFuncParameters struct {
-	Type       string                             `json:"type"`
-	Properties map[string]ToolFuncParameterDetail `json:"properties"`
+	Type                 string                             `json:"type"`
+	Properties           map[string]ToolFuncParameterDetail `json:"properties"`
+	AdditionalProperties bool                               `json:"additionalProperties"`
 }
 
 // ToolFuncParameterDetail represents a single parameter in the function tool schema
@@ -124,4 +125,31 @@ type ToolCallChunkFunction struct {
 type Timings struct {
 	PromptN    int `json:"prompt_n"`
 	PredictedN int `json:"predicted_n"`
+}
+
+// EmbeddingsRequest represents the request payload for the embeddings endpoint.
+type EmbeddingsRequest struct {
+	Model string `json:"model"`
+	Input any    `json:"input"` // string or []string
+}
+
+// EmbeddingsUsage represents the token usage for embeddings
+type EmbeddingsUsage struct {
+	PromptTokens int `json:"prompt_tokens"`
+	TotalTokens  int `json:"total_tokens"`
+}
+
+// EmbeddingData represents a single embedding
+type EmbeddingData struct {
+	Embedding []float64 `json:"embedding"`
+	Index     int       `json:"index"`
+	Object    string    `json:"object"`
+}
+
+// EmbeddingsResponse represents the response from the embeddings endpoint.
+type EmbeddingsResponse struct {
+	Model  string          `json:"model"`
+	Object string          `json:"object"`
+	Usage  EmbeddingsUsage `json:"usage"`
+	Data   []EmbeddingData `json:"data"`
 }

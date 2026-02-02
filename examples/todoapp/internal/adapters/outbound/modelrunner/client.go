@@ -129,33 +129,6 @@ func (c DRMAPIClient) ChatStream(ctx context.Context, req ChatRequest, onChunk C
 	return scanner.Err()
 }
 
-// EmbeddingsRequest represents the request payload for the embeddings endpoint.
-type EmbeddingsRequest struct {
-	Model string `json:"model"`
-	Input any    `json:"input"` // string or []string
-}
-
-// EmbeddingsUsage represents the token usage for embeddings
-type EmbeddingsUsage struct {
-	PromptTokens int `json:"prompt_tokens"`
-	TotalTokens  int `json:"total_tokens"`
-}
-
-// EmbeddingData represents a single embedding
-type EmbeddingData struct {
-	Embedding []float64 `json:"embedding"`
-	Index     int       `json:"index"`
-	Object    string    `json:"object"`
-}
-
-// EmbeddingsResponse represents the response from the embeddings endpoint.
-type EmbeddingsResponse struct {
-	Model  string          `json:"model"`
-	Object string          `json:"object"`
-	Usage  EmbeddingsUsage `json:"usage"`
-	Data   []EmbeddingData `json:"data"`
-}
-
 // Embeddings calls the /engines/v1/embeddings endpoint.
 func (c DRMAPIClient) Embeddings(ctx context.Context, req EmbeddingsRequest) (*EmbeddingsResponse, error) {
 	httpReq, err := c.newPostRequest(ctx, "/engines/v1/embeddings", req)
