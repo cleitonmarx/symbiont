@@ -44,7 +44,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 				timeProvider.EXPECT().
 					Now().
-					Return(fixedTime).Twice()
+					Return(fixedTime)
 
 				// history: empty
 				chatRepo.EXPECT().
