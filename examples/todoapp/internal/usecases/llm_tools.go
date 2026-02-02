@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
+	"github.com/cleitonmarx/symbiont/depend"
+	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/common"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/tracing"
 	"github.com/google/uuid"
@@ -85,23 +87,23 @@ func (lft TodoFetcherTool) Tool() domain.LLMTool {
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "fetch_todos",
-			Description: "Finds todos using semantic search, pagination, and filtering. Use clear, relevant keywords for best results. All parameters must be integers except 'search_term'.",
+			Description: "Fetch todos by keyword. Use ONLY when you need to find existing items. Provide all parameters exactly as specified (integers for page/page_size, string for search_term). Do NOT include extra keys. Do NOT call repeatedly with the same parameters.",
 			Parameters: domain.LLMToolFunctionParameters{
 				Type: "object",
 				Properties: map[string]domain.LLMToolFunctionParameterDetail{
 					"page": {
 						Type:        "integer",
-						Description: "Page number to retrieve (starting from 1, integer).",
+						Description: "Page number (starting from 1). REQUIRED. Integer only.",
 						Required:    true,
 					},
 					"page_size": {
 						Type:        "integer",
-						Description: "Number of todos per page (max 30, integer).",
+						Description: "Items per page (1–30). REQUIRED. Integer only.",
 						Required:    true,
 					},
 					"search_term": {
 						Type:        "string",
-						Description: "Keyword or phrase for semantic search (e.g., 'April tasks', 'overdue', 'shopping').",
+						Description: "Keyword/phrase to search (e.g., 'dentist', 'shopping', 'groceries'). REQUIRED.",
 						Required:    true,
 					},
 				},
@@ -201,18 +203,18 @@ func (tct TodoCreatorTool) Tool() domain.LLMTool {
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "create_todo",
-			Description: "Creates a new todo item with a title and due date. The due date must be a unix timestamp (integer, e.g., 1769904000). Use clear, descriptive titles.",
+			Description: "Create ONE new todo. REQUIRED keys: title (string), due_date (unix timestamp integer). Do NOT include extra keys. Do NOT guess timestamps—call convert_date_to_unix first.",
 			Parameters: domain.LLMToolFunctionParameters{
 				Type: "object",
 				Properties: map[string]domain.LLMToolFunctionParameterDetail{
 					"title": {
 						Type:        "string",
-						Description: "Title of the todo (required).",
+						Description: "Short task title. REQUIRED.",
 						Required:    true,
 					},
 					"due_date": {
 						Type:        "integer",
-						Description: "Due date as a unix timestamp (integer, e.g., 1769904000, required).",
+						Description: "Unix timestamp (seconds). REQUIRED. Integer only.",
 						Required:    true,
 					},
 				},
@@ -282,13 +284,13 @@ func (tut TodoUpdaterTool) Tool() domain.LLMTool {
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "update_todo",
-			Description: "Updates an existing todo item. You can change the title, status, or due date. IMPORTANT: due_date MUST be a JSON NUMBER (Integer), not a string. Example: 1771459200.",
+			Description: "Update ONE existing todo. REQUIRED keys: id (UUID string) and due_date (unix timestamp integer). Optional: title, status. Do NOT include extra keys. Do NOT guess timestamps—call convert_date_to_unix first.",
 			Parameters: domain.LLMToolFunctionParameters{
 				Type: "object",
 				Properties: map[string]domain.LLMToolFunctionParameterDetail{
 					"id": {
 						Type:        "string",
-						Description: "ID of the todo to update (UUID string, required).",
+						Description: "Todo UUID. REQUIRED.",
 						Required:    true,
 					},
 					"title": {
@@ -298,13 +300,13 @@ func (tut TodoUpdaterTool) Tool() domain.LLMTool {
 					},
 					"status": {
 						Type:        "string",
-						Description: "New status (OPEN or DONE, optional).",
+						Description: "OPEN or DONE (optional).",
 						Required:    false,
 					},
 					"due_date": {
 						Type:        "integer",
-						Description: "New due date as a unix timestamp (integer, e.g., 1769904000).",
-						Required:    true,
+						Description: "Unix timestamp (seconds). REQUIRED. Integer only.",
+						Required:    false,
 					},
 				},
 			},
@@ -318,7 +320,7 @@ func (tut TodoUpdaterTool) Call(ctx context.Context, call domain.LLMStreamEventF
 		ID      string  `json:"id"`
 		Title   *string `json:"title"`
 		Status  *string `json:"status"`
-		DueDate int64   `json:"due_date"`
+		DueDate *int64  `json:"due_date"`
 	}{}
 
 	err := json.Unmarshal([]byte(call.Arguments), &params)
@@ -337,18 +339,14 @@ func (tut TodoUpdaterTool) Call(ctx context.Context, call domain.LLMStreamEventF
 		}
 	}
 
-	if params.DueDate == 0 {
-		return domain.LLMChatMessage{
-			Role:    domain.ChatRole_Tool,
-			Content: "Sorry, the due_date parameter is required and must be a valid unix timestamp (integer).",
-		}
+	var dueDate *time.Time
+	if params.DueDate != nil {
+		dueDate = common.Ptr(time.Unix(*params.DueDate, 0).UTC())
 	}
-
-	dueDate := time.Unix(params.DueDate, 0).UTC()
 
 	var todo domain.Todo
 	err = tut.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
-		td, err := tut.updater.Update(ctx, uow, todoID, params.Title, (*domain.TodoStatus)(params.Status), &dueDate)
+		td, err := tut.updater.Update(ctx, uow, todoID, params.Title, (*domain.TodoStatus)(params.Status), dueDate)
 		if err != nil {
 			return err
 		}
@@ -388,13 +386,13 @@ func (tdt TodoDeleterTool) Tool() domain.LLMTool {
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "delete_todo",
-			Description: "Deletes an existing todo item by its ID.",
+			Description: "Delete ONE todo by id (UUID). REQUIRED key: id. Do NOT include extra keys. Call fetch_todos first if you don't have the UUID.",
 			Parameters: domain.LLMToolFunctionParameters{
 				Type: "object",
 				Properties: map[string]domain.LLMToolFunctionParameterDetail{
 					"id": {
 						Type:        "string",
-						Description: "ID of the todo to delete (UUID string, required).",
+						Description: "Todo UUID. REQUIRED.",
 						Required:    true,
 					},
 				},
@@ -454,13 +452,13 @@ func (dct DateConverterTool) Tool() domain.LLMTool {
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "convert_date_to_unix",
-			Description: "Converts a human-readable date string into a unix timestamp (seconds since epoch).",
+			Description: "Convert a human-readable date to a unix timestamp (seconds). REQUIRED key: date_string. Do NOT include extra keys. Use this before create_todo or update_todo when a date is mentioned.",
 			Parameters: domain.LLMToolFunctionParameters{
 				Type: "object",
 				Properties: map[string]domain.LLMToolFunctionParameterDetail{
 					"date_string": {
 						Type:        "string",
-						Description: "The human-readable date string to convert (e.g., '2024-06-30', 'July 1, 2024 14:00 UTC').",
+						Description: "A clear date string (e.g., '2026-01-25', 'Jan 25, 2026'). REQUIRED.",
 						Required:    true,
 					},
 				},
@@ -508,4 +506,38 @@ func (dct DateConverterTool) Call(ctx context.Context, call domain.LLMStreamEven
 		Role:    domain.ChatRole_Tool,
 		Content: string(content),
 	}
+}
+
+type InitLLMToolRegistry struct {
+	Uow            domain.UnitOfWork     `resolve:""`
+	TodoCreator    TodoCreator           `resolve:""`
+	TodoUpdater    TodoUpdater           `resolve:""`
+	TodoDeleter    TodoDeleter           `resolve:""`
+	TodoRepo       domain.TodoRepository `resolve:""`
+	LLMClient      domain.LLMClient      `resolve:""`
+	EmbeddingModel string                `config:"LLM_EMBEDDING_MODEL"`
+}
+
+func (i InitLLMToolRegistry) Initialize(ctx context.Context) (context.Context, error) {
+	depend.Register[LLMToolRegistry](NewLLMToolManager(
+		NewTodoFetcherTool(
+			i.TodoRepo,
+			i.LLMClient,
+			i.EmbeddingModel,
+		),
+		NewTodoCreatorTool(
+			i.Uow,
+			i.TodoCreator,
+		),
+		NewTodoUpdaterTool(
+			i.Uow,
+			i.TodoUpdater,
+		),
+		NewTodoDeleterTool(
+			i.Uow,
+			i.TodoDeleter,
+		),
+		NewDateConverterTool(),
+	))
+	return ctx, nil
 }
