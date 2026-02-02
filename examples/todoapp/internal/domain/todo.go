@@ -52,7 +52,7 @@ func (t Todo) Validate(now time.Time) error {
 
 // ToLLMInput formats the todo item as a string suitable for LLM input.
 func (t Todo) ToLLMInput() string {
-	return fmt.Sprintf("ID: %s | Title: %s | Due Date: unix(%d), iso8601(%s) | Status: %s", t.ID.String(), t.Title, t.DueDate.Unix(), t.DueDate.Format(time.DateOnly), t.Status)
+	return fmt.Sprintf("ID: %s | Title: %s | Due Date: %s | Status: %s", t.ID.String(), t.Title, t.DueDate.Format(time.DateOnly), t.Status)
 }
 
 // ListTodosParams represents the parameters for listing todo items.
