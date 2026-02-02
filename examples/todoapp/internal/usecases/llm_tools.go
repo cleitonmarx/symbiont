@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/araddon/dateparse"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/tracing"
 	"github.com/google/uuid"
@@ -281,7 +282,7 @@ func (tut TodoUpdaterTool) Tool() domain.LLMTool {
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "update_todo",
-			Description: "Updates an existing todo item. You can change the title, status, or due date. The due date must be a unix timestamp (integer, e.g., 1769904000).",
+			Description: "Updates an existing todo item. You can change the title, status, or due date. IMPORTANT: due_date MUST be a JSON NUMBER (Integer), not a string. Example: 1771459200.",
 			Parameters: domain.LLMToolFunctionParameters{
 				Type: "object",
 				Properties: map[string]domain.LLMToolFunctionParameterDetail{
@@ -302,8 +303,8 @@ func (tut TodoUpdaterTool) Tool() domain.LLMTool {
 					},
 					"due_date": {
 						Type:        "integer",
-						Description: "New due date as a unix timestamp (integer, e.g., 1769904000, optional).",
-						Required:    false,
+						Description: "New due date as a unix timestamp (integer, e.g., 1769904000).",
+						Required:    true,
 					},
 				},
 			},
@@ -317,7 +318,7 @@ func (tut TodoUpdaterTool) Call(ctx context.Context, call domain.LLMStreamEventF
 		ID      string  `json:"id"`
 		Title   *string `json:"title"`
 		Status  *string `json:"status"`
-		DueDate *int64  `json:"due_date"`
+		DueDate int64   `json:"due_date"`
 	}{}
 
 	err := json.Unmarshal([]byte(call.Arguments), &params)
@@ -336,15 +337,18 @@ func (tut TodoUpdaterTool) Call(ctx context.Context, call domain.LLMStreamEventF
 		}
 	}
 
-	var dueDate *time.Time
-	if params.DueDate != nil {
-		parsedDueDate := time.Unix(*params.DueDate, 0).UTC()
-		dueDate = &parsedDueDate
+	if params.DueDate == 0 {
+		return domain.LLMChatMessage{
+			Role:    domain.ChatRole_Tool,
+			Content: "Sorry, the due_date parameter is required and must be a valid unix timestamp (integer).",
+		}
 	}
+
+	dueDate := time.Unix(params.DueDate, 0).UTC()
 
 	var todo domain.Todo
 	err = tut.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
-		td, err := tut.updater.Update(ctx, uow, todoID, params.Title, (*domain.TodoStatus)(params.Status), dueDate)
+		td, err := tut.updater.Update(ctx, uow, todoID, params.Title, (*domain.TodoStatus)(params.Status), &dueDate)
 		if err != nil {
 			return err
 		}
@@ -434,5 +438,74 @@ func (tdt TodoDeleterTool) Call(ctx context.Context, call domain.LLMStreamEventF
 	return domain.LLMChatMessage{
 		Role:    domain.ChatRole_Tool,
 		Content: "The todo was deleted successfully!",
+	}
+}
+
+type DateConverterTool struct{}
+
+// NewDateConverterTool creates a new instance of DateConverterTool.
+func NewDateConverterTool() DateConverterTool {
+	return DateConverterTool{}
+}
+
+// Tool returns the LLMTool definition for the DateConverterTool.
+func (dct DateConverterTool) Tool() domain.LLMTool {
+	return domain.LLMTool{
+		Type: "function",
+		Function: domain.LLMToolFunction{
+			Name:        "convert_date_to_unix",
+			Description: "Converts a human-readable date string into a unix timestamp (seconds since epoch).",
+			Parameters: domain.LLMToolFunctionParameters{
+				Type: "object",
+				Properties: map[string]domain.LLMToolFunctionParameterDetail{
+					"date_string": {
+						Type:        "string",
+						Description: "The human-readable date string to convert (e.g., '2024-06-30', 'July 1, 2024 14:00 UTC').",
+						Required:    true,
+					},
+				},
+			},
+		},
+	}
+}
+
+// Call executes the DateConverterTool with the provided function call.
+func (dct DateConverterTool) Call(ctx context.Context, call domain.LLMStreamEventFunctionCall) domain.LLMChatMessage {
+	params := struct {
+		DateString string `json:"date_string"`
+	}{}
+
+	err := json.Unmarshal([]byte(call.Arguments), &params)
+	if err != nil {
+		return domain.LLMChatMessage{
+			Role:    domain.ChatRole_Tool,
+			Content: "Sorry, I couldn't understand the parameters for date conversion. Please provide a valid date string. ERROR: " + err.Error(),
+		}
+	}
+
+	parsedTime, err := dateparse.ParseAny(params.DateString)
+	if err != nil {
+		return domain.LLMChatMessage{
+			Role:    domain.ChatRole_Tool,
+			Content: "Sorry, I couldn't parse the provided date string. Please ensure it's in a recognizable format. ERROR: " + err.Error(),
+		}
+	}
+
+	unixTimestamp := parsedTime.Unix()
+
+	output := map[string]int64{
+		"unix_timestamp": unixTimestamp,
+	}
+	content, err := json.Marshal(output)
+	if err != nil {
+		return domain.LLMChatMessage{
+			Role:    domain.ChatRole_Tool,
+			Content: "Error: failed to marshal tool response: " + err.Error(),
+		}
+	}
+
+	return domain.LLMChatMessage{
+		Role:    domain.ChatRole_Tool,
+		Content: string(content),
 	}
 }
