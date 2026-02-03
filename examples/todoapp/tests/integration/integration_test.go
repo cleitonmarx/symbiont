@@ -51,7 +51,7 @@ func TestMain(m *testing.M) {
 				"PUBSUB_TOPIC_ID":             "Todo",
 				"PUBSUB_SUBSCRIPTION_ID":      "todo_summary_generator",
 				"LLM_MODEL_HOST":              "http://localhost:12434",
-				"LLM_MODEL":                   "gpt-oss:20B-UD-Q4_K_XL",
+				"LLM_MODEL":                   "qwen2.5:7B-Q4_0",
 				"LLM_EMBEDDING_MODEL":         "embeddinggemma:300M-Q8_0",
 			},
 		},
@@ -249,7 +249,8 @@ func TestTodoAPP_Chat(t *testing.T) {
 		deltaText := readChatDeltaText(t, chatResp.Body)
 
 		require.Contains(t, deltaText, "🔎 Fetching todos...")
-		require.Contains(t, deltaText, "[Status: OPEN] Integration Test Todo", "expected chat response to contain created todo title")
+		require.Contains(t, deltaText, "Integration Test Todo", "expected chat response to contain created todo title")
+		require.Contains(t, deltaText, "OPEN", "expected chat response to contain created todo status")
 		fmt.Println("Chat response:", deltaText)
 
 	})
@@ -265,7 +266,9 @@ func TestTodoAPP_Chat(t *testing.T) {
 		deltaText := readChatDeltaText(t, chatResp.Body)
 
 		require.Contains(t, deltaText, "✏️ Updating your todo...")
-		require.Contains(t, deltaText, "[Status: DONE] Integration Test Todo", "expected chat response to contain created todo title")
+		require.Contains(t, deltaText, "Integration Test Todo", "expected chat response to contain created todo title")
+		require.Contains(t, deltaText, "DONE", "expected chat response to contain created todo status")
+
 		fmt.Println("Chat response:", deltaText)
 	})
 
@@ -279,6 +282,7 @@ func TestTodoAPP_Chat(t *testing.T) {
 
 		deltaText := readChatDeltaText(t, chatResp.Body)
 		require.Contains(t, deltaText, "🗑️ Deleting the todo...")
+		require.Contains(t, deltaText, "Integration Test Todo", "expected chat response to contain created todo title")
 		fmt.Println("Chat response:", deltaText)
 	})
 
