@@ -102,10 +102,15 @@ func (lft TodoFetcherTool) Definition() domain.LLMToolDefinition {
 						Description: "Items per page (1–30). REQUIRED. Integer only.",
 						Required:    true,
 					},
+					"status": {
+						Type:        "string",
+						Description: "Filter by status: OPEN or DONE (optional).",
+						Required:    false,
+					},
 					"search_term": {
 						Type:        "string",
-						Description: "Keyword/phrase to search (e.g., 'dentist', 'shopping', 'groceries'). REQUIRED.",
-						Required:    true,
+						Description: "Keyword/phrase to search (e.g., 'dentist', 'shopping', 'groceries').",
+						Required:    false,
 					},
 				},
 			},
@@ -116,9 +121,10 @@ func (lft TodoFetcherTool) Definition() domain.LLMToolDefinition {
 // Call executes the TodoFetcherTool with the provided function call.
 func (lft TodoFetcherTool) Call(ctx context.Context, call domain.LLMStreamEventFunctionCall, _ []domain.LLMChatMessage) domain.LLMChatMessage {
 	params := struct {
-		Page       int    `json:"page"`
-		PageSize   int    `json:"page_size"`
-		SearchTerm string `json:"search_term"`
+		Page       int     `json:"page"`
+		PageSize   int     `json:"page_size"`
+		Status     *string `json:"status"`
+		SearchTerm *string `json:"search_term"`
 	}{
 		Page:     1,  // default page
 		PageSize: 10, // default page size
@@ -132,15 +138,24 @@ func (lft TodoFetcherTool) Call(ctx context.Context, call domain.LLMStreamEventF
 		}
 	}
 
-	embedding, err := lft.llmCli.Embed(ctx, lft.llmEmbeddingModel, params.SearchTerm)
-	if err != nil {
-		return domain.LLMChatMessage{
-			Role:    domain.ChatRole_Tool,
-			Content: fmt.Sprintf(`{"error":"embedding_error","details":"%s"}`, err.Error()),
+	opts := []domain.ListTodoOptions{}
+
+	if params.SearchTerm != nil && *params.SearchTerm != "" {
+		embedding, err := lft.llmCli.Embed(ctx, lft.llmEmbeddingModel, *params.SearchTerm)
+		if err != nil {
+			return domain.LLMChatMessage{
+				Role:    domain.ChatRole_Tool,
+				Content: fmt.Sprintf(`{"error":"embedding_error","details":"%s"}`, err.Error()),
+			}
 		}
+		opts = append(opts, domain.WithEmbedding(embedding))
 	}
 
-	todos, hasMore, err := lft.repo.ListTodos(ctx, params.Page, params.PageSize, domain.WithEmbedding(embedding))
+	if params.Status != nil {
+		opts = append(opts, domain.WithStatus(domain.TodoStatus(*params.Status)))
+	}
+
+	todos, hasMore, err := lft.repo.ListTodos(ctx, params.Page, params.PageSize, opts...)
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,

@@ -57,8 +57,9 @@
     - DO NOT guess or invent dates.
     - DO NOT repeat the same failed tool call.
     - If a tool returns an error, correct the arguments before retrying.
-    - DO NOT explain internal reasoning or tool selection to the user.
+    - DO NOT explain reasoning or tool selection to the user.
     - DO NOT call tools that are not part of the active workflow.
+    - Show to the user ONLY the final todo list in the specified format, with no extra text or ID's.
 
     ### EXAMPLES (FOR REFERENCE ONLY):
 

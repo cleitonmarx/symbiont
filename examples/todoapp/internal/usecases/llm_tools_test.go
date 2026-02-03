@@ -180,11 +180,6 @@ func TestTodoFetcherTool(t *testing.T) {
 	}{
 		"fetch-todos-success": {
 			setupMocks: func(todoRepo *domain.MockTodoRepository, llmCli *domain.MockLLMClient) {
-				llmCli.EXPECT().
-					Embed(mock.Anything, "embedding-model", "search").
-					Return([]float64{0.1, 0.2, 0.3}, nil).
-					Once()
-
 				todoRepo.EXPECT().
 					ListTodos(
 						mock.Anything,
@@ -204,7 +199,52 @@ func TestTodoFetcherTool(t *testing.T) {
 			},
 			functionCall: domain.LLMStreamEventFunctionCall{
 				Function:  "fetch_todos",
-				Arguments: `{"page": 1, "page_size": 10, "search_term": "search"}`,
+				Arguments: `{"page": 1, "page_size": 10}`,
+			},
+			validateResp: func(t *testing.T, resp domain.LLMChatMessage) {
+				assert.Equal(t, domain.ChatRole_Tool, resp.Role)
+				var output map[string]any
+				err := json.Unmarshal([]byte(resp.Content), &output)
+				require.NoError(t, err)
+				assert.NotNil(t, output["todos"])
+			},
+		},
+		"fetch-todos-with-status-and-search": {
+			setupMocks: func(todoRepo *domain.MockTodoRepository, llmCli *domain.MockLLMClient) {
+				llmCli.EXPECT().
+					Embed(mock.Anything, "embedding-model", "urgent").
+					Return([]float64{0.3, 0.4}, nil).
+					Once()
+
+				todoRepo.EXPECT().
+					ListTodos(
+						mock.Anything,
+						1,
+						10,
+						mock.Anything,
+					).
+					Run(func(ctx context.Context, page, pageSize int, opts ...domain.ListTodoOptions) {
+						param := domain.ListTodosParams{}
+						for _, opt := range opts {
+							opt(&param)
+						}
+						assert.Equal(t, domain.TodoStatus_OPEN, *param.Status)
+						assert.Equal(t, []float64{0.3, 0.4}, param.Embedding)
+					}).
+					Return([]domain.Todo{
+						{
+							ID:      uuid.New(),
+							Title:   "Urgent Todo",
+							DueDate: fixedTime,
+							Status:  domain.TodoStatus_OPEN,
+						},
+					}, false, nil).
+					Once()
+
+			},
+			functionCall: domain.LLMStreamEventFunctionCall{
+				Function:  "fetch_todos",
+				Arguments: `{"page": 1, "page_size": 10, "status": "OPEN", "search_term": "urgent"}`,
 			},
 			validateResp: func(t *testing.T, resp domain.LLMChatMessage) {
 				assert.Equal(t, domain.ChatRole_Tool, resp.Role)

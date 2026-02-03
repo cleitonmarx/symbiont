@@ -338,7 +338,7 @@ type InitStreamChat struct {
 	EmbeddingModel  string                       `config:"LLM_EMBEDDING_MODEL"`
 	// Maximum number of tool cycles to prevent infinite loops
 	// It restricts how many times the LLM can invoke tools in a single chat session
-	MaxToolCycles int `config:"LLM_MAX_TOOL_CYCLES" default:"30"`
+	MaxToolCycles int `config:"LLM_MAX_TOOL_CYCLES" default:"50"`
 }
 
 // Initialize registers the StreamChat use case in the dependency container
