@@ -41,7 +41,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 				toolRegistry.EXPECT().
 					List().
-					Return([]domain.LLMTool{})
+					Return([]domain.LLMToolDefinition{})
 
 				timeProvider.EXPECT().
 					Now().
@@ -110,7 +110,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 			) {
 				toolRegistry.EXPECT().
 					List().
-					Return([]domain.LLMTool{})
+					Return([]domain.LLMToolDefinition{})
 
 				toolRegistry.EXPECT().
 					StatusMessage("list_todos").
@@ -183,7 +183,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 				toolRegistry.EXPECT().
 					List().
-					Return([]domain.LLMTool{})
+					Return([]domain.LLMToolDefinition{})
 
 				timeProvider.EXPECT().
 					Now().
@@ -211,7 +211,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 				toolRegistry.EXPECT().
 					List().
-					Return([]domain.LLMTool{})
+					Return([]domain.LLMToolDefinition{})
 
 				timeProvider.EXPECT().
 					Now().
@@ -259,7 +259,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 				toolRegistry.EXPECT().
 					List().
-					Return([]domain.LLMTool{})
+					Return([]domain.LLMToolDefinition{})
 
 				timeProvider.EXPECT().
 					Now().
@@ -308,7 +308,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 			) {
 				toolRegistry.EXPECT().
 					List().
-					Return([]domain.LLMTool{})
+					Return([]domain.LLMToolDefinition{})
 
 				timeProvider.EXPECT().
 					Now().
@@ -380,7 +380,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 			) {
 				toolRegistry.EXPECT().
 					List().
-					Return([]domain.LLMTool{})
+					Return([]domain.LLMToolDefinition{})
 
 				timeProvider.EXPECT().
 					Now().

@@ -17,10 +17,10 @@ const (
 	LLMStreamEventType_Done         LLMStreamEventType = "done"
 )
 
-// LLMToolExecutor represents a tool that can be executed by the LLM
-type LLMToolExecutor interface {
+// LLMTool represents a tool that can be executed by the LLM
+type LLMTool interface {
 	// Tool returns the LLMTool definition
-	Tool() LLMTool
+	Definition() LLMToolDefinition
 	// StatusMessage returns a user-friendly status line for this tool
 	StatusMessage() string
 	// Call executes the tool with the given function call and chat messages
@@ -34,7 +34,7 @@ type LLMToolRegistry interface {
 	// StatusMessage returns a friendly status message for the given tool name.
 	StatusMessage(functionName string) string
 	// List returns all registered LLM tools.
-	List() []LLMTool
+	List() []LLMToolDefinition
 }
 
 // LLMChatMessage represents a message in a chat request to the LLM API
@@ -54,11 +54,11 @@ type LLMChatRequest struct {
 	Temperature *float64
 	TopP        *float64
 	MaxTokens   *int
-	Tools       []LLMTool
+	Tools       []LLMToolDefinition
 }
 
-// LLMTool represents a tool that can be used by the LLM
-type LLMTool struct {
+// LLMToolDefinition represents a tool that can be used by the LLM
+type LLMToolDefinition struct {
 	Type     string
 	Function LLMToolFunction
 }

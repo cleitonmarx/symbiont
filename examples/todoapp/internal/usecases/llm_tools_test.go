@@ -18,33 +18,33 @@ import (
 
 func TestLLMToolManager(t *testing.T) {
 	tests := map[string]struct {
-		setupTools func() []domain.LLMToolExecutor
-		setupMocks func(*domain.MockLLMToolExecutor)
+		setupTools func() []domain.LLMTool
+		setupMocks func(*domain.MockLLMTool)
 		testFunc   func(t *testing.T, manager LLMToolManager)
 	}{
 		"list-returns-all-tools": {
-			setupTools: func() []domain.LLMToolExecutor {
-				tool1 := domain.NewMockLLMToolExecutor(t)
+			setupTools: func() []domain.LLMTool {
+				tool1 := domain.NewMockLLMTool(t)
 				tool1.EXPECT().
-					Tool().
-					Return(domain.LLMTool{
+					Definition().
+					Return(domain.LLMToolDefinition{
 						Type: "function",
 						Function: domain.LLMToolFunction{
 							Name: "fetch_todos",
 						},
 					})
 
-				tool2 := domain.NewMockLLMToolExecutor(t)
+				tool2 := domain.NewMockLLMTool(t)
 				tool2.EXPECT().
-					Tool().
-					Return(domain.LLMTool{
+					Definition().
+					Return(domain.LLMToolDefinition{
 						Type: "function",
 						Function: domain.LLMToolFunction{
 							Name: "create_todo",
 						},
 					})
 
-				return []domain.LLMToolExecutor{tool1, tool2}
+				return []domain.LLMTool{tool1, tool2}
 			},
 			testFunc: func(t *testing.T, manager LLMToolManager) {
 				tools := manager.List()
@@ -54,11 +54,11 @@ func TestLLMToolManager(t *testing.T) {
 			},
 		},
 		"status-message-returns-tool-specific-message": {
-			setupTools: func() []domain.LLMToolExecutor {
-				tool := domain.NewMockLLMToolExecutor(t)
+			setupTools: func() []domain.LLMTool {
+				tool := domain.NewMockLLMTool(t)
 				tool.EXPECT().
-					Tool().
-					Return(domain.LLMTool{
+					Definition().
+					Return(domain.LLMToolDefinition{
 						Type: "function",
 						Function: domain.LLMToolFunction{
 							Name: "fetch_todos",
@@ -68,7 +68,7 @@ func TestLLMToolManager(t *testing.T) {
 					StatusMessage().
 					Return("🔎 Fetching todos...\n\n")
 
-				return []domain.LLMToolExecutor{tool}
+				return []domain.LLMTool{tool}
 			},
 			testFunc: func(t *testing.T, manager LLMToolManager) {
 				msg := manager.StatusMessage("fetch_todos")
@@ -76,11 +76,11 @@ func TestLLMToolManager(t *testing.T) {
 			},
 		},
 		"status-message-returns-default-when-tool-message-empty": {
-			setupTools: func() []domain.LLMToolExecutor {
-				tool := domain.NewMockLLMToolExecutor(t)
+			setupTools: func() []domain.LLMTool {
+				tool := domain.NewMockLLMTool(t)
 				tool.EXPECT().
-					Tool().
-					Return(domain.LLMTool{
+					Definition().
+					Return(domain.LLMToolDefinition{
 						Type: "function",
 						Function: domain.LLMToolFunction{
 							Name: "fetch_todos",
@@ -90,7 +90,7 @@ func TestLLMToolManager(t *testing.T) {
 					StatusMessage().
 					Return("")
 
-				return []domain.LLMToolExecutor{tool}
+				return []domain.LLMTool{tool}
 			},
 			testFunc: func(t *testing.T, manager LLMToolManager) {
 				msg := manager.StatusMessage("fetch_todos")
@@ -98,8 +98,8 @@ func TestLLMToolManager(t *testing.T) {
 			},
 		},
 		"status-message-returns-default-when-tool-not-found": {
-			setupTools: func() []domain.LLMToolExecutor {
-				return []domain.LLMToolExecutor{}
+			setupTools: func() []domain.LLMTool {
+				return []domain.LLMTool{}
 			},
 			testFunc: func(t *testing.T, manager LLMToolManager) {
 				msg := manager.StatusMessage("unknown_tool")
@@ -107,11 +107,11 @@ func TestLLMToolManager(t *testing.T) {
 			},
 		},
 		"call-executes-correct-tool": {
-			setupTools: func() []domain.LLMToolExecutor {
-				tool := domain.NewMockLLMToolExecutor(t)
+			setupTools: func() []domain.LLMTool {
+				tool := domain.NewMockLLMTool(t)
 				tool.EXPECT().
-					Tool().
-					Return(domain.LLMTool{
+					Definition().
+					Return(domain.LLMToolDefinition{
 						Type: "function",
 						Function: domain.LLMToolFunction{
 							Name: "fetch_todos",
@@ -124,7 +124,7 @@ func TestLLMToolManager(t *testing.T) {
 						Content: "todos found",
 					})
 
-				return []domain.LLMToolExecutor{tool}
+				return []domain.LLMTool{tool}
 			},
 			testFunc: func(t *testing.T, manager LLMToolManager) {
 				result := manager.Call(
@@ -140,8 +140,8 @@ func TestLLMToolManager(t *testing.T) {
 			},
 		},
 		"call-returns-error-for-unknown-tool": {
-			setupTools: func() []domain.LLMToolExecutor {
-				return []domain.LLMToolExecutor{}
+			setupTools: func() []domain.LLMTool {
+				return []domain.LLMTool{}
 			},
 			testFunc: func(t *testing.T, manager LLMToolManager) {
 				result := manager.Call(

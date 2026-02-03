@@ -109,7 +109,7 @@ func TestLLMClientAdapter_ChatStream(t *testing.T) {
 						},
 					},
 				},
-				Tools: []domain.LLMTool{
+				Tools: []domain.LLMToolDefinition{
 					{
 						Type: "search_web",
 						Function: domain.LLMToolFunction{

@@ -14,14 +14,14 @@ import (
 
 // LLMToolManager manages a collection of LLM tools.
 type LLMToolManager struct {
-	tools map[string]domain.LLMToolExecutor
+	tools map[string]domain.LLMTool
 }
 
 // NewLLMToolManager creates a new LLMToolManager with the provided tools.
-func NewLLMToolManager(tools ...domain.LLMToolExecutor) LLMToolManager {
-	toolMap := make(map[string]domain.LLMToolExecutor)
+func NewLLMToolManager(tools ...domain.LLMTool) LLMToolManager {
+	toolMap := make(map[string]domain.LLMTool)
 	for _, tool := range tools {
-		toolMap[tool.Tool().Function.Name] = tool
+		toolMap[tool.Definition().Function.Name] = tool
 	}
 	return LLMToolManager{
 		tools: toolMap,
@@ -39,10 +39,10 @@ func (m LLMToolManager) StatusMessage(functionName string) string {
 }
 
 // List returns all registered LLM tools.
-func (ctr LLMToolManager) List() []domain.LLMTool {
-	toolList := make([]domain.LLMTool, 0, len(ctr.tools))
+func (ctr LLMToolManager) List() []domain.LLMToolDefinition {
+	toolList := make([]domain.LLMToolDefinition, 0, len(ctr.tools))
 	for _, tool := range ctr.tools {
-		toolList = append(toolList, tool.Tool())
+		toolList = append(toolList, tool.Definition())
 	}
 	return toolList
 }
@@ -83,8 +83,8 @@ func (t TodoFetcherTool) StatusMessage() string {
 }
 
 // Tool returns the LLMTool definition for the TodoFetcherTool.
-func (lft TodoFetcherTool) Tool() domain.LLMTool {
-	return domain.LLMTool{
+func (lft TodoFetcherTool) Definition() domain.LLMToolDefinition {
+	return domain.LLMToolDefinition{
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "fetch_todos",
@@ -218,8 +218,8 @@ func (t TodoCreatorTool) StatusMessage() string {
 }
 
 // Tool returns the LLMTool definition for the TodoCreatorTool.
-func (tct TodoCreatorTool) Tool() domain.LLMTool {
-	return domain.LLMTool{
+func (tct TodoCreatorTool) Definition() domain.LLMToolDefinition {
+	return domain.LLMToolDefinition{
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "create_todo",
@@ -309,8 +309,8 @@ func (t TodoMetaUpdaterTool) StatusMessage() string {
 }
 
 // Tool returns the LLMTool definition for the TodoMetaUpdaterTool.
-func (tut TodoMetaUpdaterTool) Tool() domain.LLMTool {
-	return domain.LLMTool{
+func (tut TodoMetaUpdaterTool) Definition() domain.LLMToolDefinition {
+	return domain.LLMToolDefinition{
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "update_todo",
@@ -407,8 +407,8 @@ func (t TodoDueDateUpdaterTool) StatusMessage() string {
 }
 
 // Tool returns the LLMTool definition for the TodoDueDateUpdaterTool.
-func (tdut TodoDueDateUpdaterTool) Tool() domain.LLMTool {
-	return domain.LLMTool{
+func (tdut TodoDueDateUpdaterTool) Definition() domain.LLMToolDefinition {
+	return domain.LLMToolDefinition{
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "update_todo_due_date",
@@ -504,8 +504,8 @@ func (t TodoDeleterTool) StatusMessage() string {
 }
 
 // Tool returns the LLMTool definition for the TodoDeleterTool.
-func (tdt TodoDeleterTool) Tool() domain.LLMTool {
-	return domain.LLMTool{
+func (tdt TodoDeleterTool) Definition() domain.LLMToolDefinition {
+	return domain.LLMToolDefinition{
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "delete_todo",
