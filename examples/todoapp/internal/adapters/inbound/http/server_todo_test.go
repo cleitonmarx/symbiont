@@ -159,6 +159,8 @@ func TestTodoAppServer_ListTodos(t *testing.T) {
 		pageSize        int
 		todoStatus      *gen.TodoStatus
 		query           *string
+		dateRange       *gen.DateRange
+		sortBy          *string
 		setExpectations func(*usecases.MockListTodos)
 		expectedStatus  int
 		expectedBody    *gen.ListTodosResp
@@ -255,6 +257,46 @@ func TestTodoAppServer_ListTodos(t *testing.T) {
 				Page:  1,
 			},
 		},
+		"sucess-with-date-range": {
+			page:     1,
+			pageSize: 10,
+			dateRange: &gen.DateRange{
+				DueAfter:  &openapi_types.Date{Time: time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)},
+				DueBefore: &openapi_types.Date{Time: time.Date(2026, 1, 30, 0, 0, 0, 0, time.UTC)},
+			},
+			setExpectations: func(m *usecases.MockListTodos) {
+				m.EXPECT().
+					Query(mock.Anything, 1, 10, mock.Anything).
+					Run(func(_ context.Context, _ int, _ int, opts ...usecases.ListTodoOptions) {
+						p := usecases.ListTodoParams{}
+						for _, opt := range opts {
+							opt(&p)
+						}
+						assert.Equal(t, time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC), *p.DueAfter)
+						assert.Equal(t, time.Date(2026, 1, 30, 0, 0, 0, 0, time.UTC), *p.DueBefore)
+					}).
+					Return([]domain.Todo{domainTodo}, false, nil)
+			},
+			expectedStatus: http.StatusOK,
+		},
+		"sucess-with-sort-by": {
+			page:     1,
+			pageSize: 10,
+			sortBy:   common.Ptr("dueDateDesc"),
+			setExpectations: func(m *usecases.MockListTodos) {
+				m.EXPECT().
+					Query(mock.Anything, 1, 10, mock.Anything).
+					Run(func(_ context.Context, _ int, _ int, opts ...usecases.ListTodoOptions) {
+						p := usecases.ListTodoParams{}
+						for _, opt := range opts {
+							opt(&p)
+						}
+						assert.Equal(t, "dueDateDesc", *p.SortBy)
+					}).
+					Return([]domain.Todo{domainTodo}, false, nil)
+			},
+			expectedStatus: http.StatusOK,
+		},
 		"use-case-error": {
 			page:     1,
 			pageSize: 10,
@@ -287,12 +329,19 @@ func TestTodoAppServer_ListTodos(t *testing.T) {
 			assert.NoError(t, err)
 			q := u.Query()
 			q.Set("page", strconv.Itoa(tt.page))
-			q.Set("pagesize", strconv.Itoa(tt.pageSize))
+			q.Set("pageSize", strconv.Itoa(tt.pageSize))
 			if tt.todoStatus != nil {
 				q.Set("status", string(*tt.todoStatus))
 			}
 			if tt.query != nil {
 				q.Set("query", *tt.query)
+			}
+			if tt.dateRange != nil {
+				q.Set("dateRange[dueAfter]", tt.dateRange.DueAfter.String())
+				q.Set("dateRange[dueBefore]", tt.dateRange.DueBefore.String())
+			}
+			if tt.sortBy != nil {
+				q.Set("sort", *tt.sortBy)
 			}
 			u.RawQuery = q.Encode()
 			req := httptest.NewRequest(http.MethodGet, u.String(), nil)

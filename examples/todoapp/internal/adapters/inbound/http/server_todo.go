@@ -25,8 +25,14 @@ func (api TodoAppServer) ListTodos(w http.ResponseWriter, r *http.Request, param
 	if params.Query != nil {
 		queryParams = append(queryParams, usecases.WithSearchQuery(*params.Query))
 	}
+	if params.DateRange.DueAfter != nil && params.DateRange.DueBefore != nil {
+		queryParams = append(queryParams, usecases.WithDueDateRange(params.DateRange.DueAfter.Time, params.DateRange.DueBefore.Time))
+	}
+	if params.Sort != nil {
+		queryParams = append(queryParams, usecases.WithSortBy(string(*params.Sort)))
+	}
 
-	todos, hasMore, err := api.ListTodosUseCase.Query(r.Context(), params.Page, params.Pagesize, queryParams...)
+	todos, hasMore, err := api.ListTodosUseCase.Query(r.Context(), params.Page, params.PageSize, queryParams...)
 	if err != nil {
 		api.Logger.Printf("Error listing todos: %v", err)
 		respondError(w, toError(err))
