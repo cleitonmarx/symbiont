@@ -8,6 +8,7 @@ import (
 
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/http/gen"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
+	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/usecases"
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -17,9 +18,12 @@ func (api TodoAppServer) ListTodos(w http.ResponseWriter, r *http.Request, param
 		Items: []gen.Todo{},
 		Page:  params.Page,
 	}
-	var queryParams []domain.ListTodoOptions
+	var queryParams []usecases.ListTodoOptions
 	if params.Status != nil {
-		queryParams = append(queryParams, domain.WithStatus(domain.TodoStatus(*params.Status)))
+		queryParams = append(queryParams, usecases.WithStatus(domain.TodoStatus(*params.Status)))
+	}
+	if params.Query != nil {
+		queryParams = append(queryParams, usecases.WithSearchQuery(*params.Query))
 	}
 
 	todos, hasMore, err := api.ListTodosUseCase.Query(r.Context(), params.Page, params.Pagesize, queryParams...)

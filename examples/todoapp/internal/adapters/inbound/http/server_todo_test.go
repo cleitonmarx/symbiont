@@ -158,6 +158,7 @@ func TestTodoAppServer_ListTodos(t *testing.T) {
 		page            int
 		pageSize        int
 		todoStatus      *gen.TodoStatus
+		query           *string
 		setExpectations func(*usecases.MockListTodos)
 		expectedStatus  int
 		expectedBody    *gen.ListTodosResp
@@ -217,12 +218,34 @@ func TestTodoAppServer_ListTodos(t *testing.T) {
 			setExpectations: func(m *usecases.MockListTodos) {
 				m.EXPECT().
 					Query(mock.Anything, 1, 10, mock.Anything).
-					Run(func(_ context.Context, _ int, _ int, opts ...domain.ListTodoOptions) {
-						p := domain.ListTodosParams{}
+					Run(func(_ context.Context, _ int, _ int, opts ...usecases.ListTodoOptions) {
+						p := usecases.ListTodoParams{}
 						for _, opt := range opts {
 							opt(&p)
 						}
 						assert.Equal(t, domain.TodoStatus_DONE, *p.Status)
+					}).
+					Return([]domain.Todo{domainTodo}, false, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody: &gen.ListTodosResp{
+				Items: []gen.Todo{restTodo},
+				Page:  1,
+			},
+		},
+		"success-with-query": {
+			page:     1,
+			pageSize: 10,
+			query:    common.Ptr("groceries"),
+			setExpectations: func(m *usecases.MockListTodos) {
+				m.EXPECT().
+					Query(mock.Anything, 1, 10, mock.Anything).
+					Run(func(_ context.Context, _ int, _ int, opts ...usecases.ListTodoOptions) {
+						p := usecases.ListTodoParams{}
+						for _, opt := range opts {
+							opt(&p)
+						}
+						assert.Equal(t, "groceries", *p.Query)
 					}).
 					Return([]domain.Todo{domainTodo}, false, nil)
 			},
@@ -267,6 +290,9 @@ func TestTodoAppServer_ListTodos(t *testing.T) {
 			q.Set("pagesize", strconv.Itoa(tt.pageSize))
 			if tt.todoStatus != nil {
 				q.Set("status", string(*tt.todoStatus))
+			}
+			if tt.query != nil {
+				q.Set("query", *tt.query)
 			}
 			u.RawQuery = q.Encode()
 			req := httptest.NewRequest(http.MethodGet, u.String(), nil)
@@ -413,6 +439,79 @@ func TestTodoAppServer_UpdateTodo(t *testing.T) {
 		})
 	}
 
+}
+
+func TestTodoAppServer_DeleteTodo(t *testing.T) {
+	tests := map[string]struct {
+		todoID         string
+		setupMocks     func(*usecases.MockDeleteTodo)
+		expectedStatus int
+		expectedError  *gen.ErrorResp
+	}{
+		"success": {
+			todoID: domainTodo.ID.String(),
+			setupMocks: func(m *usecases.MockDeleteTodo) {
+				m.EXPECT().
+					Execute(mock.Anything, openapi_types.UUID(domainTodo.ID)).
+					Return(nil)
+			},
+			expectedStatus: http.StatusNoContent,
+		},
+		"todo-not-found": {
+			todoID: domainTodo.ID.String(),
+			setupMocks: func(m *usecases.MockDeleteTodo) {
+				m.EXPECT().
+					Execute(mock.Anything, openapi_types.UUID(domainTodo.ID)).
+					Return(domain.NewNotFoundErr("todo not found"))
+			},
+			expectedStatus: http.StatusNotFound,
+			expectedError: &gen.ErrorResp{
+				Error: gen.Error{
+					Code:    gen.NOTFOUND,
+					Message: "todo not found",
+				},
+			},
+		},
+		"use-case-error": {
+			todoID: domainTodo.ID.String(),
+			setupMocks: func(m *usecases.MockDeleteTodo) {
+				m.EXPECT().
+					Execute(mock.Anything, openapi_types.UUID(domainTodo.ID)).
+					Return(errors.New("database error"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedError: &gen.ErrorResp{
+				Error: gen.Error{
+					Code:    gen.INTERNALERROR,
+					Message: "internal server error",
+				},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			mockDeleteTodo := usecases.NewMockDeleteTodo(t)
+			tt.setupMocks(mockDeleteTodo)
+			server := &TodoAppServer{
+				DeleteTodoUseCase: mockDeleteTodo,
+				Logger:            log.New(io.Discard, "", 0),
+			}
+
+			req := httptest.NewRequest(http.MethodDelete, "/api/v1/todos/"+tt.todoID, nil)
+			w := httptest.NewRecorder()
+
+			gen.Handler(server).ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			if tt.expectedError != nil {
+				var response gen.ErrorResp
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				assert.NoError(t, err)
+				assert.Equal(t, *tt.expectedError, response)
+			}
+		})
+	}
 }
 
 // serializeJSON is a helper function to marshal a value to JSON for test requests.

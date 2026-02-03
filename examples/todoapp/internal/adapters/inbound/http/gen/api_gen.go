@@ -225,6 +225,9 @@ type ListTodosParams struct {
 
 	// Page Opaque cursor from a prior ListTodosResp to fetch the next page. Omit or set to null to fetch the first page.
 	Page int `form:"page" json:"page"`
+
+	// Query Full-text or semantic search query to retrieve todos most relevant to the provided keywords or context using vector similarity.
+	Query *string `form:"query,omitempty" json:"query,omitempty"`
 }
 
 // StreamChatJSONRequestBody defines body for StreamChat for application/json ContentType.
@@ -833,6 +836,22 @@ func NewListTodosRequest(server string, params *ListTodosParams) (*http.Request,
 					queryValues.Add(k, v2)
 				}
 			}
+		}
+
+		if params.Query != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "query", runtime.ParamLocationQuery, *params.Query); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -1740,6 +1759,14 @@ func (siw *ServerInterfaceWrapper) ListTodos(w http.ResponseWriter, r *http.Requ
 	err = runtime.BindQueryParameter("form", true, true, "page", r.URL.Query(), &params.Page)
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "query" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "query", r.URL.Query(), &params.Query)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "query", Err: err})
 		return
 	}
 
