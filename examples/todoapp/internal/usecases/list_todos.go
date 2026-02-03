@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"time"
 
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
@@ -10,8 +11,11 @@ import (
 
 // ListTodoParams holds the parameters for listing todos.
 type ListTodoParams struct {
-	Status *domain.TodoStatus
-	Query  *string
+	Status    *domain.TodoStatus
+	Query     *string
+	DueAfter  *time.Time
+	DueBefore *time.Time
+	SortBy    *string
 }
 
 // ListTodoOptions defines a function type for specifying options when listing todos.
@@ -28,6 +32,21 @@ func WithStatus(status domain.TodoStatus) ListTodoOptions {
 func WithSearchQuery(query string) ListTodoOptions {
 	return func(params *ListTodoParams) {
 		params.Query = &query
+	}
+}
+
+// WithDueDateRange creates a ListTodoOptions to filter todos by due date range.
+func WithDueDateRange(dueAfter, dueBefore time.Time) ListTodoOptions {
+	return func(params *ListTodoParams) {
+		params.DueAfter = &dueAfter
+		params.DueBefore = &dueBefore
+	}
+}
+
+// WithSortBy creates a ListTodoOptions to specify sorting criteria.
+func WithSortBy(sortBy string) ListTodoOptions {
+	return func(params *ListTodoParams) {
+		params.SortBy = &sortBy
 	}
 }
 
@@ -72,6 +91,12 @@ func (lti ListTodosImpl) Query(ctx context.Context, page int, pageSize int, opts
 			return nil, false, err
 		}
 		queryOpts = append(queryOpts, domain.WithEmbedding(embedding))
+	}
+	if params.DueAfter != nil && params.DueBefore != nil {
+		queryOpts = append(queryOpts, domain.WithDueDateRange(*params.DueAfter, *params.DueBefore))
+	}
+	if params.SortBy != nil {
+		queryOpts = append(queryOpts, domain.WithSortBy(*params.SortBy))
 	}
 
 	todos, hasMore, err := lti.todoRepo.ListTodos(spanCtx, page, pageSize, queryOpts...)
