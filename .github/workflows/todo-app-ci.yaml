@@ -50,6 +50,7 @@ jobs:
           files: ./examples/todoapp/coverage.txt
 
   integration-tests:
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -76,4 +77,4 @@ jobs:
       - name: Run Integration Tests
         run: |
           cd examples/todoapp
-          go test -tags=integration -v ./tests/integration/...
+          go test -tags=integration -v -timeout 30m ./tests/integration/...
