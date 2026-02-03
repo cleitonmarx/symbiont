@@ -13,11 +13,6 @@ type ListTodos interface {
 	Query(ctx context.Context, page int, pageSize int, opts ...domain.ListTodoOptions) ([]domain.Todo, bool, error)
 }
 
-// ListTodoQuerier defines the interface for querying todos.
-type ListTodoQuerier interface {
-	Query(ctx context.Context, page int, pageSize int, opts ...domain.ListTodoOptions) ([]domain.Todo, bool, error)
-}
-
 // ListTodosImpl is the implementation of the ListTodos use case.
 type ListTodosImpl struct {
 	TodoRepo domain.TodoRepository `resolve:""`
@@ -50,16 +45,5 @@ type InitListTodos struct {
 // Initialize initializes the ListTodosImpl use case and registers it in the dependency container.
 func (ilt InitListTodos) Initialize(ctx context.Context) (context.Context, error) {
 	depend.Register[ListTodos](NewListTodosImpl(ilt.TodoRepo))
-	return ctx, nil
-}
-
-// InitTodoQuerier initializes the ListTodoQuerier and registers it in the dependency container.
-type InitTodoQuerier struct {
-	TodoRepo domain.TodoRepository `resolve:""`
-}
-
-// Initialize initializes the ListTodoQuerier and registers it in the dependency container.
-func (itq InitTodoQuerier) Initialize(ctx context.Context) (context.Context, error) {
-	depend.Register[ListTodoQuerier](NewListTodosImpl(itq.TodoRepo))
 	return ctx, nil
 }
