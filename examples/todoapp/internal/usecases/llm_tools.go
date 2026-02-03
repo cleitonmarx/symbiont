@@ -112,6 +112,21 @@ func (lft TodoFetcherTool) Definition() domain.LLMToolDefinition {
 						Description: "Keyword/phrase to search (e.g., 'dentist', 'shopping', 'groceries').",
 						Required:    false,
 					},
+					"sort_by": {
+						Type:        "string",
+						Description: "Sort by 'dueDateAsc', 'dueDateDesc', 'createdAtAsc', 'createdAtDesc' (optional).",
+						Required:    false,
+					},
+					"due_after": {
+						Type:        "string",
+						Description: "Filter todos due after this date (ISO 8601 format, optional). Can be only used together with due_before.",
+						Required:    false,
+					},
+					"due_before": {
+						Type:        "string",
+						Description: "Filter todos due before this date (ISO 8601 format, optional). Can be only used together with due_after.",
+						Required:    false,
+					},
 				},
 			},
 		},
@@ -125,6 +140,9 @@ func (lft TodoFetcherTool) Call(ctx context.Context, call domain.LLMStreamEventF
 		PageSize   int     `json:"page_size"`
 		Status     *string `json:"status"`
 		SearchTerm *string `json:"search_term"`
+		SortBy     *string `json:"sort_by"`
+		DueAfter   *string `json:"due_after"`
+		DueBefore  *string `json:"due_before"`
 	}{
 		Page:     1,  // default page
 		PageSize: 10, // default page size
@@ -153,6 +171,27 @@ func (lft TodoFetcherTool) Call(ctx context.Context, call domain.LLMStreamEventF
 
 	if params.Status != nil {
 		opts = append(opts, domain.WithStatus(domain.TodoStatus(*params.Status)))
+	}
+	if params.SortBy != nil {
+		opts = append(opts, domain.WithSortBy(*params.SortBy))
+	}
+	if params.DueAfter != nil && *params.DueAfter != "" {
+		dueAfter, ok := domain.ExtractTimeFromText(*params.DueAfter, time.Now(), time.UTC)
+		if !ok {
+			return domain.LLMChatMessage{
+				Role:    domain.ChatRole_Tool,
+				Content: `{"error":"invalid_due_after","details":"Could not parse due_after date."}`,
+			}
+		}
+		dueBefore, ok := domain.ExtractTimeFromText(*params.DueBefore, time.Now(), time.UTC)
+		if !ok {
+			return domain.LLMChatMessage{
+				Role:    domain.ChatRole_Tool,
+				Content: `{"error":"invalid_due_before","details":"Could not parse due_before date."}`,
+			}
+		}
+
+		opts = append(opts, domain.WithDueDateRange(dueAfter, dueBefore))
 	}
 
 	todos, hasMore, err := lft.repo.ListTodos(ctx, params.Page, params.PageSize, opts...)

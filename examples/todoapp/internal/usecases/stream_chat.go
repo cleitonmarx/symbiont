@@ -82,7 +82,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 		Model:       sc.llmModel,
 		Messages:    messages,
 		Stream:      true,
-		Temperature: common.Ptr(0.7),
+		Temperature: common.Ptr(1.1),
 		TopP:        common.Ptr(0.9),
 		Tools:       sc.llmToolRegistry.List(),
 	}
@@ -240,7 +240,7 @@ func (sc StreamChatImpl) buildSystemPrompt() ([]domain.LLMChatMessage, error) {
 		return nil, fmt.Errorf("failed to decode summary prompt: %w", err)
 	}
 	for i, msg := range messages {
-		if msg.Role == domain.ChatRole_Developer {
+		if msg.Role == domain.ChatRole_Developer || msg.Role == domain.ChatRole_System {
 			messages[i].Content = fmt.Sprintf(
 				msg.Content,
 				sc.timeProvider.Now().Format(time.DateOnly),
