@@ -171,7 +171,13 @@ export const useChat = (onChatDone?: () => void): UseChatReturn => {
           break;
         }
 
-        const { done, value } = await readerRef.current!.read();
+        // Add null check before reading
+        if (!readerRef.current) {
+          setLoading(false);
+          break;
+        }
+
+        const { done, value } = await readerRef.current.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
