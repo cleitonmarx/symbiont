@@ -31,6 +31,7 @@ apiClient.interceptors.response.use(
 
 export const getTodos = async (
   status?: string,
+  query?: string,
   page: number = 1,
   pagesize: number = 50
 ): Promise<ListTodosResponse> => {
@@ -41,6 +42,10 @@ export const getTodos = async (
   
   if (status) {
     params.status = status;
+  }
+
+  if (query) {
+    params.query = query;
   }
 
   const response = await apiClient.get<ListTodosResponse>('/api/v1/todos', { params });

@@ -23,6 +23,7 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
   const [hasNextPage, setHasNextPage] = useState(false);
   const [hasPreviousPage, setHasPreviousPage] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'OPEN' | 'DONE'>('OPEN');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Open modal when parent prop changes
   useEffect(() => {
@@ -45,7 +46,12 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
   const fetchTodos = async (pageToFetch = 1) => {
     setLoading(true);
     try {
-      const data = await gqlListTodos({ status: statusFilter, page: pageToFetch, pageSize: PAGE_SIZE });
+      const data = await gqlListTodos({ 
+        status: statusFilter, 
+        page: pageToFetch, 
+        pageSize: PAGE_SIZE,
+        query: searchQuery || undefined,
+      });
       setHasNextPage(data.nextPage != null);
       setHasPreviousPage(data.previousPage != null);
       setTodos(data.items);
@@ -65,8 +71,7 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
       fetchTodos(1);
     }
     // eslint-disable-next-line
-  }, [show, statusFilter]);
-
+  }, [show, statusFilter, searchQuery]);
 
   //Fetch next page when page changes (but not on first render)
   useEffect(() => {
@@ -139,7 +144,7 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
             <div className="modal-header">
               <h2>Batch Operations</h2>
             </div>
-            <div className="filter-bar" style={{padding: '0.5rem 0.8rem 0.5rem 0.8rem', margin: '0 auto' }}>
+            <div className="filter-bar">
               <div className="filter-group">
                 <label>Status:</label>
                 <div className="filter-buttons">
@@ -154,6 +159,13 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
                   ))}
                 </div>
               </div>
+              <input
+                type="text"
+                placeholder="Search todos..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+              />
             </div>
             <div className="modal-content" style={{paddingTop:'5px', paddingBottom: '5px'}}>
               {error && <div className="batch-modal-error">{error}</div>}
