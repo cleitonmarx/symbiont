@@ -457,7 +457,7 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 			page:     1,
 			pageSize: 10,
 			opts: []domain.ListTodoOptions{
-				domain.WithSortBy("-dueDate"),
+				domain.WithSortBy("dueDateDesc"),
 			},
 			setExpectations: func(mock sqlmock.Sqlmock) {
 				rows := sqlmock.NewRows(todoFields).
