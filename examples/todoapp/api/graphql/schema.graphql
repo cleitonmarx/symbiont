@@ -29,7 +29,7 @@ enum TodoStatus {
 
 
 type Query {
-  listTodos(status: TodoStatus, page: Int! = 1, pageSize: Int! = 50): TodoPage!
+  listTodos(page: Int! = 1, pageSize: Int! = 50, status: TodoStatus, query: String): TodoPage!
 }
 
 type Mutation {

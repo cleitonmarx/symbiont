@@ -84,6 +84,13 @@ paths:
             Omit or set to null to fetch the first page.
           schema:
             type: integer
+        - in: query
+          name: query
+          required: false
+          description: >
+            Full-text or semantic search query to retrieve todos most relevant to the provided keywords or context using vector similarity.
+          schema:
+            type: string
       responses:
         "200":
           description: Todos list.
