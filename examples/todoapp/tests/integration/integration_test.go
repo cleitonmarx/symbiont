@@ -114,7 +114,7 @@ func TestTodoApp_RestAPI(t *testing.T) {
 	t.Run("list-created-todo", func(t *testing.T) {
 		resp, err := restCli.ListTodosWithResponse(t.Context(), &rest.ListTodosParams{
 			Page:     1,
-			Pagesize: 10,
+			PageSize: 10,
 		})
 
 		require.NoError(t, err, "failed to call ListTodos endpoint")
@@ -158,7 +158,7 @@ func TestTodoApp_RestAPI(t *testing.T) {
 		// Verify todos are deleted
 		listResp, err := restCli.ListTodosWithResponse(t.Context(), &rest.ListTodosParams{
 			Page:     1,
-			Pagesize: 10,
+			PageSize: 10,
 		})
 		require.NoError(t, err, "failed to call ListTodos endpoint after deletions")
 		require.NotNil(t, listResp.JSON200, "expected non-nil response for ListTodos after deletions")
