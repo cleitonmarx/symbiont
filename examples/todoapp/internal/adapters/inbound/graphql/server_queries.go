@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"time"
 
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/graphql/gen"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/graphql/types"
@@ -11,13 +12,19 @@ import (
 )
 
 // ListTodos is the resolver for the listTodos field.
-func (s *TodoGraphQLServer) ListTodos(ctx context.Context, page int, pageSize int, status *gen.TodoStatus, query *string) (*gen.TodoPage, error) {
+func (s *TodoGraphQLServer) ListTodos(ctx context.Context, page int, pageSize int, status *gen.TodoStatus, query *string, dateRange *gen.DateRange, sortBy *gen.TodoSortBy) (*gen.TodoPage, error) {
 	var options []usecases.ListTodoOptions
 	if status != nil {
 		options = append(options, usecases.WithStatus(domain.TodoStatus(*status)))
 	}
 	if query != nil {
 		options = append(options, usecases.WithSearchQuery(*query))
+	}
+	if dateRange != nil {
+		options = append(options, usecases.WithDueDateRange(time.Time(dateRange.DueAfter), time.Time(dateRange.DueBefore)))
+	}
+	if sortBy != nil {
+		options = append(options, usecases.WithSortBy(string(*sortBy)))
 	}
 
 	todos, hasMore, err := s.ListTodosUsecase.Query(ctx, page, pageSize, options...)
