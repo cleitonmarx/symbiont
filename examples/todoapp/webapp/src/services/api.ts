@@ -108,13 +108,18 @@ export const getBoardSummary = async (): Promise<BoardSummary | null> => {
 // };
 
 // Function to stream chat responses (using fetch for streaming support)
-export const streamChat = async (message: string) => {
+export const streamChat = async (message: string, signal?: AbortSignal) => {
   const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message }),
+    signal, // Pass the abort signal
   });
-  // The consumer should handle response.body as a stream
+
+  if (!response.ok) {
+    throw new Error('Failed to stream chat');
+  }
+
   return response;
 };
 
