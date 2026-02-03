@@ -3,6 +3,12 @@ import { getTodos, createTodo, updateTodo, getBoardSummary, deleteTodo as delete
 import type { Todo, CreateTodoRequest, TodoStatus } from '../types';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
+type TodoSort =
+  | 'createdAtAsc'
+  | 'createdAtDesc'
+  | 'dueDateAsc'
+  | 'dueDateDesc';
+
 interface UseTodosReturn {
   todos: Todo[];
   loading: boolean;
@@ -19,6 +25,8 @@ interface UseTodosReturn {
   deleteTodo: (id: string) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  sortBy: TodoSort;
+  setSortBy: (sort: TodoSort) => void;
   refetch: () => void;
 }
 
@@ -30,6 +38,7 @@ export const useTodos = (): UseTodosReturn => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
+  const [sortBy, setSortBy] = useState<TodoSort>('createdAtAsc');
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [boardSummary, setBoardSummary] = useState<any>(null);
 
@@ -42,10 +51,10 @@ export const useTodos = (): UseTodosReturn => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Reset page to 1 whenever status filter or debounced search changes
+  // Reset page to 1 whenever status filter, debounced search, or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, debouncedSearchQuery]);
+  }, [statusFilter, debouncedSearchQuery, sortBy]);
 
   const { 
     data: response, 
@@ -53,12 +62,14 @@ export const useTodos = (): UseTodosReturn => {
     error, 
     refetch 
   } = useQuery({
-    queryKey: ['todos', statusFilter, currentPage, debouncedSearchQuery],
+    queryKey: ['todos', statusFilter, currentPage, debouncedSearchQuery, sortBy],
     queryFn: () => getTodos(
       statusFilter === 'ALL' ? undefined : statusFilter,
       debouncedSearchQuery || undefined,
       currentPage,
-      MAX_TODO_PAGE_SIZE
+      MAX_TODO_PAGE_SIZE,
+      undefined,
+      sortBy
     ),
     retry: 1,
   });
@@ -148,6 +159,10 @@ export const useTodos = (): UseTodosReturn => {
     setStatusFilterState(status);
   }, []);
 
+  const handleSetSortBy = useCallback((sort: TodoSort) => {
+    setSortBy(sort);
+  }, []);
+
   const handleGoToPage = useCallback((page: number) => {
     setCurrentPage(page);
   }, []);
@@ -176,5 +191,7 @@ export const useTodos = (): UseTodosReturn => {
     refetch,
     searchQuery,
     setSearchQuery: handleSetSearchQuery,
+    sortBy,
+    setSortBy: handleSetSortBy,
   };
 };

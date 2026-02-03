@@ -27,6 +27,8 @@ const App: React.FC = () => {
     refetch,
     searchQuery,
     setSearchQuery,
+    sortBy,
+    setSortBy,
   } = useTodos();
 
   const handleUpdateTodo = useCallback((id: string, status?: TodoStatus, title?: string, due_date?: string) => {
@@ -106,6 +108,19 @@ const App: React.FC = () => {
               onChange={(e) => handleSearchChange(e.target.value)}
               className="search-input"
             />
+            <div className="filter-group">
+              <label>Sort:</label>
+              <select
+                className="sort-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+              >
+                <option value="createdAtAsc">Created At</option>
+                <option value="createdAtDesc">Created At Desc</option>
+                <option value="dueDateAsc">Due Date Asc</option>
+                <option value="dueDateDesc">Due Date Desc</option>
+              </select>
+            </div>
           </div>
           
           {loading ? (
