@@ -259,7 +259,7 @@ func (tct TodoCreatorTool) Call(ctx context.Context, call domain.LLMStreamEventF
 	}
 
 	now := tct.timeProvider.Now()
-	dueDate, found := extractDateParamOrFromMessageHistory(params.DueDate, conversationHistory, now)
+	dueDate, found := extractDateParam(params.DueDate, conversationHistory, now)
 	if !found {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
@@ -455,7 +455,7 @@ func (tdut TodoDueDateUpdaterTool) Call(ctx context.Context, call domain.LLMStre
 	}
 
 	now := tdut.timeProvider.Now()
-	dueDate, found := extractDateParamOrFromMessageHistory(params.DueDate, conversationHistory, now)
+	dueDate, found := extractDateParam(params.DueDate, conversationHistory, now)
 	if !found {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
@@ -554,6 +554,27 @@ func (tdt TodoDeleterTool) Call(ctx context.Context, call domain.LLMStreamEventF
 	}
 }
 
+// extractDateParam tries to extract a date from the provided parameter
+// or from the user message history.
+func extractDateParam(param string, history []domain.LLMChatMessage, referenceDate time.Time) (time.Time, bool) {
+	// First, try to extract from the provided parameter
+	if dueDate, ok := domain.ExtractTimeFromText(param, referenceDate, referenceDate.Location()); ok {
+		return dueDate, true
+	}
+
+	// Next, scan the message history for date phrases
+	for i := len(history) - 1; i >= 0; i-- {
+		msg := history[i]
+		if msg.Role != domain.ChatRole_User {
+			continue
+		}
+		if dueDate, ok := domain.ExtractTimeFromText(msg.Content, referenceDate, referenceDate.Location()); ok {
+			return dueDate, true
+		}
+	}
+	return time.Time{}, false
+}
+
 type InitLLMToolRegistry struct {
 	Uow            domain.UnitOfWork          `resolve:""`
 	TodoCreator    TodoCreator                `resolve:""`
@@ -592,24 +613,4 @@ func (i InitLLMToolRegistry) Initialize(ctx context.Context) (context.Context, e
 		),
 	))
 	return ctx, nil
-}
-
-// extractDateFromMessageHistory scans the message history for date phrases.
-func extractDateParamOrFromMessageHistory(param string, history []domain.LLMChatMessage, referenceDate time.Time) (time.Time, bool) {
-	// First, try to extract from the provided parameter
-	if dueDate, ok := domain.ExtractTimeFromText(param, referenceDate, referenceDate.Location()); ok {
-		return dueDate, true
-	}
-
-	// Next, scan the message history for date phrases
-	for i := len(history) - 1; i >= 0; i-- {
-		msg := history[i]
-		if msg.Role != domain.ChatRole_User {
-			continue
-		}
-		if dueDate, ok := domain.ExtractTimeFromText(msg.Content, referenceDate, referenceDate.Location()); ok {
-			return dueDate, true
-		}
-	}
-	return time.Time{}, false
 }
