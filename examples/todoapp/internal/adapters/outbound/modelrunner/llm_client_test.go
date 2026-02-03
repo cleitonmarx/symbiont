@@ -10,9 +10,7 @@ import (
 	"testing"
 
 	"github.com/cleitonmarx/symbiont/depend"
-	//rest "github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/http/gen"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
-	//"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -427,119 +425,4 @@ func TestInitLLMClient_Initialize(t *testing.T) {
 	r, err := depend.Resolve[domain.LLMClient]()
 	assert.NotNil(t, r)
 	assert.NoError(t, err)
-}
-
-func TestCTT(t *testing.T) {
-	// 100 sample todos with meaningful, searchable titles
-	// var dt types.Date = types.Date{Time: time.Now()}
-	// todos := []rest.CreateTodoRequest{
-	// 	{Title: "Buy groceries", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 1)}},
-	// 	{Title: "Finish project report", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 2)}},
-	// 	{Title: "Call Alice about meeting", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 3)}},
-	// 	{Title: "Schedule dentist appointment", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 4)}},
-	// 	{Title: "Book flight tickets to NYC", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 5)}},
-	// 	{Title: "Prepare for Monday presentation", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 6)}},
-	// 	{Title: "Renew car insurance", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 7)}},
-	// 	{Title: "Submit tax documents", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 8)}},
-	// 	{Title: "Organize home office", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 9)}},
-	// 	{Title: "Read 'Deep Work' book", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 10)}},
-	// 	{Title: "Update LinkedIn profile", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 11)}},
-	// 	{Title: "Plan weekend hiking trip", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 12)}},
-	// 	{Title: "Clean out garage", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 13)}},
-	// 	{Title: "Backup laptop files", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 14)}},
-	// 	{Title: "Research new laptop models", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 15)}},
-	// 	{Title: "Pay electricity bill", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 16)}},
-	// 	{Title: "Arrange birthday party for Sam", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 17)}},
-	// 	{Title: "Order new running shoes", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 18)}},
-	// 	{Title: "Write blog post on productivity", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 19)}},
-	// 	{Title: "Practice guitar for 30 minutes", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 20)}},
-	// 	{Title: "Update project roadmap", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 21)}},
-	// 	{Title: "Review quarterly budget", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 22)}},
-	// 	{Title: "Send thank you notes", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 23)}},
-	// 	{Title: "Fix leaky kitchen faucet", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 24)}},
-	// 	{Title: "Prepare for coding interview", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 25)}},
-	// 	{Title: "Organize photo album", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 26)}},
-	// 	{Title: "Update resume", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 27)}},
-	// 	{Title: "Research investment options", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 28)}},
-	// 	{Title: "Plan family vacation", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 29)}},
-	// 	{Title: "Buy birthday gift for Emma", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 30)}},
-	// 	{Title: "Attend online marketing webinar", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 31)}},
-	// 	{Title: "Set up home Wi-Fi network", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 32)}},
-	// 	{Title: "Read 'Atomic Habits'", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 33)}},
-	// 	{Title: "Organize bookshelf", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 34)}},
-	// 	{Title: "Schedule annual health checkup", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 35)}},
-	// 	{Title: "Clean windows", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 36)}},
-	// 	{Title: "Write thank you email to mentor", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 37)}},
-	// 	{Title: "Practice meditation", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 38)}},
-	// 	{Title: "Update household budget", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 39)}},
-	// 	{Title: "Buy groceries for the week", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 40)}},
-	// 	{Title: "Fix bike tire", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 41)}},
-	// 	{Title: "Plan team meeting agenda", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 42)}},
-	// 	{Title: "Organize digital files", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 43)}},
-	// 	{Title: "Read industry news", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 44)}},
-	// 	{Title: "Prepare for book club", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 45)}},
-	// 	{Title: "Update emergency contacts", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 46)}},
-	// 	{Title: "Clean out email inbox", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 47)}},
-	// 	{Title: "Research online courses", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 48)}},
-	// 	{Title: "Buy new headphones", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 49)}},
-	// 	{Title: "Schedule eye exam", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 50)}},
-	// 	{Title: "Organize kitchen pantry", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 51)}},
-	// 	{Title: "Write monthly newsletter", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 52)}},
-	// 	{Title: "Plan charity event", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 53)}},
-	// 	{Title: "Update website portfolio", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 54)}},
-	// 	{Title: "Clean car interior", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 55)}},
-	// 	{Title: "Buy pet food", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 56)}},
-	// 	{Title: "Practice Spanish vocabulary", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 57)}},
-	// 	{Title: "Organize closet", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 58)}},
-	// 	{Title: "Read 'Clean Code'", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 59)}},
-	// 	{Title: "Schedule parent-teacher meeting", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 60)}},
-	// 	{Title: "Update insurance policy", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 61)}},
-	// 	{Title: "Plan weekend getaway", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 62)}},
-	// 	{Title: "Fix broken shelf", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 63)}},
-	// 	{Title: "Write thank you card", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 64)}},
-	// 	{Title: "Organize garden tools", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 65)}},
-	// 	{Title: "Buy new backpack", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 66)}},
-	// 	{Title: "Research healthy recipes", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 67)}},
-	// 	{Title: "Clean bathroom", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 68)}},
-	// 	{Title: "Update phone contacts", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 69)}},
-	// 	{Title: "Plan study schedule", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 70)}},
-	// 	{Title: "Buy new phone charger", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 71)}},
-	// 	{Title: "Organize travel documents", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 72)}},
-	// 	{Title: "Read 'The Pragmatic Programmer'", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 73)}},
-	// 	{Title: "Clean living room", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 74)}},
-	// 	{Title: "Update LinkedIn connections", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 75)}},
-	// 	{Title: "Plan team lunch", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 76)}},
-	// 	{Title: "Buy new water bottle", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 77)}},
-	// 	{Title: "Organize receipts", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 78)}},
-	// 	{Title: "Read 'Design Patterns'", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 79)}},
-	// 	{Title: "Schedule car maintenance", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 80)}},
-	// 	{Title: "Clean out fridge", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 81)}},
-	// 	{Title: "Write cover letter", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 82)}},
-	// 	{Title: "Plan birthday dinner", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 83)}},
-	// 	{Title: "Buy new planner", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 84)}},
-	// 	{Title: "Organize digital photos", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 85)}},
-	// 	{Title: "Read 'Refactoring'", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 86)}},
-	// 	{Title: "Schedule vet appointment", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 87)}},
-	// 	{Title: "Clean patio", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 88)}},
-	// 	{Title: "Update emergency kit", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 89)}},
-	// 	{Title: "Buy new shoes", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 90)}},
-	// 	{Title: "Organize music playlist", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 91)}},
-	// 	{Title: "Read 'The Clean Coder'", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 92)}},
-	// 	{Title: "Plan weekend picnic", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 93)}},
-	// 	{Title: "Buy new lamp", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 94)}},
-	// 	{Title: "Organize sports equipment", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 95)}},
-	// 	{Title: "Read 'Effective Java'", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 96)}},
-	// 	{Title: "Schedule dentist cleaning", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 97)}},
-	// 	{Title: "Clean bedroom", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 98)}},
-	// 	{Title: "Update family calendar", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 99)}},
-	// 	{Title: "Buy new coffee maker", DueDate: types.Date{Time: time.Now().AddDate(0, 0, 100)}},
-	// }
-
-	// cli, _ := rest.NewClientWithResponses("http://localhost:8080")
-
-	// for _, todo := range todos {
-	// 	// Use the todo item as needed for seeding or testing
-	// 	_, err := cli.CreateTodoWithResponse(t.Context(), todo)
-	// 	require.NoError(t, err, "failed to create todo: %v", todo.Title)
-	// }
 }
