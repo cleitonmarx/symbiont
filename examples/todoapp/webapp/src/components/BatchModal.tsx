@@ -27,7 +27,7 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
   // New state variables for date range and sort (fixed property names)
   const [dueAfter, setDueAfter] = useState('');
   const [dueBefore, setDueBefore] = useState('');
-  const [sortBy, setSortBy] = useState<TodoSortBy | undefined>(undefined);
+  const [sortBy, setSortBy] = useState<TodoSortBy>('createdAtAsc');
 
   // Open modal when parent prop changes
   useEffect(() => {
@@ -43,7 +43,7 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
       setBatchPage(1);    // Reset to first page
       setDueAfter('');    // Reset dueAfter
       setDueBefore('');   // Reset dueBefore
-      setSortBy(undefined); // Reset sortBy
+      setSortBy('createdAtAsc'); // Reset sortBy
     } else {
       setShow(false);
     }
@@ -92,6 +92,12 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
       fetchTodos(batchPage);
     }
   }, [batchPage, show]);
+
+  useEffect(() => {
+      if (!searchQuery && (sortBy === 'similarityAsc' || sortBy === 'similarityDesc')) {
+        setSortBy('createdAtAsc');
+      }
+    }, [searchQuery, sortBy, setSortBy]);
 
   const allSelected = todos.length > 0 && selected.length === todos.length;
   const someSelected = selected.length > 0 && selected.length < todos.length;
@@ -209,6 +215,12 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
                   <option value="createdAtDesc">Created At Desc</option>
                   <option value="dueDateAsc">Due Date Asc</option>
                   <option value="dueDateDesc">Due Date Desc</option>
+                  {searchQuery && (
+                    <>
+                    <option value="similarityAsc">Similarity Asc</option>
+                    <option value="similarityDesc">Similarity Desc</option>
+                    </>
+                  )}
                 </select>
               </div>
               <div className="filter-group">

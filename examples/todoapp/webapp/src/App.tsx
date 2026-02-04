@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import CreateTodoForm from './components/CreateTodoForm';
 import TodoList from './components/TodoList';
 import { useTodos } from './hooks/useTodos';
@@ -30,6 +30,13 @@ const App: React.FC = () => {
     sortBy,
     setSortBy,
   } = useTodos();
+
+  // Reset sortBy to createdAtAsc when search is cleared
+  useEffect(() => {
+    if (!searchQuery && (sortBy === 'similarityAsc' || sortBy === 'similarityDesc')) {
+      setSortBy('createdAtAsc');
+    }
+  }, [searchQuery, sortBy, setSortBy]);
 
   const handleUpdateTodo = useCallback((id: string, status?: TodoStatus, title?: string, due_date?: string) => {
     updateTodo(id, status, title, due_date);
@@ -119,6 +126,13 @@ const App: React.FC = () => {
                 <option value="createdAtDesc">Created At Desc</option>
                 <option value="dueDateAsc">Due Date Asc</option>
                 <option value="dueDateDesc">Due Date Desc</option>
+                {searchQuery && (
+                  <>
+                  <option value="similarityAsc">Similarity Asc</option>
+                  <option value="similarityDesc">Similarity Desc</option>
+                  </>
+                )}
+                
               </select>
             </div>
           </div>
