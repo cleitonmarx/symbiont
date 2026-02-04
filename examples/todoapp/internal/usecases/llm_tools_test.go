@@ -49,8 +49,12 @@ func TestLLMToolManager(t *testing.T) {
 			testFunc: func(t *testing.T, manager LLMToolManager) {
 				tools := manager.List()
 				assert.Len(t, tools, 2)
-				assert.Equal(t, "fetch_todos", tools[0].Function.Name)
-				assert.Equal(t, "create_todo", tools[1].Function.Name)
+				gotToolNames := []string{}
+				for _, tool := range tools {
+					gotToolNames = append(gotToolNames, tool.Function.Name)
+				}
+
+				assert.ElementsMatch(t, []string{"fetch_todos", "create_todo"}, gotToolNames)
 			},
 		},
 		"status-message-returns-tool-specific-message": {
