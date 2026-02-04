@@ -72,11 +72,10 @@ func (s *TodoSortBy) Validate() error {
 	if !ok {
 		return NewValidationErr("invalid sort field: " + s.Field)
 	}
-	s.Field = val
-
 	if s.Direction != "ASC" && s.Direction != "DESC" {
 		return NewValidationErr("invalid sort direction: " + s.Direction)
 	}
+	s.Field = val
 	return nil
 }
 
@@ -116,6 +115,7 @@ func WithDueDateRange(dueAfter, dueBefore time.Time) ListTodoOptions {
 
 // WithSortBy creates a ListTodoOptions to specify sorting criteria.
 func WithSortBy(sort string) ListTodoOptions {
+
 	return func(params *ListTodosParams) {
 		if after, ok := strings.CutSuffix(sort, "Desc"); ok {
 			params.SortBy = &TodoSortBy{Field: after, Direction: "DESC"}
@@ -124,6 +124,7 @@ func WithSortBy(sort string) ListTodoOptions {
 			params.SortBy = &TodoSortBy{Field: after, Direction: "ASC"}
 			return
 		}
+		params.SortBy = &TodoSortBy{Field: sort, Direction: ""}
 	}
 }
 
