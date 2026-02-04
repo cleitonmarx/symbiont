@@ -108,13 +108,6 @@ const App: React.FC = () => {
                 ))}
               </div>
             </div>
-            <input
-              type="text"
-              placeholder="Search todos..."
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="search-input"
-            />
             <div className="filter-group">
               <label>Sort:</label>
               <select
@@ -135,6 +128,13 @@ const App: React.FC = () => {
                 
               </select>
             </div>
+            <input
+              type="text"
+              placeholder="Search todos..."
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="search-input"
+            />
           </div>
           
           {loading ? (

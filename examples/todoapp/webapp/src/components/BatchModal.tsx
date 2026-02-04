@@ -53,6 +53,11 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
   const fetchTodos = async (pageToFetch = 1) => {
     setLoading(true);
     try {
+      const effectiveSortBy =
+        !searchQuery && (sortBy === 'similarityAsc' || sortBy === 'similarityDesc')
+          ? 'createdAtAsc'
+          : sortBy;
+
       const data = await gqlListTodos({ 
         status: statusFilter, 
         page: pageToFetch, 
@@ -63,7 +68,7 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
           DueAfter: dueAfter, 
           DueBefore: dueBefore 
         } : undefined, 
-        sortBy: sortBy || undefined,
+        sortBy: effectiveSortBy || undefined,
       });
       setHasNextPage(data.nextPage != null);
       setHasPreviousPage(data.previousPage != null);
@@ -94,10 +99,10 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
   }, [batchPage, show]);
 
   useEffect(() => {
-      if (!searchQuery && (sortBy === 'similarityAsc' || sortBy === 'similarityDesc')) {
-        setSortBy('createdAtAsc');
-      }
-    }, [searchQuery, sortBy, setSortBy]);
+    if (!searchQuery && (sortBy === 'similarityAsc' || sortBy === 'similarityDesc')) {
+      setSortBy('createdAtAsc' as TodoSortBy);
+    }
+  }, [searchQuery, sortBy, setSortBy]);
 
   const allSelected = todos.length > 0 && selected.length === todos.length;
   const someSelected = selected.length > 0 && selected.length < todos.length;
@@ -159,7 +164,7 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
       </button>
       {show && (
         <div className={`modal-overlay active`} onClick={() => { setShow(false); onClose(); }}>
-          <div className="modal-dialog batch-modal-dialog" style={{ maxWidth: '70vw' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-dialog batch-modal-dialog" style={{ maxWidth: '80vw' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header" style={{ padding: '0.75rem 1rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Batch Operations</h2>
             </div>
@@ -207,8 +212,8 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
               <div className="filter-group">
                 <label>Sort By:</label>
                 <select 
-                  value={sortBy || ''} 
-                  onChange={(e) => setSortBy((e.target.value as TodoSortBy) || undefined)}
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value as TodoSortBy)}
                   className="sort-select"
                 >
                   <option value="createdAtAsc">Created At</option>
@@ -217,8 +222,8 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
                   <option value="dueDateDesc">Due Date Desc</option>
                   {searchQuery && (
                     <>
-                    <option value="similarityAsc">Similarity Asc</option>
-                    <option value="similarityDesc">Similarity Desc</option>
+                      <option value="similarityAsc">Similarity Asc</option>
+                      <option value="similarityDesc">Similarity Desc</option>
                     </>
                   )}
                 </select>
