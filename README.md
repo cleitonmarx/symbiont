@@ -2,6 +2,8 @@
 	<img src="assets/symbiont-logo.png" style="width: 45%;">
 </div>
 
+[![codecov](https://codecov.io/gh/cleitonmarx/symbiont/graph/badge.svg?token=PDADAL0118)](https://codecov.io/gh/cleitonmarx/symbiont)
+
 ---
 # Symbiont
 
