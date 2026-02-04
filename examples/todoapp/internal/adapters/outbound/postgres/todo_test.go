@@ -315,6 +315,24 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 			expectedHasMore: false,
 			expectedErr:     false,
 		},
+		"invalid-page": {
+			page:     0,
+			pageSize: 10,
+			setExpectations: func(mock sqlmock.Sqlmock) {
+			},
+			expectedTodos:   nil,
+			expectedHasMore: false,
+			expectedErr:     true,
+		},
+		"invalid-page-size": {
+			page:     1,
+			pageSize: 0,
+			setExpectations: func(mock sqlmock.Sqlmock) {
+			},
+			expectedTodos:   nil,
+			expectedHasMore: false,
+			expectedErr:     true,
+		},
 		"has-more-results": {
 			page:     1,
 			pageSize: 2,
@@ -486,6 +504,18 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 			},
 			expectedHasMore: false,
 			expectedErr:     false,
+		},
+		"invalid-sort-by": {
+			page:     1,
+			pageSize: 10,
+			opts: []domain.ListTodoOptions{
+				domain.WithSortBy("invalidSort"),
+			},
+			setExpectations: func(mock sqlmock.Sqlmock) {
+			},
+			expectedTodos:   nil,
+			expectedHasMore: false,
+			expectedErr:     true,
 		},
 	}
 
