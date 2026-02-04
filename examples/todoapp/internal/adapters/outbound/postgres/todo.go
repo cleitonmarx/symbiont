@@ -134,6 +134,8 @@ func applySort(qry squirrel.SelectBuilder, params *domain.ListTodosParams) (squi
 			"embedding <#> ? "+params.SortBy.Direction,
 			pgvector.NewVector(toFloat32Truncated(params.Embedding)),
 		)), nil
+	} else if params.SortBy.Field == "similarity" && len(params.Embedding) == 0 {
+		return qry, domain.NewValidationErr("embedding must be provided for similarity sorting")
 	}
 
 	orderClause := params.SortBy.Field + " " + params.SortBy.Direction

@@ -543,6 +543,18 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 			expectedHasMore: false,
 			expectedErr:     false,
 		},
+		"no-embedding-for-similarity-sort": {
+			page:     1,
+			pageSize: 10,
+			opts: []domain.ListTodoOptions{
+				domain.WithSortBy("similarityAsc"),
+			},
+			setExpectations: func(mock sqlmock.Sqlmock) {
+			},
+			expectedTodos:   nil,
+			expectedHasMore: false,
+			expectedErr:     true,
+		},
 		"invalid-sort-by": {
 			page:     1,
 			pageSize: 10,
