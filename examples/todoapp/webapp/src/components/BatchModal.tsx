@@ -100,9 +100,9 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
 
   useEffect(() => {
     if (!searchQuery && (sortBy === 'similarityAsc' || sortBy === 'similarityDesc')) {
-      setSortBy('createdAtAsc' as TodoSortBy);
+      setSortBy('createdAtDesc' as TodoSortBy);
     }
-  }, [searchQuery, sortBy, setSortBy]);
+  }, [searchQuery, sortBy]);
 
   const allSelected = todos.length > 0 && selected.length === todos.length;
   const someSelected = selected.length > 0 && selected.length < todos.length;

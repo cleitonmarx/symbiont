@@ -31,12 +31,12 @@ const App: React.FC = () => {
     setSortBy,
   } = useTodos();
 
-  // Reset sortBy to createdAtAsc when search is cleared
+  // Reset sortBy to createdAtDesc when search is cleared
   useEffect(() => {
     if (!searchQuery && (sortBy === 'similarityAsc' || sortBy === 'similarityDesc')) {
-      setSortBy('createdAtAsc');
+      setSortBy('createdAtDesc');
     }
-  }, [searchQuery, sortBy, setSortBy]);
+  }, [searchQuery, sortBy]);
 
   const handleUpdateTodo = useCallback((id: string, status?: TodoStatus, title?: string, due_date?: string) => {
     updateTodo(id, status, title, due_date);
