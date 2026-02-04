@@ -2,6 +2,10 @@
 	<img src="assets/symbiont-logo.png" style="width: 45%;">
 </div>
 
+[![codecov](https://codecov.io/gh/cleitonmarx/symbiont/graph/badge.svg?token=PDADAL0118)](https://codecov.io/gh/cleitonmarx/symbiont)
+[![Go Report Card](https://goreportcard.com/badge/github.com/cleitonmarx/symbiont)](https://goreportcard.com/report/github.com/cleitonmarx/symbiont)
+[![Build Status](https://github.com/cleitonmarx/symbiont/actions/workflows/symbiont-ci.yml/badge.svg?branch=master)](https://github.com/cleitonmarx/symbiont/actions/workflows/symbiont-ci.yml)
+[![GoDoc](https://godoc.org/github.com/cleitonmarx/symbiont?status.svg)](https://godoc.org/github.com/cleitonmarx/symbiont)
 ---
 # Symbiont
 
