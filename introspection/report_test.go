@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestReport_ToJSON(t *testing.T) {
+func TestReport_MarshalJSON(t *testing.T) {
 	tests := []struct {
 		name         string
 		report       Report
@@ -16,7 +16,7 @@ func TestReport_ToJSON(t *testing.T) {
 		{
 			name:         "empty-report",
 			report:       Report{},
-			expectedJson: `{"Configs":[],"Deps":[],"Runners":[],"Initializers":[]}`,
+			expectedJson: `{"configs":null,"deps":null,"runners":[],"initializers":[]}`,
 		},
 		{
 			name: "populated-report",
@@ -34,19 +34,19 @@ func TestReport_ToJSON(t *testing.T) {
 					{Type: "myInit"},
 				},
 			},
-			expectedJson: `{"Configs":[{"Key":"foo","Provider":"prov","UsedDefault":false,"Order":1}],"Deps":[{"Kind":0,"Type":"string","Name":"dep","Impl":"impl","Order":2}],"Runners":[{"Type":"myRunner"}],"Initializers":[{"Type":"myInit"}]}`,
+			expectedJson: `{"configs":[{"key":"foo","provider":"prov","usedDefault":false,"caller":{"func":"","file":"","line":0},"component":"","order":1}],"deps":[{"kind":"register","type":"string","name":"dep","impl":"impl","caller":{"func":"","file":"","line":0},"component":"","order":2}],"runners":[{"type":"myRunner"}],"initializers":[{"type":"myInit"}]}`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			data, err := tt.report.ToJSON()
+			data, err := json.Marshal(tt.report)
 			assert.NoError(t, err)
 			// Should be valid JSON
 			var js map[string]any
 			assert.NoError(t, json.Unmarshal(data, &js))
 			// Check for expected substrings
-
+			assert.JSONEq(t, tt.expectedJson, string(data))
 		})
 	}
 }

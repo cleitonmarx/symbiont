@@ -7,20 +7,20 @@ import (
 
 // Report aggregates introspection data for configs, dependencies, and runners.
 type Report struct {
-	Configs      []ConfigAccess
-	Deps         []DepEvent
-	Runners      []RunnerInfo
-	Initializers []InitializerInfo
+	Configs      []ConfigAccess    `json:"configs"`
+	Deps         []DepEvent        `json:"deps"`
+	Runners      []RunnerInfo      `json:"runners"`
+	Initializers []InitializerInfo `json:"initializers"`
 }
 
 // ConfigAccess captures a single configuration key access.
 type ConfigAccess struct {
-	Key         string
-	Provider    string // empty when a default was used
-	UsedDefault bool
-	Caller      Caller
-	Component   string // optional runnable/initializer type name
-	Order       int    // monotonic order of access within the run
+	Key         string `json:"key"`
+	Provider    string `json:"provider"`
+	UsedDefault bool   `json:"usedDefault"`
+	Caller      Caller `json:"caller"`
+	Component   string `json:"component"`
+	Order       int    `json:"order"`
 }
 
 // DepEventKind describes the type of dependency event.
@@ -33,13 +33,13 @@ const (
 
 // DepEvent represents a dependency registration or resolution.
 type DepEvent struct {
-	Kind      DepEventKind
-	Type      string // dependency interface/type name
-	Name      string // optional named binding
-	Impl      string // concrete implementation type
-	Caller    Caller
-	Component string // consumer/owner type if known
-	Order     int    // monotonic order of events within the run
+	Kind      DepEventKind `json:"kind"`
+	Type      string       `json:"type"` // dependency interface/type name
+	Name      string       `json:"name"` // optional named binding
+	Impl      string       `json:"impl"` // concrete implementation type
+	Caller    Caller       `json:"caller"`
+	Component string       `json:"component"` // consumer/owner type if known
+	Order     int          `json:"order"`     // monotonic order of events within the run
 }
 
 // RunnerInfo describes a runnable that was registered with the app.
@@ -56,9 +56,9 @@ type InitializerInfo struct {
 
 // Caller identifies the code location that produced an event.
 type Caller struct {
-	Func string
-	File string
-	Line int
+	Func string `json:"func"`
+	File string `json:"file"`
+	Line int    `json:"line"`
 }
 
 // SerializableReport is a JSON-friendly representation of Report.
@@ -98,7 +98,7 @@ func (r Report) ToSerializable() SerializableReport {
 	}
 }
 
-// ToJSON marshals the report into JSON using a serializable view.
-func (r Report) ToJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaler interface for Report.
+func (r Report) MarshalJSON() ([]byte, error) {
 	return json.Marshal(r.ToSerializable())
 }
