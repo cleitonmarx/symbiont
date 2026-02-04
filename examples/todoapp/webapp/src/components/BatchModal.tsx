@@ -27,7 +27,7 @@ const BatchModal: React.FC<BatchModalProps> = ({ open, onClose, onBatchComplete 
   // New state variables for date range and sort (fixed property names)
   const [dueAfter, setDueAfter] = useState('');
   const [dueBefore, setDueBefore] = useState('');
-  const [sortBy, setSortBy] = useState<TodoSortBy>('createdAtAsc');
+  const [sortBy, setSortBy] = useState<TodoSortBy>('createdAtDesc');
 
   // Open modal when parent prop changes
   useEffect(() => {
