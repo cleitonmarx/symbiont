@@ -254,6 +254,102 @@ func TestTodoFetcherTool(t *testing.T) {
 				assert.NotNil(t, output["todos"])
 			},
 		},
+		"fetch-todos-with-sortby": {
+			setupMocks: func(todoRepo *domain.MockTodoRepository, llmCli *domain.MockLLMClient) {
+				todoRepo.EXPECT().
+					ListTodos(
+						mock.Anything,
+						1,
+						10,
+						mock.Anything,
+					).
+					Run(func(ctx context.Context, page, pageSize int, opts ...domain.ListTodoOptions) {
+						param := domain.ListTodosParams{}
+						for _, opt := range opts {
+							opt(&param)
+						}
+						assert.Equal(t, &domain.TodoSortBy{Field: "duedate", Direction: "ASC"}, param.SortBy)
+					}).
+					Return([]domain.Todo{}, false, nil)
+			},
+			functionCall: domain.LLMStreamEventFunctionCall{
+				Function:  "fetch_todos",
+				Arguments: `{"page": 1, "page_size": 10, "sort_by": "duedateAsc"}`,
+			},
+			validateResp: func(t *testing.T, resp domain.LLMChatMessage) {
+				assert.Equal(t, domain.ChatRole_Tool, resp.Role)
+				var output map[string]any
+				err := json.Unmarshal([]byte(resp.Content), &output)
+				require.NoError(t, err)
+				assert.Nil(t, output["todos"])
+			},
+		},
+		"fetch-todos-with-due-date-filters": {
+			setupMocks: func(todoRepo *domain.MockTodoRepository, llmCli *domain.MockLLMClient) {
+				todoRepo.EXPECT().
+					ListTodos(
+						mock.Anything,
+						1,
+						10,
+						mock.Anything,
+					).
+					Run(func(ctx context.Context, page, pageSize int, opts ...domain.ListTodoOptions) {
+						param := domain.ListTodosParams{}
+						for _, opt := range opts {
+							opt(&param)
+						}
+						expectedDueAfter, _ := time.Parse("2006-01-02", "2026-01-20")
+						expectedDueBefore, _ := time.Parse("2006-01-02", "2026-01-30")
+						assert.Equal(t, expectedDueAfter, *param.DueAfter)
+						assert.Equal(t, expectedDueBefore, *param.DueBefore)
+					}).
+					Return([]domain.Todo{
+						{
+							ID:      uuid.New(),
+							Title:   "Urgent Todo",
+							DueDate: fixedTime,
+							Status:  domain.TodoStatus_OPEN,
+						},
+					}, false, nil)
+
+			},
+			functionCall: domain.LLMStreamEventFunctionCall{
+				Function:  "fetch_todos",
+				Arguments: `{"page": 1, "page_size": 10, "due_after": "2026-01-20", "due_before": "2026-01-30"}`,
+			},
+			validateResp: func(t *testing.T, resp domain.LLMChatMessage) {
+				assert.Equal(t, domain.ChatRole_Tool, resp.Role)
+				var output map[string]any
+				err := json.Unmarshal([]byte(resp.Content), &output)
+				require.NoError(t, err)
+				assert.NotNil(t, output["todos"])
+			},
+		},
+		"fetch-todos-invalid-due-after": {
+			setupMocks: func(todoRepo *domain.MockTodoRepository, llmCli *domain.MockLLMClient) {
+			},
+			functionCall: domain.LLMStreamEventFunctionCall{
+				Function:  "fetch_todos",
+				Arguments: `{"page": 1, "page_size": 10, "due_after": "invalid-date"}`,
+			},
+			validateResp: func(t *testing.T, resp domain.LLMChatMessage) {
+				assert.Equal(t, domain.ChatRole_Tool, resp.Role)
+				assert.Contains(t, resp.Content, "invalid_due_after")
+			},
+		},
+		"fetch-todos-invalid-due-before": {
+			setupMocks: func(todoRepo *domain.MockTodoRepository, llmCli *domain.MockLLMClient) {
+			},
+			functionCall: domain.LLMStreamEventFunctionCall{
+				Function:  "fetch_todos",
+				Arguments: `{"page": 1, "page_size": 10, "due_after": "2026-01-20", "due_before": "invalid-date"}`,
+			},
+			validateResp: func(t *testing.T, resp domain.LLMChatMessage) {
+				assert.Equal(t, domain.ChatRole_Tool, resp.Role)
+				assert.Contains(t, resp.Content, "invalid_due_before")
+			},
+		},
+
 		"fetch-todos-invalid-arguments": {
 			setupMocks: func(todoRepo *domain.MockTodoRepository, llmCli *domain.MockLLMClient) {
 			},
