@@ -18,6 +18,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
@@ -30,6 +32,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
       - name: go vet
         run: go vet -x ./...
       - name: Check Formatting
