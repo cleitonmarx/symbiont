@@ -49,12 +49,30 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./examples/todoapp/coverage.txt
 
+  check-runner:
+    runs-on: ubuntu-latest
+    outputs:
+      runner-label: ${{ steps.check.outputs.label }}
+    steps:
+      - name: Check if self-hosted runner is online
+        id: check
+        shell: bash
+        run: |
+          STATUS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com{{ github.repository }}/actions/runners" \
+            | jq -r '.runners[] | select(.name=="Macbook-Pro") | .status')
+
+          if [ "$STATUS" == "online" ]; then
+            echo "label=self-hosted" >> $GITHUB_OUTPUT
+          else
+            echo "label=ubuntu-latest" >> $GITHUB_OUTPUT
+          fi
+
   integration-tests:
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        # Define both your self-hosted label and the hosted fallback
         runner: [self-hosted, ubuntu-latest]
     runs-on: ${{ matrix.runner }}
     steps:
