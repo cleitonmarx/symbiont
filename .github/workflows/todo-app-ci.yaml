@@ -51,7 +51,7 @@ jobs:
 
   integration-tests:
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
