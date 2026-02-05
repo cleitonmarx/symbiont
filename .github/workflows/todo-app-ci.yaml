@@ -59,10 +59,10 @@ jobs:
         id: check
         shell: bash
         run: |
-          STATUS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/runners" \
-            | jq -r '.runners[] | select(.name=="Macbook-Pro") | .status')
-
+          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runners")
+          echo "API response: $RESPONSE"
+          STATUS=$(echo "$RESPONSE" | jq -r '.runners[]? | select(.name=="Macbook-Pro") | .status')
           if [ "$STATUS" == "online" ]; then
             echo "label=self-hosted" >> $GITHUB_OUTPUT
           else
