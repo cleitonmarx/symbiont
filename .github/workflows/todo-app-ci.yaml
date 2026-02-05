@@ -16,8 +16,10 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: ./examples/todoapp/go.mod
+          cache: true
+          cache-dependency-path: ./examples/todoapp/go.sum
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci-lint-action@v8
         with:
           version: v2.8
           working-directory: ./examples/todoapp
@@ -29,7 +31,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: ./examples/todoapp/go.mod
-          cache: false
+          cache: true
           cache-dependency-path: ./examples/todoapp/go.sum
       - name: go vet
         run: |
@@ -50,17 +52,33 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./examples/todoapp/coverage.txt
 
-  integration-tests:
+  integration-tests-self-hosted:
     timeout-minutes: 30
     runs-on: self-hosted
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
           go-version-file: ./examples/todoapp/go.mod
           cache: false
+      - name: Run Integration Tests
+        run: |
+          cd examples/todoapp
+          go test -tags=integration -v -timeout 30m ./tests/integration/...
+
+  integration-tests:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    needs: integration-tests-self-hosted
+    if: ${{ needs.integration-tests-self-hosted.result == 'failure' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: ./examples/todoapp/go.mod
+          cache: true
           cache-dependency-path: ./examples/todoapp/go.sum
-      
       - name: Install Docker Model Plugin
         if: ${{ runner.os == 'Linux' }}
         run: |
@@ -71,11 +89,10 @@ jobs:
           sudo chmod a+r /etc/apt/keyrings/docker.gpg
           echo \
             "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-            $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+            $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" | \
             sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
           sudo apt-get update
           sudo apt-get install -y docker-model-plugin
-
       - name: Run Integration Tests
         run: |
           cd examples/todoapp
