@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
   lint:
@@ -28,9 +27,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
-          go-version-file: ./examples/todoapp/go.mod
-          cache: true
-          cache-dependency-path: ./examples/todoapp/go.sum
+          cache: false
       - name: go vet
         run: |
           cd examples/todoapp
@@ -50,32 +47,10 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./examples/todoapp/coverage.txt
 
-  check-runner:
-    runs-on: ubuntu-latest
-    outputs:
-      runner-label: ${{ steps.check.outputs.label }}
-    steps:
-      - name: Check if self-hosted runner is online
-        id: check
-        shell: bash
-        run: |
-          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/runners")
-          echo "API response: $RESPONSE"
-          STATUS=$(echo "$RESPONSE" | jq -r '.runners[]? | select(.name=="Macbook-Pro") | .status')
-          if [ "$STATUS" == "online" ]; then
-            echo "label=self-hosted" >> $GITHUB_OUTPUT
-          else
-            echo "label=ubuntu-latest" >> $GITHUB_OUTPUT
-          fi
 
   integration-tests:
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: [self-hosted, ubuntu-latest]
-    runs-on: ${{ matrix.runner }}
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
