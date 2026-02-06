@@ -6,6 +6,9 @@ github_checks: false
 coverage:
   status:
     patch: off
+    project:
+      default:
+        only_pulls: false
 
 component_management:
   default_rules:
