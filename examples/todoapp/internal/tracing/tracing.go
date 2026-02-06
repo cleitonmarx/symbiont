@@ -13,12 +13,15 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -29,6 +32,17 @@ var (
 // SpanNameFormatter formats span names for HTTP requests.
 // It uses the HTTP method and URL path as the span name.
 func SpanNameFormatter(_ string, r *http.Request) string {
+	return getHttpRoute(r)
+}
+
+// WithHttpMetricAttributes returns attributes for HTTP metrics based on the request.
+func WithHttpMetricAttributes(r *http.Request) []attribute.KeyValue {
+	return []attribute.KeyValue{
+		semconv.HTTPRoute(getHttpRoute(r)),
+	}
+}
+
+func getHttpRoute(r *http.Request) string {
 	if r.Pattern != "" {
 		return r.Pattern
 	}
@@ -73,6 +87,8 @@ type InitOpenTelemetry struct {
 	Logger *log.Logger `resolve:""`
 	tp     *sdktrace.TracerProvider
 	se     sdktrace.SpanExporter
+	mp     *sdkmetric.MeterProvider
+	me     sdkmetric.Exporter
 }
 
 // Initialize sets up OpenTelemetry tracing and exporting.
@@ -82,12 +98,26 @@ func (o *InitOpenTelemetry) Initialize(ctx context.Context) (context.Context, er
 	prop := newPropagator()
 	otel.SetTextMapPropagator(prop)
 
+	// Set up resource.
+	res, err := newAppResource(ctx)
+	if err != nil {
+		return ctx, err
+	}
+
 	// Set up trace provider.
-	o.tp, o.se, err = newTracerProvider(ctx)
+	o.tp, o.se, err = newTracerProvider(ctx, res)
 	if err != nil {
 		return ctx, err
 	}
 	otel.SetTracerProvider(o.tp)
+
+	// Set up meter provider.
+	o.mp, o.me, err = newMeterProvider(ctx, res)
+	if err != nil {
+		return ctx, err
+	}
+	otel.SetMeterProvider(o.mp)
+
 	return ctx, nil
 }
 
@@ -101,6 +131,12 @@ func (o *InitOpenTelemetry) Close() {
 	if err := o.se.Shutdown(cancelCtx); err != nil {
 		o.Logger.Printf("Error shutting down span exporter: %v", err)
 	}
+	if err := o.mp.Shutdown(cancelCtx); err != nil {
+		o.Logger.Printf("Error shutting down meter provider: %v", err)
+	}
+	if err := o.me.Shutdown(cancelCtx); err != nil {
+		o.Logger.Printf("Error shutting down meter exporter: %v", err)
+	}
 }
 
 // newPropagator creates a new composite text map propagator.
@@ -111,18 +147,21 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-// newTracerProvider creates a new tracer provider with an OTLP HTTP exporter.
-func newTracerProvider(ctx context.Context) (*sdktrace.TracerProvider, sdktrace.SpanExporter, error) {
-	otlpExporter, err := otlptracehttp.New(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
+func newAppResource(ctx context.Context) (*resource.Resource, error) {
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceName("todoapp"),
+			semconv.ServiceNameKey.String("todoapp"),
 		),
 	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create resource: %w", err)
+	}
+	return res, nil
+}
+
+// newTracerProvider creates a new tracer provider with an OTLP HTTP exporter.
+func newTracerProvider(ctx context.Context, res *resource.Resource) (*sdktrace.TracerProvider, sdktrace.SpanExporter, error) {
+	otlpExporter, err := otlptracehttp.New(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -134,6 +173,36 @@ func newTracerProvider(ctx context.Context) (*sdktrace.TracerProvider, sdktrace.
 		sdktrace.WithResource(res),
 	)
 	return tracerProvider, otlpExporter, nil
+}
+
+func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.MeterProvider, sdkmetric.Exporter, error) {
+	exporter, err := otlpmetrichttp.New(ctx, otlpmetrichttp.WithInsecure())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// 2. Create the MeterProvider
+	meterProvider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(res),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(
+			exporter,
+			sdkmetric.WithInterval(5*time.Second),
+		)),
+		// This view configures histogram aggregation for all duration instruments
+		// to have specific bucket boundaries.
+		// This is useful for capturing latency distributions.
+		sdkmetric.WithView(sdkmetric.NewView(
+			sdkmetric.Instrument{Name: "*duration*"},
+			sdkmetric.Stream{
+				Aggregation: sdkmetric.AggregationExplicitBucketHistogram{
+					Boundaries: []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
+				},
+			},
+		)),
+	)
+	otel.SetMeterProvider(meterProvider)
+
+	return meterProvider, exporter, nil
 }
 
 // InitHttpClient initializes an HTTP client instrumented with OpenTelemetry
