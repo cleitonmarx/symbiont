@@ -10,6 +10,8 @@ import (
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/telemetry"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // LLMToolManager manages a collection of LLM tools.
@@ -49,7 +51,12 @@ func (ctr LLMToolManager) List() []domain.LLMToolDefinition {
 
 // Call invokes the appropriate tool based on the function call.
 func (ctr LLMToolManager) Call(ctx context.Context, call domain.LLMStreamEventFunctionCall, conversationHistory []domain.LLMChatMessage) domain.LLMChatMessage {
-	spanCtx, span := telemetry.Start(ctx)
+	spanCtx, span := telemetry.Start(ctx,
+		trace.WithAttributes(
+			attribute.String("tool.function", call.Function),
+			attribute.String("tool.arguments", call.Arguments),
+		),
+	)
 	defer span.End()
 	tool, exists := ctr.tools[call.Function]
 	if !exists {
