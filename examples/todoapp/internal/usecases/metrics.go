@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	meter         = otel.Meter("github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/outbound/modelrunner")
+	meter         = otel.Meter("usecases")
 	LLMTokensUsed metric.Int64Counter
 )
 

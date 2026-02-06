@@ -200,8 +200,6 @@ func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.M
 			},
 		)),
 	)
-	otel.SetMeterProvider(meterProvider)
-
 	return meterProvider, exporter, nil
 }
 

@@ -73,7 +73,7 @@ func (di *InitDB) Initialize(ctx context.Context) (context.Context, error) {
 	di.db = otelsql.OpenDB(
 		stdlib.GetPoolConnector(pool),
 		dbSystemAttributes,
-		otelsql.WithInstrumentAttributesGetter(withQueryAttributes),
+		otelsql.WithInstrumentAttributesGetter(withQueryAttributes(di.Logger)),
 	)
 
 	di.metricRegistration, err = otelsql.RegisterDBStatsMetrics(
@@ -134,19 +134,27 @@ func (di *InitDB) Close() {
 	}
 }
 
-func withQueryAttributes(ctx context.Context, method otelsql.Method, query string, args []driver.NamedValue) []attribute.KeyValue {
-	if method != otelsql.MethodConnQuery && method != otelsql.MethodConnExec {
-		return nil
-	}
-	operations, tables := extractSQLOperation(query)
-	return []attribute.KeyValue{
-		semconv.DBQuerySummary(fmt.Sprintf("%s %s", strings.Join(operations, ","), tables)),
-		semconv.DBCollectionName(tables),
+func withQueryAttributes(logger *log.Logger) func(ctx context.Context, method otelsql.Method, query string, args []driver.NamedValue) []attribute.KeyValue {
+	return func(ctx context.Context, method otelsql.Method, query string, args []driver.NamedValue) []attribute.KeyValue {
+		if method != otelsql.MethodConnQuery && method != otelsql.MethodConnExec {
+			return nil
+		}
+		attib := []attribute.KeyValue{}
+
+		operations, tables := extractSQLOperation(logger, query)
+		if len(operations) > 0 {
+			attib = append(attib, semconv.DBQuerySummary(fmt.Sprintf("%s %s", strings.Join(operations, ","), strings.Join(tables, ","))))
+		}
+		if len(tables) > 0 {
+			attib = append(attib, semconv.DBCollectionName(strings.Join(tables, ",")))
+		}
+
+		return attib
 	}
 }
 
 // extractSQLOperation extracts the primary SQL operation and target tables from a query.
-func extractSQLOperation(query string) ([]string, string) {
+func extractSQLOperation(logger *log.Logger, query string) ([]string, []string) {
 	normalizer := sqllexer.NewNormalizer(
 		sqllexer.WithCollectTables(true),
 		sqllexer.WithCollectCommands(true),
@@ -155,21 +163,9 @@ func extractSQLOperation(query string) ([]string, string) {
 
 	_, meta, err := normalizer.Normalize(query)
 	if err != nil {
-		fmt.Printf("Error parsing query: %v\n", err)
-		return []string{"unknown"}, "unknown"
+		logger.Printf("Failed to extract SQL operation from query: %v", err)
+		return nil, nil
 	}
 
-	// 1. db.operations: The primary SQL command
-	operations := []string{"unknown"}
-	if len(meta.Commands) > 0 {
-		operations = meta.Commands
-	}
-
-	// 2. db.sql.table: The primary target table(s)
-	tables := "unknown"
-	if len(meta.Tables) > 0 {
-		tables = strings.Join(meta.Tables, ",")
-	}
-
-	return operations, tables
+	return meta.Commands, meta.Tables
 }
