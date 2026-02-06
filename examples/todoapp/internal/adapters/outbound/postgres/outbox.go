@@ -26,17 +26,20 @@ var (
 	}
 )
 
+// OutboxRepository implements the domain.OutboxRepository interface for Postgres.
 type OutboxRepository struct {
 	sb squirrel.StatementBuilderType
 }
 
+// NewOutboxRepository creates a new instance of OutboxRepository.
 func NewOutboxRepository(br squirrel.BaseRunner) OutboxRepository {
 	return OutboxRepository{
 		sb: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar).RunWith(br),
 	}
 }
 
-func (op OutboxRepository) RecordEvent(ctx context.Context, event domain.TodoEvent) error {
+// CreateEvent records a new event in the outbox.
+func (op OutboxRepository) CreateEvent(ctx context.Context, event domain.TodoEvent) error {
 	spanCtx, span := tracing.Start(ctx)
 	defer span.End()
 
