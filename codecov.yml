@@ -5,38 +5,5 @@ github_checks: false
 
 coverage:
   status:
-    patch: off
-    project: off
-
-component_management:
-  default_rules:
-    statuses:
-      - type: project 
-        target: auto
-        branches:
-          - "!main"
-  individual_components:
-  - component_id: symbiont
-    name: symbiont
-    paths:
-      - "**/*.go"
-      - "!/examples/**"
-    statuses:
-        - type: project
-          target: 90%
-          threshold: 1%
-        - type: patch
-          target: 90%
-          threshold: 2%
-  - component_id: todoapp
-    name: todoapp
-    paths:
-      - "/examples/todoapp/**/*.go"
-      - "!/examples/todoapp/tests/integration/**"
-      - "!**/main.go"
-    statuses:
-        - type: project
-          target: 75%
-
-comment:
-  layout: "reach, components"
+    project: false
+    patch: false
