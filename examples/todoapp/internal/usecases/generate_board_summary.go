@@ -104,12 +104,14 @@ func (gs GenerateBoardSummaryImpl) generateBoardSummary(ctx context.Context) (do
 		Messages:    promptMessages,
 	}
 
-	content, err := gs.llmClient.Chat(ctx, req)
+	resp, err := gs.llmClient.Chat(ctx, req)
 	if err != nil {
 		return domain.BoardSummary{}, err
 	}
 
-	new.Summary = strings.TrimSpace(content)
+	new.Summary = strings.TrimSpace(resp.Content)
+
+	RecordLLMTokensUsed(ctx, resp.Usage.PromptTokens, resp.Usage.CompletionTokens)
 
 	summary := domain.BoardSummary{
 		ID:            uuid.MustParse("00000000-0000-0000-0000-000000000001"),

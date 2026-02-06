@@ -86,11 +86,14 @@ func (lti ListTodosImpl) Query(ctx context.Context, page int, pageSize int, opts
 		queryOpts = append(queryOpts, domain.WithStatus(*params.Status))
 	}
 	if params.Query != nil {
-		embedding, err := lti.llmClient.Embed(spanCtx, lti.llmEmbeddingModel, *params.Query)
+		resp, err := lti.llmClient.Embed(spanCtx, lti.llmEmbeddingModel, *params.Query)
 		if tracing.RecordErrorAndStatus(span, err) {
 			return nil, false, err
 		}
-		queryOpts = append(queryOpts, domain.WithEmbedding(embedding))
+
+		RecordLLMTokensEmbedding(spanCtx, resp.TotalTokens)
+
+		queryOpts = append(queryOpts, domain.WithEmbedding(resp.Embedding))
 	}
 	if params.DueAfter != nil && params.DueBefore != nil {
 		queryOpts = append(queryOpts, domain.WithDueDateRange(*params.DueAfter, *params.DueBefore))
