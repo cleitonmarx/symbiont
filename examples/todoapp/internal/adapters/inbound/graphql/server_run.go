@@ -43,6 +43,9 @@ func (s *TodoGraphQLServer) Run(ctx context.Context) error {
 			h,
 			"",
 			otelhttp.WithSpanNameFormatter(tracing.SpanNameFormatter),
+			otelhttp.WithMetricAttributesFn(
+				tracing.WithHttpMetricAttributes,
+			),
 		),
 	))
 

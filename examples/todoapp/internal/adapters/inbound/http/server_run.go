@@ -60,7 +60,11 @@ func (api TodoAppServer) Run(ctx context.Context) error {
 			otelhttp.NewMiddleware(
 				"todoapp-api",
 				otelhttp.WithSpanNameFormatter(tracing.SpanNameFormatter),
-			)},
+				otelhttp.WithMetricAttributesFn(
+					tracing.WithHttpMetricAttributes,
+				),
+			),
+		},
 	})
 
 	s := &http.Server{
