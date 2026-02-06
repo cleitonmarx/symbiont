@@ -10,9 +10,8 @@ import (
 	"time"
 
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/http/gen"
-	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/tracing"
+	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/telemetry"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/usecases"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 var _ gen.ServerInterface = (*TodoAppServer)(nil)
@@ -57,13 +56,7 @@ func (api TodoAppServer) Run(ctx context.Context) error {
 	h := gen.HandlerWithOptions(api, gen.StdHTTPServerOptions{
 		BaseRouter: mux,
 		Middlewares: []gen.MiddlewareFunc{
-			otelhttp.NewMiddleware(
-				"todoapp-api",
-				otelhttp.WithSpanNameFormatter(tracing.SpanNameFormatter),
-				otelhttp.WithMetricAttributesFn(
-					tracing.WithHttpMetricAttributes,
-				),
-			),
+			telemetry.Middleware("todoapp-api"),
 		},
 	})
 

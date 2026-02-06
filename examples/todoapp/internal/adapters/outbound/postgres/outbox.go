@@ -7,7 +7,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/domain"
-	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/tracing"
+	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/telemetry"
 	"github.com/google/uuid"
 )
 
@@ -40,12 +40,12 @@ func NewOutboxRepository(br squirrel.BaseRunner) OutboxRepository {
 
 // CreateEvent records a new event in the outbox.
 func (op OutboxRepository) CreateEvent(ctx context.Context, event domain.TodoEvent) error {
-	spanCtx, span := tracing.Start(ctx)
+	spanCtx, span := telemetry.Start(ctx)
 	defer span.End()
 
 	// Marshal the content to JSON
 	contentJSON, err := json.Marshal(event)
-	if tracing.RecordErrorAndStatus(span, err) {
+	if telemetry.RecordErrorAndStatus(span, err) {
 		return fmt.Errorf("failed to marshal summary content: %w", err)
 	}
 
@@ -67,7 +67,7 @@ func (op OutboxRepository) CreateEvent(ctx context.Context, event domain.TodoEve
 		).
 		ExecContext(spanCtx)
 
-	if tracing.RecordErrorAndStatus(span, err) {
+	if telemetry.RecordErrorAndStatus(span, err) {
 		return fmt.Errorf("failed to insert outbox event: %w", err)
 	}
 
