@@ -35,20 +35,20 @@ export const useTodos = (): UseTodosReturn => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
-  const [sortBy, setSortBy] = useState<TodoSort>('createdAtDesc');
+  const [sortBy, setSortBy] = useState<TodoSort>('dueDateDesc');
   const [pageSize, setPageSize] = useState<number>(DEFAULT_TODO_PAGE_SIZE);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [boardSummary, setBoardSummary] = useState<BoardSummary | null>(null);
 
   useEffect(() => {
     if (!searchQuery && (sortBy === 'similarityAsc' || sortBy === 'similarityDesc')) {
-      setSortBy('createdAtDesc');
+      setSortBy('dueDateAsc');
     }
   }, [searchQuery, sortBy]);
 
   const effectiveSortBy: TodoSort = useMemo(() => {
     if (!debouncedSearchQuery && (sortBy === 'similarityAsc' || sortBy === 'similarityDesc')) {
-      return 'createdAtDesc';
+      return 'dueDateAsc';
     }
     return sortBy;
   }, [debouncedSearchQuery, sortBy]);

@@ -32,7 +32,7 @@ const BatchModal: React.FC<BatchModalProps> = ({
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [dueAfter, setDueAfter] = useState('');
   const [dueBefore, setDueBefore] = useState('');
-  const [sortBy, setSortBy] = useState<TodoSortBy>('createdAtDesc');
+  const [sortBy, setSortBy] = useState<TodoSortBy>('dueDateAsc');
   const selectAllHeaderRef = useRef<HTMLInputElement | null>(null);
   const selectAllMobileRef = useRef<HTMLInputElement | null>(null);
 
@@ -51,7 +51,7 @@ const BatchModal: React.FC<BatchModalProps> = ({
       setBatchPage(1);
       setDueAfter('');
       setDueBefore('');
-      setSortBy('createdAtAsc');
+      setSortBy('dueDateAsc');
     } else {
       setShow(false);
     }
@@ -62,7 +62,7 @@ const BatchModal: React.FC<BatchModalProps> = ({
     try {
       const effectiveSortBy =
         !searchQuery && (sortBy === 'similarityAsc' || sortBy === 'similarityDesc')
-          ? 'createdAtAsc'
+          ? 'dueDateAsc'
           : sortBy;
 
       const data = await gqlListTodos({
@@ -105,7 +105,7 @@ const BatchModal: React.FC<BatchModalProps> = ({
 
   useEffect(() => {
     if (!searchQuery && (sortBy === 'similarityAsc' || sortBy === 'similarityDesc')) {
-      setSortBy('createdAtDesc' as TodoSortBy);
+      setSortBy('dueDateAsc' as TodoSortBy);
     }
   }, [searchQuery, sortBy]);
 

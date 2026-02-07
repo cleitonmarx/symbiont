@@ -154,7 +154,7 @@
   letter-spacing: 0.02em;
   cursor: pointer;
   box-shadow: 0 10px 24px rgba(15, 97, 215, 0.3);
-  z-index: 32;
+  z-index: 48;
   transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -1391,6 +1391,7 @@
   .ui-pagination {
     position: sticky;
     bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    z-index: 28;
   }
 
   .ui-chat-column.tablet {
@@ -1399,7 +1400,7 @@
     right: 0;
     bottom: 0;
     width: min(450px, 94vw);
-    z-index: 35;
+    z-index: 60;
     padding: 0.75rem;
     background: rgba(8, 18, 30, 0.28);
     backdrop-filter: blur(3px);
@@ -1416,7 +1417,7 @@
 
   .ui-chat-fab {
     right: 1rem;
-    bottom: calc(5.1rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(6.2rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -1601,7 +1602,7 @@
 
   .ui-chat-fab {
     right: 0.75rem;
-    bottom: calc(7.4rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(7.8rem + env(safe-area-inset-bottom, 0px));
     width: 2.9rem;
     height: 2.9rem;
     font-size: 0.86rem;

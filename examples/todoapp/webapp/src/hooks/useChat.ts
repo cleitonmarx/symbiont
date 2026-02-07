@@ -195,7 +195,7 @@ export const useChat = (onChatDone?: () => void): UseChatReturn => {
             return;
           }
 
-          if (eventType === 'function_call') {
+          if (eventType === 'tool_call') {
             const functionCallText = data.Text ?? data.text;
             const functionCallName = data.Function ?? data.function;
             if (typeof functionCallText === 'string' && functionCallText.trim() !== '') {
