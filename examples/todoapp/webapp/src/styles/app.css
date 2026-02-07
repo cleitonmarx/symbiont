@@ -514,8 +514,8 @@
   border-radius: var(--ui-radius-md);
   background: var(--ui-surface);
   position: sticky;
-  bottom: 0.8rem;
-  z-index: 11;
+  bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
   box-shadow: var(--ui-shadow-1);
 }
 
@@ -1389,7 +1389,8 @@
   }
 
   .ui-pagination {
-    position: static;
+    position: sticky;
+    bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
   }
 
   .ui-chat-column.tablet {
@@ -1415,7 +1416,7 @@
 
   .ui-chat-fab {
     right: 1rem;
-    bottom: 1rem;
+    bottom: calc(5.1rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -1600,7 +1601,7 @@
 
   .ui-chat-fab {
     right: 0.75rem;
-    bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(7.4rem + env(safe-area-inset-bottom, 0px));
     width: 2.9rem;
     height: 2.9rem;
     font-size: 0.86rem;
