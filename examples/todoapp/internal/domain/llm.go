@@ -11,10 +11,10 @@ import (
 type LLMStreamEventType string
 
 const (
-	LLMStreamEventType_Meta         LLMStreamEventType = "meta"
-	LLMStreamEventType_Delta        LLMStreamEventType = "delta"
-	LLMStreamEventType_FunctionCall LLMStreamEventType = "function_call"
-	LLMStreamEventType_Done         LLMStreamEventType = "done"
+	LLMStreamEventType_Meta     LLMStreamEventType = "meta"
+	LLMStreamEventType_Delta    LLMStreamEventType = "delta"
+	LLMStreamEventType_ToolCall LLMStreamEventType = "tool_call"
+	LLMStreamEventType_Done     LLMStreamEventType = "done"
 )
 
 // LLMTool represents a tool that can be executed by the LLM
@@ -23,16 +23,16 @@ type LLMTool interface {
 	Definition() LLMToolDefinition
 	// StatusMessage returns a user-friendly status line for this tool
 	StatusMessage() string
-	// Call executes the tool with the given function call and chat messages
-	Call(context.Context, LLMStreamEventFunctionCall, []LLMChatMessage) LLMChatMessage
+	// Call executes the tool with the given tool call and chat messages
+	Call(context.Context, LLMStreamEventToolCall, []LLMChatMessage) LLMChatMessage
 }
 
 // LLMToolRegistry defines the interface for calling registered LLM tools.
 type LLMToolRegistry interface {
-	// Call executes the tool with the given function call and chat messages
-	Call(context.Context, LLMStreamEventFunctionCall, []LLMChatMessage) LLMChatMessage
+	// Call executes the tool with the given tool call and chat messages
+	Call(context.Context, LLMStreamEventToolCall, []LLMChatMessage) LLMChatMessage
 	// StatusMessage returns a friendly status message for the given tool name.
-	StatusMessage(functionName string) string
+	StatusMessage(toolName string) string
 	// List returns all registered LLM tools.
 	List() []LLMToolDefinition
 }
@@ -42,7 +42,7 @@ type LLMChatMessage struct {
 	Role       ChatRole
 	Content    string
 	ToolCallID *string
-	ToolCalls  []LLMStreamEventFunctionCall
+	ToolCalls  []LLMStreamEventToolCall
 }
 
 // LLMChatRequest represents a request to the LLM API
@@ -96,8 +96,8 @@ type LLMStreamEventDelta struct {
 	Text string
 }
 
-// LLMStreamEventFunctionCall contains a function call delta from the stream
-type LLMStreamEventFunctionCall struct {
+// LLMStreamEventToolCall contains a function call delta from the stream
+type LLMStreamEventToolCall struct {
 	ID        string
 	Index     int
 	Function  string

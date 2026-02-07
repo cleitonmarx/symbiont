@@ -333,16 +333,16 @@ func (_m *MockLLMTool) EXPECT() *MockLLMTool_Expecter {
 }
 
 // Call provides a mock function for the type MockLLMTool
-func (_mock *MockLLMTool) Call(context1 context.Context, lLMStreamEventFunctionCall LLMStreamEventFunctionCall, lLMChatMessages []LLMChatMessage) LLMChatMessage {
-	ret := _mock.Called(context1, lLMStreamEventFunctionCall, lLMChatMessages)
+func (_mock *MockLLMTool) Call(context1 context.Context, lLMStreamEventToolCall LLMStreamEventToolCall, lLMChatMessages []LLMChatMessage) LLMChatMessage {
+	ret := _mock.Called(context1, lLMStreamEventToolCall, lLMChatMessages)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Call")
 	}
 
 	var r0 LLMChatMessage
-	if returnFunc, ok := ret.Get(0).(func(context.Context, LLMStreamEventFunctionCall, []LLMChatMessage) LLMChatMessage); ok {
-		r0 = returnFunc(context1, lLMStreamEventFunctionCall, lLMChatMessages)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, LLMStreamEventToolCall, []LLMChatMessage) LLMChatMessage); ok {
+		r0 = returnFunc(context1, lLMStreamEventToolCall, lLMChatMessages)
 	} else {
 		r0 = ret.Get(0).(LLMChatMessage)
 	}
@@ -356,21 +356,21 @@ type MockLLMTool_Call_Call struct {
 
 // Call is a helper method to define mock.On call
 //   - context1 context.Context
-//   - lLMStreamEventFunctionCall LLMStreamEventFunctionCall
+//   - lLMStreamEventToolCall LLMStreamEventToolCall
 //   - lLMChatMessages []LLMChatMessage
-func (_e *MockLLMTool_Expecter) Call(context1 interface{}, lLMStreamEventFunctionCall interface{}, lLMChatMessages interface{}) *MockLLMTool_Call_Call {
-	return &MockLLMTool_Call_Call{Call: _e.mock.On("Call", context1, lLMStreamEventFunctionCall, lLMChatMessages)}
+func (_e *MockLLMTool_Expecter) Call(context1 interface{}, lLMStreamEventToolCall interface{}, lLMChatMessages interface{}) *MockLLMTool_Call_Call {
+	return &MockLLMTool_Call_Call{Call: _e.mock.On("Call", context1, lLMStreamEventToolCall, lLMChatMessages)}
 }
 
-func (_c *MockLLMTool_Call_Call) Run(run func(context1 context.Context, lLMStreamEventFunctionCall LLMStreamEventFunctionCall, lLMChatMessages []LLMChatMessage)) *MockLLMTool_Call_Call {
+func (_c *MockLLMTool_Call_Call) Run(run func(context1 context.Context, lLMStreamEventToolCall LLMStreamEventToolCall, lLMChatMessages []LLMChatMessage)) *MockLLMTool_Call_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 LLMStreamEventFunctionCall
+		var arg1 LLMStreamEventToolCall
 		if args[1] != nil {
-			arg1 = args[1].(LLMStreamEventFunctionCall)
+			arg1 = args[1].(LLMStreamEventToolCall)
 		}
 		var arg2 []LLMChatMessage
 		if args[2] != nil {
@@ -390,7 +390,7 @@ func (_c *MockLLMTool_Call_Call) Return(lLMChatMessage LLMChatMessage) *MockLLMT
 	return _c
 }
 
-func (_c *MockLLMTool_Call_Call) RunAndReturn(run func(context1 context.Context, lLMStreamEventFunctionCall LLMStreamEventFunctionCall, lLMChatMessages []LLMChatMessage) LLMChatMessage) *MockLLMTool_Call_Call {
+func (_c *MockLLMTool_Call_Call) RunAndReturn(run func(context1 context.Context, lLMStreamEventToolCall LLMStreamEventToolCall, lLMChatMessages []LLMChatMessage) LLMChatMessage) *MockLLMTool_Call_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -511,16 +511,16 @@ func (_m *MockLLMToolRegistry) EXPECT() *MockLLMToolRegistry_Expecter {
 }
 
 // Call provides a mock function for the type MockLLMToolRegistry
-func (_mock *MockLLMToolRegistry) Call(context1 context.Context, lLMStreamEventFunctionCall LLMStreamEventFunctionCall, lLMChatMessages []LLMChatMessage) LLMChatMessage {
-	ret := _mock.Called(context1, lLMStreamEventFunctionCall, lLMChatMessages)
+func (_mock *MockLLMToolRegistry) Call(context1 context.Context, lLMStreamEventToolCall LLMStreamEventToolCall, lLMChatMessages []LLMChatMessage) LLMChatMessage {
+	ret := _mock.Called(context1, lLMStreamEventToolCall, lLMChatMessages)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Call")
 	}
 
 	var r0 LLMChatMessage
-	if returnFunc, ok := ret.Get(0).(func(context.Context, LLMStreamEventFunctionCall, []LLMChatMessage) LLMChatMessage); ok {
-		r0 = returnFunc(context1, lLMStreamEventFunctionCall, lLMChatMessages)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, LLMStreamEventToolCall, []LLMChatMessage) LLMChatMessage); ok {
+		r0 = returnFunc(context1, lLMStreamEventToolCall, lLMChatMessages)
 	} else {
 		r0 = ret.Get(0).(LLMChatMessage)
 	}
@@ -534,21 +534,21 @@ type MockLLMToolRegistry_Call_Call struct {
 
 // Call is a helper method to define mock.On call
 //   - context1 context.Context
-//   - lLMStreamEventFunctionCall LLMStreamEventFunctionCall
+//   - lLMStreamEventToolCall LLMStreamEventToolCall
 //   - lLMChatMessages []LLMChatMessage
-func (_e *MockLLMToolRegistry_Expecter) Call(context1 interface{}, lLMStreamEventFunctionCall interface{}, lLMChatMessages interface{}) *MockLLMToolRegistry_Call_Call {
-	return &MockLLMToolRegistry_Call_Call{Call: _e.mock.On("Call", context1, lLMStreamEventFunctionCall, lLMChatMessages)}
+func (_e *MockLLMToolRegistry_Expecter) Call(context1 interface{}, lLMStreamEventToolCall interface{}, lLMChatMessages interface{}) *MockLLMToolRegistry_Call_Call {
+	return &MockLLMToolRegistry_Call_Call{Call: _e.mock.On("Call", context1, lLMStreamEventToolCall, lLMChatMessages)}
 }
 
-func (_c *MockLLMToolRegistry_Call_Call) Run(run func(context1 context.Context, lLMStreamEventFunctionCall LLMStreamEventFunctionCall, lLMChatMessages []LLMChatMessage)) *MockLLMToolRegistry_Call_Call {
+func (_c *MockLLMToolRegistry_Call_Call) Run(run func(context1 context.Context, lLMStreamEventToolCall LLMStreamEventToolCall, lLMChatMessages []LLMChatMessage)) *MockLLMToolRegistry_Call_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 LLMStreamEventFunctionCall
+		var arg1 LLMStreamEventToolCall
 		if args[1] != nil {
-			arg1 = args[1].(LLMStreamEventFunctionCall)
+			arg1 = args[1].(LLMStreamEventToolCall)
 		}
 		var arg2 []LLMChatMessage
 		if args[2] != nil {
@@ -568,7 +568,7 @@ func (_c *MockLLMToolRegistry_Call_Call) Return(lLMChatMessage LLMChatMessage) *
 	return _c
 }
 
-func (_c *MockLLMToolRegistry_Call_Call) RunAndReturn(run func(context1 context.Context, lLMStreamEventFunctionCall LLMStreamEventFunctionCall, lLMChatMessages []LLMChatMessage) LLMChatMessage) *MockLLMToolRegistry_Call_Call {
+func (_c *MockLLMToolRegistry_Call_Call) RunAndReturn(run func(context1 context.Context, lLMStreamEventToolCall LLMStreamEventToolCall, lLMChatMessages []LLMChatMessage) LLMChatMessage) *MockLLMToolRegistry_Call_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -620,8 +620,8 @@ func (_c *MockLLMToolRegistry_List_Call) RunAndReturn(run func() []LLMToolDefini
 }
 
 // StatusMessage provides a mock function for the type MockLLMToolRegistry
-func (_mock *MockLLMToolRegistry) StatusMessage(functionName string) string {
-	ret := _mock.Called(functionName)
+func (_mock *MockLLMToolRegistry) StatusMessage(toolName string) string {
+	ret := _mock.Called(toolName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for StatusMessage")
@@ -629,7 +629,7 @@ func (_mock *MockLLMToolRegistry) StatusMessage(functionName string) string {
 
 	var r0 string
 	if returnFunc, ok := ret.Get(0).(func(string) string); ok {
-		r0 = returnFunc(functionName)
+		r0 = returnFunc(toolName)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
@@ -642,12 +642,12 @@ type MockLLMToolRegistry_StatusMessage_Call struct {
 }
 
 // StatusMessage is a helper method to define mock.On call
-//   - functionName string
-func (_e *MockLLMToolRegistry_Expecter) StatusMessage(functionName interface{}) *MockLLMToolRegistry_StatusMessage_Call {
-	return &MockLLMToolRegistry_StatusMessage_Call{Call: _e.mock.On("StatusMessage", functionName)}
+//   - toolName string
+func (_e *MockLLMToolRegistry_Expecter) StatusMessage(toolName interface{}) *MockLLMToolRegistry_StatusMessage_Call {
+	return &MockLLMToolRegistry_StatusMessage_Call{Call: _e.mock.On("StatusMessage", toolName)}
 }
 
-func (_c *MockLLMToolRegistry_StatusMessage_Call) Run(run func(functionName string)) *MockLLMToolRegistry_StatusMessage_Call {
+func (_c *MockLLMToolRegistry_StatusMessage_Call) Run(run func(toolName string)) *MockLLMToolRegistry_StatusMessage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 string
 		if args[0] != nil {
@@ -665,7 +665,7 @@ func (_c *MockLLMToolRegistry_StatusMessage_Call) Return(s string) *MockLLMToolR
 	return _c
 }
 
-func (_c *MockLLMToolRegistry_StatusMessage_Call) RunAndReturn(run func(functionName string) string) *MockLLMToolRegistry_StatusMessage_Call {
+func (_c *MockLLMToolRegistry_StatusMessage_Call) RunAndReturn(run func(toolName string) string) *MockLLMToolRegistry_StatusMessage_Call {
 	_c.Call.Return(run)
 	return _c
 }
