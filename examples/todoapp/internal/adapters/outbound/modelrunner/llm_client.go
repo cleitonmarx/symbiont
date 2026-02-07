@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/cleitonmarx/symbiont/depend"
@@ -98,18 +99,12 @@ func (a LLMClient) ChatStream(ctx context.Context, req domain.LLMChatRequest, on
 			}
 			if len(choice.Delta.ToolCalls) > 0 {
 				for _, tc := range choice.Delta.ToolCalls {
-					if len(tc.ID) > 0 {
-						functionCalls = append(functionCalls, &domain.LLMStreamEventFunctionCall{
-							ID:        tc.ID,
-							Index:     tc.Index,
-							Function:  tc.Function.Name,
-							Arguments: tc.Function.Arguments,
-						})
-					} else {
-						fCall := functionCalls[tc.Index]
-						fCall.Arguments += tc.Function.Arguments
-					}
-
+					functionCalls = append(functionCalls, &domain.LLMStreamEventFunctionCall{
+						ID:        tc.ID,
+						Index:     tc.Index,
+						Function:  tc.Function.Name,
+						Arguments: tc.Function.Arguments,
+					})
 				}
 			}
 
@@ -167,6 +162,31 @@ func (a LLMClient) Embed(ctx context.Context, model, input string) (domain.Embed
 		Embedding:   resp.Data[0].Embedding,
 		TotalTokens: resp.Usage.TotalTokens,
 	}, nil
+}
+
+// AvailableModels implements domain.LLMClient.AvailableModels
+func (a LLMClient) AvailableModels(ctx context.Context) ([]domain.LLMModelInfo, error) {
+	spanCtx, span := telemetry.Start(ctx)
+	defer span.End()
+
+	resp, err := a.client.AvailableModels(spanCtx)
+	if telemetry.RecordErrorAndStatus(span, err) {
+		return nil, err
+	}
+
+	models := make([]domain.LLMModelInfo, len(resp.Data))
+	for i, m := range resp.Data {
+		modelType := domain.LLMModelType_Chat
+		if strings.Contains(m.ID, "embed") {
+			modelType = domain.LLMModelType_Embedding
+		}
+		models[i] = domain.LLMModelInfo{
+			Name: strings.TrimPrefix(m.ID, "docker.io/ai/"),
+			Type: modelType,
+		}
+	}
+
+	return models, nil
 }
 
 // toChatRequest converts domain.LLMChatRequest to ChatRequest

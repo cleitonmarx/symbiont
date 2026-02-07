@@ -47,7 +47,7 @@ func (c DRMAPIClient) Chat(ctx context.Context, req ChatRequest) (*ChatResponse,
 		return nil, errors.New("messages are required")
 	}
 
-	httpReq, err := c.newPostRequest(ctx, "/v1/chat/completions", req)
+	httpReq, err := c.newRequest(ctx, http.MethodPost, "/engines/v1/chat/completions", req)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (c DRMAPIClient) ChatStream(ctx context.Context, req ChatRequest, onChunk C
 
 	req.Stream = true
 
-	httpReq, err := c.newPostRequest(ctx, "/v1/chat/completions", req)
+	httpReq, err := c.newRequest(ctx, http.MethodPost, "/engines/v1/chat/completions", req)
 	if err != nil {
 		return err
 	}
@@ -129,9 +129,9 @@ func (c DRMAPIClient) ChatStream(ctx context.Context, req ChatRequest, onChunk C
 	return scanner.Err()
 }
 
-// Embeddings calls the /engines/v1/embeddings endpoint.
+// Embeddings requests embeddings for the given input
 func (c DRMAPIClient) Embeddings(ctx context.Context, req EmbeddingsRequest) (*EmbeddingsResponse, error) {
-	httpReq, err := c.newPostRequest(ctx, "/engines/v1/embeddings", req)
+	httpReq, err := c.newRequest(ctx, http.MethodPost, "/engines/v1/embeddings", req)
 	if err != nil {
 		return nil, err
 	}
@@ -159,11 +159,42 @@ func (c DRMAPIClient) Embeddings(ctx context.Context, req EmbeddingsRequest) (*E
 	return &out, nil
 }
 
-func (c DRMAPIClient) newPostRequest(ctx context.Context, path string, body any) (*http.Request, error) {
+// AvailableModels retrieves the list of available models
+func (c DRMAPIClient) AvailableModels(ctx context.Context) (*ModelsResponse, error) {
+	httpReq, err := c.newRequest(ctx, http.MethodGet, "/engines/v1/models", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.http.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("http do: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("non-2xx response: %s: %s", resp.Status, string(respBody))
+	}
+
+	var out ModelsResponse
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return nil, fmt.Errorf("unmarshal response: %w", err)
+	}
+
+	return &out, nil
+}
+
+func (c DRMAPIClient) newRequest(ctx context.Context, method, path string, body any) (*http.Request, error) {
 	endpoint, err := url.JoinPath(c.baseURL, path)
 	if err != nil {
 		return nil, fmt.Errorf("invalid base URL: %w", err)
 	}
+
 	var bodyReader io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -172,7 +203,8 @@ func (c DRMAPIClient) newPostRequest(ctx context.Context, path string, body any)
 		}
 		bodyReader = bytes.NewReader(b)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bodyReader)
+
+	req, err := http.NewRequestWithContext(ctx, method, endpoint, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
