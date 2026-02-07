@@ -28,7 +28,7 @@ var chatPrompt embed.FS
 
 // StreamChat defines the interface for the StreamChat use case
 type StreamChat interface {
-	Execute(ctx context.Context, userMessage string, onEvent domain.LLMStreamEventCallback) error
+	Execute(ctx context.Context, userMessage, model string, onEvent domain.LLMStreamEventCallback) error
 }
 
 // StreamChatImpl is the implementation of the StreamChat use case
@@ -37,7 +37,6 @@ type StreamChatImpl struct {
 	timeProvider      domain.CurrentTimeProvider
 	llmClient         domain.LLMClient
 	llmToolRegistry   domain.LLMToolRegistry
-	llmModel          string
 	llmEmbeddingModel string
 	maxToolCycles     int
 }
@@ -48,7 +47,6 @@ func NewStreamChatImpl(
 	timeProvider domain.CurrentTimeProvider,
 	llmClient domain.LLMClient,
 	llmToolRegistry domain.LLMToolRegistry,
-	llmModel string,
 	llmEmbeddingModel string,
 	maxToolCycles int,
 ) StreamChatImpl {
@@ -57,16 +55,23 @@ func NewStreamChatImpl(
 		timeProvider:      timeProvider,
 		llmClient:         llmClient,
 		llmToolRegistry:   llmToolRegistry,
-		llmModel:          llmModel,
 		llmEmbeddingModel: llmEmbeddingModel,
 		maxToolCycles:     maxToolCycles,
 	}
 }
 
 // Execute streams a chat response and persists the conversation
-func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEvent domain.LLMStreamEventCallback) error {
+func (sc StreamChatImpl) Execute(ctx context.Context, userMessage, model string, onEvent domain.LLMStreamEventCallback) error {
 	spanCtx, span := telemetry.Start(ctx)
 	defer span.End()
+
+	if strings.TrimSpace(userMessage) == "" {
+		return domain.NewValidationErr("message cannot be empty")
+	}
+
+	if model == "" {
+		return domain.NewValidationErr("model cannot be empty")
+	}
 
 	// Fetch chat history and append user message
 	messages, err := sc.fetchChatHistory(spanCtx)
@@ -79,7 +84,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 	})
 
 	req := domain.LLMChatRequest{
-		Model:       sc.llmModel,
+		Model:       model,
 		Messages:    messages,
 		Stream:      true,
 		Temperature: common.Ptr(1.1),
@@ -102,7 +107,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 		ConversationID: domain.GlobalConversationID,
 		ChatRole:       domain.ChatRole_User,
 		Content:        userMessage,
-		Model:          req.Model,
+		Model:          model,
 		CreatedAt:      sc.timeProvider.Now().UTC(),
 	}
 	chatMessages = append(chatMessages, userMsg)
@@ -138,16 +143,15 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 					ConversationID: domain.GlobalConversationID,
 					ChatRole:       domain.ChatRole_Assistant,
 					ToolCalls:      []domain.LLMStreamEventFunctionCall{fc},
-					Model:          req.Model,
+					Model:          model,
 					CreatedAt:      sc.timeProvider.Now().UTC(),
 				})
 
+				fc.Text = sc.llmToolRegistry.StatusMessage(fc.Function)
 				// Process and append tool message
 				if err := onEvent(
-					domain.LLMStreamEventType_Delta,
-					domain.LLMStreamEventDelta{
-						Text: sc.llmToolRegistry.StatusMessage(fc.Function),
-					},
+					domain.LLMStreamEventType_FunctionCall,
+					fc,
 				); err != nil {
 					return err
 				}
@@ -160,7 +164,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 					ChatRole:       domain.ChatRole_Tool,
 					ToolCallID:     &fc.ID,
 					Content:        toolMessage.Content,
-					Model:          req.Model,
+					Model:          model,
 					// Increment CreatedAt to ensure ordering
 					CreatedAt: sc.timeProvider.Now().UTC().Add(3 * time.Millisecond),
 				})
@@ -191,7 +195,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage string, onEven
 		ConversationID: domain.GlobalConversationID,
 		ChatRole:       domain.ChatRole_Assistant,
 		Content:        assistantMsgContent.String(),
-		Model:          req.Model,
+		Model:          model,
 		CreatedAt:      sc.timeProvider.Now().UTC(),
 	}
 	chatMessages = append(chatMessages, assistantMsg)
@@ -334,7 +338,6 @@ type InitStreamChat struct {
 	TimeProvider    domain.CurrentTimeProvider   `resolve:""`
 	LLMToolRegistry domain.LLMToolRegistry       `resolve:""`
 	LLMClient       domain.LLMClient             `resolve:""`
-	LLMModel        string                       `config:"LLM_MODEL"`
 	EmbeddingModel  string                       `config:"LLM_EMBEDDING_MODEL"`
 	// Maximum number of tool cycles to prevent infinite loops
 	// It restricts how many times the LLM can invoke tools in a single chat session
@@ -348,7 +351,6 @@ func (i InitStreamChat) Initialize(ctx context.Context) (context.Context, error)
 		i.TimeProvider,
 		i.LLMClient,
 		i.LLMToolRegistry,
-		i.LLMModel,
 		i.EmbeddingModel,
 		i.MaxToolCycles,
 	))
