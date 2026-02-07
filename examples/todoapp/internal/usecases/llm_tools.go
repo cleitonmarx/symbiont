@@ -50,7 +50,7 @@ func (ctr LLMToolManager) List() []domain.LLMToolDefinition {
 }
 
 // Call invokes the appropriate tool based on the function call.
-func (ctr LLMToolManager) Call(ctx context.Context, call domain.LLMStreamEventFunctionCall, conversationHistory []domain.LLMChatMessage) domain.LLMChatMessage {
+func (ctr LLMToolManager) Call(ctx context.Context, call domain.LLMStreamEventToolCall, conversationHistory []domain.LLMChatMessage) domain.LLMChatMessage {
 	spanCtx, span := telemetry.Start(ctx,
 		trace.WithAttributes(
 			attribute.String("tool.function", call.Function),
@@ -143,7 +143,7 @@ func (lft TodoFetcherTool) Definition() domain.LLMToolDefinition {
 }
 
 // Call executes the TodoFetcherTool with the provided function call.
-func (lft TodoFetcherTool) Call(ctx context.Context, call domain.LLMStreamEventFunctionCall, _ []domain.LLMChatMessage) domain.LLMChatMessage {
+func (lft TodoFetcherTool) Call(ctx context.Context, call domain.LLMStreamEventToolCall, _ []domain.LLMChatMessage) domain.LLMChatMessage {
 	params := struct {
 		Page       int     `json:"page"`
 		PageSize   int     `json:"page_size"`
@@ -309,7 +309,7 @@ func (tct TodoCreatorTool) Definition() domain.LLMToolDefinition {
 }
 
 // Call executes the TodoCreatorTool with the provided function call.
-func (tct TodoCreatorTool) Call(ctx context.Context, call domain.LLMStreamEventFunctionCall, conversationHistory []domain.LLMChatMessage) domain.LLMChatMessage {
+func (tct TodoCreatorTool) Call(ctx context.Context, call domain.LLMStreamEventToolCall, conversationHistory []domain.LLMChatMessage) domain.LLMChatMessage {
 	params := struct {
 		Title   string `json:"title"`
 		DueDate string `json:"due_date"`
@@ -405,7 +405,7 @@ func (tut TodoMetaUpdaterTool) Definition() domain.LLMToolDefinition {
 }
 
 // Call executes the TodoMetaUpdaterTool with the provided function call.
-func (tut TodoMetaUpdaterTool) Call(ctx context.Context, call domain.LLMStreamEventFunctionCall, _ []domain.LLMChatMessage) domain.LLMChatMessage {
+func (tut TodoMetaUpdaterTool) Call(ctx context.Context, call domain.LLMStreamEventToolCall, _ []domain.LLMChatMessage) domain.LLMChatMessage {
 	params := struct {
 		ID     string  `json:"id"`
 		Title  *string `json:"title"`
@@ -498,7 +498,7 @@ func (tdut TodoDueDateUpdaterTool) Definition() domain.LLMToolDefinition {
 }
 
 // Call executes the TodoDueDateUpdaterTool with the provided function call.
-func (tdut TodoDueDateUpdaterTool) Call(ctx context.Context, call domain.LLMStreamEventFunctionCall, conversationHistory []domain.LLMChatMessage) domain.LLMChatMessage {
+func (tdut TodoDueDateUpdaterTool) Call(ctx context.Context, call domain.LLMStreamEventToolCall, conversationHistory []domain.LLMChatMessage) domain.LLMChatMessage {
 	params := struct {
 		ID      uuid.UUID `json:"id"`
 		DueDate string    `json:"due_date"`
@@ -590,7 +590,7 @@ func (tdt TodoDeleterTool) Definition() domain.LLMToolDefinition {
 }
 
 // Call executes the TodoDeleterTool with the provided function call.
-func (tdt TodoDeleterTool) Call(ctx context.Context, call domain.LLMStreamEventFunctionCall, conversationHistory []domain.LLMChatMessage) domain.LLMChatMessage {
+func (tdt TodoDeleterTool) Call(ctx context.Context, call domain.LLMStreamEventToolCall, conversationHistory []domain.LLMChatMessage) domain.LLMChatMessage {
 	params := struct {
 		ID uuid.UUID `json:"id"`
 	}{}

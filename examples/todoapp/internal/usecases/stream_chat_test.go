@@ -121,7 +121,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 				toolRegistry.EXPECT().
 					Call(
 						mock.Anything,
-						domain.LLMStreamEventFunctionCall{
+						domain.LLMStreamEventToolCall{
 							ID:        "func-123",
 							Index:     0,
 							Function:  "list_todos",
@@ -369,7 +369,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 						}); err != nil {
 							return err
 						}
-						return onEvent(domain.LLMStreamEventType_FunctionCall, domain.LLMStreamEventFunctionCall{
+						return onEvent(domain.LLMStreamEventType_ToolCall, domain.LLMStreamEventToolCall{
 							ID:        "func-1",
 							Index:     0,
 							Function:  "fetch_todos",
@@ -378,7 +378,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					})
 			},
 			expectErr:      true,
-			onEventErrType: domain.LLMStreamEventType_FunctionCall,
+			onEventErrType: domain.LLMStreamEventType_ToolCall,
 		},
 		"llm-chatstream-error": {
 			userMessage: "Test",
@@ -559,7 +559,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 						callCount++
 
-						return onEvent(domain.LLMStreamEventType_FunctionCall, domain.LLMStreamEventFunctionCall{
+						return onEvent(domain.LLMStreamEventType_ToolCall, domain.LLMStreamEventToolCall{
 							ID:        fmt.Sprintf("func-%d", callCount),
 							Index:     0,
 							Function:  "fetch_todos",
@@ -630,7 +630,7 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 						}
 
 						callCount++
-						return onEvent(domain.LLMStreamEventType_FunctionCall, domain.LLMStreamEventFunctionCall{
+						return onEvent(domain.LLMStreamEventType_ToolCall, domain.LLMStreamEventToolCall{
 							ID:        fmt.Sprintf("func-%d", callCount),
 							Index:     0,
 							Function:  "fetch_todos",
@@ -676,8 +676,8 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					delta := data.(domain.LLMStreamEventDelta)
 					capturedContent += delta.Text
 				}
-				if eventType == domain.LLMStreamEventType_FunctionCall {
-					fc := data.(domain.LLMStreamEventFunctionCall)
+				if eventType == domain.LLMStreamEventType_ToolCall {
+					fc := data.(domain.LLMStreamEventToolCall)
 					capturedContent += fc.Text
 				}
 				return nil
@@ -708,7 +708,7 @@ func toolFunctionCallback(userMsgID, assistantMsgID uuid.UUID, fixedTime time.Ti
 
 		lastMsg := req.Messages[len(req.Messages)-1]
 		if lastMsg.Content == "Call a tool" {
-			err := onEvent(domain.LLMStreamEventType_FunctionCall, domain.LLMStreamEventFunctionCall{
+			err := onEvent(domain.LLMStreamEventType_ToolCall, domain.LLMStreamEventToolCall{
 				ID:        "func-123",
 				Index:     0,
 				Function:  "list_todos",

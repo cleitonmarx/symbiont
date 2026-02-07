@@ -128,11 +128,11 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage, model string,
 					}
 				}
 
-			case domain.LLMStreamEventType_FunctionCall:
+			case domain.LLMStreamEventType_ToolCall:
 				continueChatStreaming = true
 
-				fc := data.(domain.LLMStreamEventFunctionCall)
-				if tracker.hasExceededMaxCycles() || tracker.hasExceededMaxToolCalls(fc.Function, fc.Arguments) {
+				toolCall := data.(domain.LLMStreamEventToolCall)
+				if tracker.hasExceededMaxCycles() || tracker.hasExceededMaxToolCalls(toolCall.Function, toolCall.Arguments) {
 					continueChatStreaming = false
 					return nil
 				}
@@ -142,27 +142,27 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage, model string,
 					ID:             uuid.New(),
 					ConversationID: domain.GlobalConversationID,
 					ChatRole:       domain.ChatRole_Assistant,
-					ToolCalls:      []domain.LLMStreamEventFunctionCall{fc},
+					ToolCalls:      []domain.LLMStreamEventToolCall{toolCall},
 					Model:          model,
 					CreatedAt:      sc.timeProvider.Now().UTC(),
 				})
 
-				fc.Text = sc.llmToolRegistry.StatusMessage(fc.Function)
+				toolCall.Text = sc.llmToolRegistry.StatusMessage(toolCall.Function)
 				// Process and append tool message
 				if err := onEvent(
-					domain.LLMStreamEventType_FunctionCall,
-					fc,
+					domain.LLMStreamEventType_ToolCall,
+					toolCall,
 				); err != nil {
 					return err
 				}
 
-				toolMessage := sc.llmToolRegistry.Call(spanCtx, fc, req.Messages)
+				toolMessage := sc.llmToolRegistry.Call(spanCtx, toolCall, req.Messages)
 
 				chatMessages = append(chatMessages, &domain.ChatMessage{
 					ID:             uuid.New(),
 					ConversationID: domain.GlobalConversationID,
 					ChatRole:       domain.ChatRole_Tool,
-					ToolCallID:     &fc.ID,
+					ToolCallID:     &toolCall.ID,
 					Content:        toolMessage.Content,
 					Model:          model,
 					// Increment CreatedAt to ensure ordering
@@ -172,7 +172,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage, model string,
 				req.Messages = append(req.Messages,
 					domain.LLMChatMessage{
 						Role:      domain.ChatRole_Assistant,
-						ToolCalls: []domain.LLMStreamEventFunctionCall{fc},
+						ToolCalls: []domain.LLMStreamEventToolCall{toolCall},
 					},
 					toolMessage,
 				)
