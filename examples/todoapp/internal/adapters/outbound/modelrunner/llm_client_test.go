@@ -94,7 +94,7 @@ func TestLLMClientAdapter_ChatStream(t *testing.T) {
 				Messages: []domain.LLMChatMessage{
 					{
 						Role: domain.ChatRole_Assistant,
-						ToolCalls: []domain.LLMStreamEventFunctionCall{
+						ToolCalls: []domain.LLMStreamEventToolCall{
 							{
 								ID:        "toolcall-1",
 								Function:  "list_todos",
@@ -142,7 +142,7 @@ func TestLLMClientAdapter_ChatStream(t *testing.T) {
 				},
 			},
 
-			expectedEvents:  []domain.LLMStreamEventType{"meta", "function_call", "done"},
+			expectedEvents:  []domain.LLMStreamEventType{"meta", "tool_call", "done"},
 			expectedContent: "",
 		},
 	}

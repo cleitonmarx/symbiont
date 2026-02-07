@@ -81,7 +81,7 @@ func (a LLMClient) ChatStream(ctx context.Context, req domain.LLMChatRequest, on
 	}
 
 	var (
-		functionCalls []*domain.LLMStreamEventFunctionCall
+		functionCalls []*domain.LLMStreamEventToolCall
 		usage         domain.LLMUsage
 	)
 
@@ -99,13 +99,20 @@ func (a LLMClient) ChatStream(ctx context.Context, req domain.LLMChatRequest, on
 			}
 			if len(choice.Delta.ToolCalls) > 0 {
 				for _, tc := range choice.Delta.ToolCalls {
-					functionCalls = append(functionCalls, &domain.LLMStreamEventFunctionCall{
-						ID:        tc.ID,
-						Index:     tc.Index,
-						Function:  tc.Function.Name,
-						Arguments: tc.Function.Arguments,
-					})
+					if len(tc.ID) > 0 {
+						functionCalls = append(functionCalls, &domain.LLMStreamEventToolCall{
+							ID:        tc.ID,
+							Index:     tc.Index,
+							Function:  tc.Function.Name,
+							Arguments: tc.Function.Arguments,
+						})
+					} else {
+						fCall := functionCalls[tc.Index]
+						fCall.Arguments += tc.Function.Arguments
+					}
+
 				}
+
 			}
 
 			if chunk.Usage != nil {
@@ -124,7 +131,7 @@ func (a LLMClient) ChatStream(ctx context.Context, req domain.LLMChatRequest, on
 
 	// Send function call events
 	for _, fc := range functionCalls {
-		if err := onEvent(domain.LLMStreamEventType_FunctionCall, *fc); err != nil {
+		if err := onEvent(domain.LLMStreamEventType_ToolCall, *fc); err != nil {
 			return err
 		}
 	}
