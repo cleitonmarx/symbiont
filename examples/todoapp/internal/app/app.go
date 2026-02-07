@@ -54,6 +54,7 @@ func NewTodoApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&usecases.InitListChatMessages{},
 			&usecases.InitDeleteConversation{},
 			&usecases.InitStreamChat{},
+			&usecases.InitListAvailableLLMModels{},
 			&usecases.InitRelayOutbox{},
 		).
 		Host(
