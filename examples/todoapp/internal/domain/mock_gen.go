@@ -697,6 +697,68 @@ func (_m *MockLLMClient) EXPECT() *MockLLMClient_Expecter {
 	return &MockLLMClient_Expecter{mock: &_m.Mock}
 }
 
+// AvailableModels provides a mock function for the type MockLLMClient
+func (_mock *MockLLMClient) AvailableModels(ctx context.Context) ([]LLMModelInfo, error) {
+	ret := _mock.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AvailableModels")
+	}
+
+	var r0 []LLMModelInfo
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) ([]LLMModelInfo, error)); ok {
+		return returnFunc(ctx)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context) []LLMModelInfo); ok {
+		r0 = returnFunc(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]LLMModelInfo)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockLLMClient_AvailableModels_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AvailableModels'
+type MockLLMClient_AvailableModels_Call struct {
+	*mock.Call
+}
+
+// AvailableModels is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockLLMClient_Expecter) AvailableModels(ctx interface{}) *MockLLMClient_AvailableModels_Call {
+	return &MockLLMClient_AvailableModels_Call{Call: _e.mock.On("AvailableModels", ctx)}
+}
+
+func (_c *MockLLMClient_AvailableModels_Call) Run(run func(ctx context.Context)) *MockLLMClient_AvailableModels_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockLLMClient_AvailableModels_Call) Return(lLMModelInfos []LLMModelInfo, err error) *MockLLMClient_AvailableModels_Call {
+	_c.Call.Return(lLMModelInfos, err)
+	return _c
+}
+
+func (_c *MockLLMClient_AvailableModels_Call) RunAndReturn(run func(ctx context.Context) ([]LLMModelInfo, error)) *MockLLMClient_AvailableModels_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Chat provides a mock function for the type MockLLMClient
 func (_mock *MockLLMClient) Chat(ctx context.Context, req LLMChatRequest) (LLMChatResponse, error) {
 	ret := _mock.Called(ctx, req)

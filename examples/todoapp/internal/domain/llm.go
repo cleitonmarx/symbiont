@@ -96,11 +96,13 @@ type LLMStreamEventDelta struct {
 	Text string
 }
 
+// LLMStreamEventFunctionCall contains a function call delta from the stream
 type LLMStreamEventFunctionCall struct {
 	ID        string
 	Index     int
 	Function  string
 	Arguments string
+	Text      string
 }
 
 // LLMStreamEventDone contains completion metadata and token usage
@@ -110,20 +112,36 @@ type LLMStreamEventDone struct {
 	CompletedAt        string
 }
 
+// LLMUsage contains token usage information
 type LLMUsage struct {
 	PromptTokens     int
 	CompletionTokens int
 	TotalTokens      int
 }
 
+// LLMChatResponse represents the response from a chat request to the LLM API
 type LLMChatResponse struct {
 	Content string
 	Usage   LLMUsage
 }
 
+// EmbedResponse represents the response from an embedding request to the LLM API
 type EmbedResponse struct {
 	Embedding   []float64
 	TotalTokens int
+}
+
+type LLMModelType string
+
+const (
+	LLMModelType_Chat      LLMModelType = "chat"
+	LLMModelType_Embedding LLMModelType = "embedding"
+)
+
+// LLMModelInfo represents information about an available LLM model
+type LLMModelInfo struct {
+	Name string
+	Type LLMModelType
 }
 
 // LLMStreamEventCallback is called for each event in the stream
@@ -140,4 +158,7 @@ type LLMClient interface {
 
 	// Embed generates an embedding vector for the given input text
 	Embed(ctx context.Context, model, input string) (EmbedResponse, error)
+
+	// AvailableModels retrieves the list of available models
+	AvailableModels(ctx context.Context) ([]LLMModelInfo, error)
 }
