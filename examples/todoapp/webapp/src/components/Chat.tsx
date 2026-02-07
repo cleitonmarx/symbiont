@@ -14,7 +14,22 @@ interface ChatProps {
 }
 
 const Chat: React.FC<ChatProps> = ({ onChatDone }) => {
-  const { messages, loading, error, loadMessages, sendMessage, clearChat, stopStream } = useChat(onChatDone);
+  const {
+    messages,
+    models,
+    selectedModel,
+    toolStatus,
+    toolStatusCount,
+    loading,
+    loadingModels,
+    error,
+    loadMessages,
+    loadModels,
+    setSelectedModel,
+    sendMessage,
+    clearChat,
+    stopStream,
+  } = useChat(onChatDone);
   const [input, setInput] = React.useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -22,7 +37,8 @@ const Chat: React.FC<ChatProps> = ({ onChatDone }) => {
 
   useEffect(() => {
     loadMessages();
-  }, [loadMessages]);
+    loadModels();
+  }, [loadMessages, loadModels]);
 
   useEffect(() => {
     if (messages.length > 0 && messagesContainerRef.current) {
@@ -87,33 +103,65 @@ const Chat: React.FC<ChatProps> = ({ onChatDone }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="chat-input-area">
-        <textarea
-          className="chat-input"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
-          disabled={loading}
-        />
-        {!loading ? (
-          <button
-            className="chat-send-btn"
-            onClick={handleSend}
-            disabled={loading || !input.trim()}
-            title="Send message"
-          >
-            ✈️
-          </button>
-        ) : (
-          <button
-            className="chat-stop-btn"
-            onClick={stopStream}
-            title="Stop stream"
-          >
-            ⏹️
-          </button>
-        )}
+      {toolStatus ? (
+        <div className="chat-tool-status">
+          <span>{toolStatus}</span>
+          <span className="chat-tool-count">x{toolStatusCount}</span>
+        </div>
+      ) : null}
+
+      <div className="chat-composer">
+        <div className="chat-input-shell">
+          <textarea
+            className="chat-input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask for follow-up changes"
+            disabled={loading}
+          />
+          <div className="chat-input-controls">
+            <div className="chat-input-meta">
+              <select
+                className="chat-model-select"
+                aria-label="AI model"
+                value={selectedModel}
+                disabled={loading || loadingModels || models.length === 0}
+                onChange={(event) => setSelectedModel(event.target.value)}
+              >
+                {models.length === 0 ? (
+                  <option value="">{loadingModels ? 'Loading models...' : 'Default model'}</option>
+                ) : (
+                  models.map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+            {!loading ? (
+              <button
+                className="chat-send-btn"
+                onClick={handleSend}
+                disabled={loading || !input.trim()}
+                title="Send message"
+                aria-label="Send message"
+              >
+                ↑
+              </button>
+            ) : (
+              <button
+                className="chat-send-btn chat-send-btn-stop"
+                onClick={stopStream}
+                title="Stop stream"
+                aria-label="Stop stream"
+              >
+                ■
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
