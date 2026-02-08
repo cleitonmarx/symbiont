@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { TodoStatus } from '../../types';
 import type { TodoSort } from '../../services/todosApi';
 
@@ -10,6 +11,11 @@ interface TodoControlsBarProps {
   onPageSizeChange: (size: number) => void;
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
+  dueAfter: string;
+  onDueAfterChange: (date: string) => void;
+  dueBefore: string;
+  onDueBeforeChange: (date: string) => void;
+  onClearDateRange: () => void;
 }
 
 export const TodoControlsBar = ({
@@ -21,7 +27,21 @@ export const TodoControlsBar = ({
   onPageSizeChange,
   searchQuery,
   onSearchQueryChange,
+  dueAfter,
+  onDueAfterChange,
+  dueBefore,
+  onDueBeforeChange,
+  onClearDateRange,
 }: TodoControlsBarProps) => {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const hasDateRange = Boolean(dueAfter || dueBefore);
+
+  useEffect(() => {
+    if (hasDateRange) {
+      setShowAdvanced(true);
+    }
+  }, [hasDateRange]);
+
   return (
     <section className="ui-controls" aria-label="Todo filters and search">
       <div className="ui-controls-group">
@@ -92,6 +112,62 @@ export const TodoControlsBar = ({
           onChange={(event) => onSearchQueryChange(event.target.value)}
         />
       </div>
+
+      <div className="ui-controls-group ui-controls-advanced-toggle-group">
+        <span className="ui-controls-label">Filters</span>
+        <button
+          type="button"
+          className={`ui-btn ui-btn-secondary ui-controls-advanced-toggle ${showAdvanced ? 'active' : ''}`}
+          onClick={() => setShowAdvanced((prev) => !prev)}
+          aria-expanded={showAdvanced}
+          aria-controls="todo-advanced-filters"
+        >
+          {showAdvanced ? 'Hide dates' : 'Dates'}
+        </button>
+      </div>
+
+      {showAdvanced ? (
+        <div id="todo-advanced-filters" className="ui-controls-advanced">
+          <div className="ui-controls-group ui-controls-date">
+            <label className="ui-controls-label" htmlFor="todo-due-after-input">
+              Due After
+            </label>
+            <input
+              id="todo-due-after-input"
+              className="ui-input"
+              type="date"
+              value={dueAfter}
+              max={dueBefore || undefined}
+              onChange={(event) => onDueAfterChange(event.target.value)}
+            />
+          </div>
+
+          <div className="ui-controls-group ui-controls-date">
+            <label className="ui-controls-label" htmlFor="todo-due-before-input">
+              Due Before
+            </label>
+            <input
+              id="todo-due-before-input"
+              className="ui-input"
+              type="date"
+              value={dueBefore}
+              min={dueAfter || undefined}
+              onChange={(event) => onDueBeforeChange(event.target.value)}
+            />
+          </div>
+
+          <div className="ui-controls-group ui-controls-advanced-actions">
+            <button
+              type="button"
+              className="ui-btn ui-btn-secondary"
+              onClick={onClearDateRange}
+              disabled={!hasDateRange}
+            >
+              Clear dates
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 };

@@ -40,6 +40,11 @@ const TodoApp = () => {
     setSortBy,
     pageSize,
     setPageSize,
+    dueAfter,
+    setDueAfter,
+    dueBefore,
+    setDueBefore,
+    clearDateRange,
   } = useTodos();
 
   const handleUpdateTodo = useCallback((id: string, status?: TodoStatus, title?: string, due_date?: string) => {
@@ -112,6 +117,11 @@ const TodoApp = () => {
             onPageSizeChange={setPageSize}
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
+            dueAfter={dueAfter}
+            onDueAfterChange={setDueAfter}
+            dueBefore={dueBefore}
+            onDueBeforeChange={setDueBefore}
+            onClearDateRange={clearDateRange}
           />
 
           <TodoListSection

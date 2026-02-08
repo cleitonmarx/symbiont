@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { fetchChatMessages, clearChatMessages, fetchAvailableModels, streamChat } from '../services/chatApi';
 import type { ChatMessage } from '../types';
 
@@ -19,10 +19,40 @@ interface UseChatReturn {
   stopStream: () => void;
 }
 
+const CHAT_SELECTED_MODEL_STORAGE_KEY = 'todoapp.chat.selectedModel';
+
+const loadPersistedModel = (): string => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  try {
+    return window.localStorage.getItem(CHAT_SELECTED_MODEL_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+};
+
+const persistModel = (model: string): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    if (model) {
+      window.localStorage.setItem(CHAT_SELECTED_MODEL_STORAGE_KEY, model);
+    } else {
+      window.localStorage.removeItem(CHAT_SELECTED_MODEL_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage failures (e.g., private mode restrictions).
+  }
+};
+
 export const useChat = (onChatDone?: () => void): UseChatReturn => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [models, setModels] = useState<string[]>([]);
-  const [selectedModel, setSelectedModel] = useState('');
+  const [selectedModel, setSelectedModel] = useState(loadPersistedModel);
   const [toolStatus, setToolStatus] = useState<string | null>(null);
   const [toolStatusCount, setToolStatusCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -92,6 +122,10 @@ export const useChat = (onChatDone?: () => void): UseChatReturn => {
       setLoadingModels(false);
     }
   }, []);
+
+  useEffect(() => {
+    persistModel(selectedModel);
+  }, [selectedModel]);
 
   const stopStream = useCallback(() => {
     // Cancel the fetch request

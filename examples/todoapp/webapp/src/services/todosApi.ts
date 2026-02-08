@@ -28,11 +28,11 @@ export const getTodos = async (
   }
 
   if (dateRange?.dueAfter) {
-    params.dueAfter = dateRange.dueAfter;
+    params['dateRange[dueAfter]'] = dateRange.dueAfter;
   }
 
   if (dateRange?.dueBefore) {
-    params.dueBefore = dateRange.dueBefore;
+    params['dateRange[dueBefore]'] = dateRange.dueBefore;
   }
 
   if (sort) {
