@@ -21,6 +21,10 @@ const (
 
 	// Maximum number of repeated tool call hits to prevent infinite loops
 	MAX_REPEATED_TOOL_CALL_HIT = 5
+
+	// Keep tool-calling deterministic to reduce malformed function arguments.
+	CHAT_TEMPERATURE = 0.2
+	CHAT_TOP_P       = 0.7
 )
 
 //go:embed prompts/chat.yml
@@ -87,8 +91,8 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage, model string,
 		Model:       model,
 		Messages:    messages,
 		Stream:      true,
-		Temperature: common.Ptr(1.1),
-		TopP:        common.Ptr(0.9),
+		Temperature: common.Ptr(CHAT_TEMPERATURE),
+		TopP:        common.Ptr(CHAT_TOP_P),
 		Tools:       sc.llmToolRegistry.List(),
 	}
 
@@ -96,6 +100,7 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage, model string,
 		assistantMsgContent strings.Builder
 		chatMessages        []*domain.ChatMessage
 		assistantMsgID      uuid.UUID
+		tokenUsage          domain.LLMUsage
 		tracker             = newToolCycleTracker(
 			sc.maxToolCycles,
 			MAX_REPEATED_TOOL_CALL_HIT,
@@ -182,7 +187,13 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage, model string,
 				if err := onEvent(eventType, data); err != nil {
 					return err
 				}
+			case domain.LLMStreamEventType_Done:
+				done := data.(domain.LLMStreamEventDone)
+				tokenUsage.CompletionTokens += done.Usage.CompletionTokens
+				tokenUsage.PromptTokens += done.Usage.PromptTokens
+				tokenUsage.TotalTokens += done.Usage.TotalTokens
 			}
+
 			return nil
 		})
 		if telemetry.RecordErrorAndStatus(span, err) {
@@ -220,10 +231,13 @@ func (sc StreamChatImpl) Execute(ctx context.Context, userMessage, model string,
 		return err
 	}
 
+	RecordLLMTokensUsed(spanCtx, tokenUsage.PromptTokens, tokenUsage.CompletionTokens)
+
 	// Send done event
 	if err := onEvent(domain.LLMStreamEventType_Done, domain.LLMStreamEventDone{
 		AssistantMessageID: assistantMsgID.String(),
 		CompletedAt:        sc.timeProvider.Now().UTC().Format(time.RFC3339),
+		Usage:              tokenUsage,
 	}); err != nil {
 		return err
 	}
