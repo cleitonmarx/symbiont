@@ -55,11 +55,10 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					ListChatMessages(mock.Anything, MAX_CHAT_HISTORY_MESSAGES).
 					Return([]domain.ChatMessage{
 						{
-							ID:             uuid.New(),
-							ConversationID: domain.GlobalConversationID,
-							ChatRole:       domain.ChatRole_User,
-							Content:        "Previous message",
-							CreatedAt:      fixedTime.Add(-time.Minute),
+							ID:        uuid.New(),
+							ChatRole:  domain.ChatRole_User,
+							Content:   "Previous message",
+							CreatedAt: fixedTime.Add(-time.Minute),
 						},
 					}, false, nil).
 					Once()
@@ -69,10 +68,8 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					Run(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) {
 						// Simulate events
 						_ = onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
-							ConversationID:     domain.GlobalConversationID,
 							UserMessageID:      userMsgID,
 							AssistantMessageID: assistantMsgID,
-							StartedAt:          fixedTime,
 						})
 						_ = onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{Text: "I'm "})
 						_ = onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{Text: "doing "})
@@ -123,7 +120,6 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 						mock.Anything,
 						domain.LLMStreamEventToolCall{
 							ID:        "func-123",
-							Index:     0,
 							Function:  "list_todos",
 							Arguments: "{\"page\": 1, \"page_size\": 5, \"search_term\": \"searchTerm\"}",
 							Text:      "calling list_todos",
@@ -200,10 +196,8 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					Run(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) {
 						_ = onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
-							ConversationID:     domain.GlobalConversationID,
 							UserMessageID:      userMsgID,
 							AssistantMessageID: assistantMsgID,
-							StartedAt:          fixedTime,
 						})
 						_ = onEvent(domain.LLMStreamEventType_Done, domain.LLMStreamEventDone{
 							AssistantMessageID: assistantMsgID.String(),
@@ -283,10 +277,8 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					RunAndReturn(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) error {
 						return onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
-							ConversationID:     domain.GlobalConversationID,
 							UserMessageID:      userMsgID,
 							AssistantMessageID: assistantMsgID,
-							StartedAt:          fixedTime,
 						})
 					})
 			},
@@ -319,10 +311,8 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					RunAndReturn(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) error {
 						if err := onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
-							ConversationID:     domain.GlobalConversationID,
 							UserMessageID:      userMsgID,
 							AssistantMessageID: assistantMsgID,
-							StartedAt:          fixedTime,
 						}); err != nil {
 							return err
 						}
@@ -362,16 +352,13 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					RunAndReturn(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) error {
 						if err := onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
-							ConversationID:     domain.GlobalConversationID,
 							UserMessageID:      userMsgID,
 							AssistantMessageID: assistantMsgID,
-							StartedAt:          fixedTime,
 						}); err != nil {
 							return err
 						}
 						return onEvent(domain.LLMStreamEventType_ToolCall, domain.LLMStreamEventToolCall{
 							ID:        "func-1",
-							Index:     0,
 							Function:  "fetch_todos",
 							Arguments: `{"page": 1}`,
 						})
@@ -436,10 +423,8 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					Run(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) {
 						_ = onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
-							ConversationID:     domain.GlobalConversationID,
 							UserMessageID:      userMsgID,
 							AssistantMessageID: assistantMsgID,
-							StartedAt:          fixedTime,
 						})
 						_ = onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{Text: "OK"})
 						_ = onEvent(domain.LLMStreamEventType_Done, domain.LLMStreamEventDone{
@@ -485,10 +470,8 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					ChatStream(mock.Anything, mock.Anything, mock.Anything).
 					Run(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) {
 						_ = onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
-							ConversationID:     domain.GlobalConversationID,
 							UserMessageID:      userMsgID,
 							AssistantMessageID: assistantMsgID,
-							StartedAt:          fixedTime,
 						})
 						_ = onEvent(domain.LLMStreamEventType_Delta, domain.LLMStreamEventDelta{Text: "OK"})
 						_ = onEvent(domain.LLMStreamEventType_Done, domain.LLMStreamEventDone{
@@ -548,10 +531,8 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					RunAndReturn(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) error {
 						if callCount == 0 {
 							if err := onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
-								ConversationID:     domain.GlobalConversationID,
 								UserMessageID:      userMsgID,
 								AssistantMessageID: assistantMsgID,
-								StartedAt:          fixedTime,
 							}); err != nil {
 								return err
 							}
@@ -561,7 +542,6 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 
 						return onEvent(domain.LLMStreamEventType_ToolCall, domain.LLMStreamEventToolCall{
 							ID:        fmt.Sprintf("func-%d", callCount),
-							Index:     0,
 							Function:  "fetch_todos",
 							Arguments: fmt.Sprintf(`{"page": %d}`, callCount),
 						})
@@ -620,10 +600,8 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 					RunAndReturn(func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) error {
 						if callCount == 0 {
 							if err := onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
-								ConversationID:     domain.GlobalConversationID,
 								UserMessageID:      userMsgID,
 								AssistantMessageID: assistantMsgID,
-								StartedAt:          fixedTime,
 							}); err != nil {
 								return err
 							}
@@ -632,7 +610,6 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 						callCount++
 						return onEvent(domain.LLMStreamEventType_ToolCall, domain.LLMStreamEventToolCall{
 							ID:        fmt.Sprintf("func-%d", callCount),
-							Index:     0,
 							Function:  "fetch_todos",
 							Arguments: `{"page": 1}`,
 						})
@@ -698,10 +675,8 @@ func TestStreamChatImpl_Execute(t *testing.T) {
 func toolFunctionCallback(userMsgID, assistantMsgID uuid.UUID, fixedTime time.Time) func(_ context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) error {
 	return func(ctx context.Context, req domain.LLMChatRequest, onEvent domain.LLMStreamEventCallback) error {
 		if err := onEvent(domain.LLMStreamEventType_Meta, domain.LLMStreamEventMeta{
-			ConversationID:     domain.GlobalConversationID,
 			UserMessageID:      userMsgID,
 			AssistantMessageID: assistantMsgID,
-			StartedAt:          fixedTime,
 		}); err != nil {
 			return err
 		}
@@ -710,7 +685,6 @@ func toolFunctionCallback(userMsgID, assistantMsgID uuid.UUID, fixedTime time.Ti
 		if lastMsg.Content == "Call a tool" {
 			err := onEvent(domain.LLMStreamEventType_ToolCall, domain.LLMStreamEventToolCall{
 				ID:        "func-123",
-				Index:     0,
 				Function:  "list_todos",
 				Arguments: `{"page": 1, "page_size": 5, "search_term": "searchTerm"}`,
 			})

@@ -73,7 +73,7 @@ func TestGenerateBoardSummaryImpl_Execute(t *testing.T) {
 							len(req.Messages) == 2 &&
 							req.Messages[0].Role == "developer" &&
 							req.Messages[1].Role == "user" &&
-							strings.Contains(req.Messages[0].Content, "You are a helpful assistant that summarizes todo lists") &&
+							strings.Contains(req.Messages[0].Content, "You are a helpful assistant that summarizes todo progress") &&
 							strings.Contains(req.Messages[1].Content, "Open: 2\n  Done: 1")
 					}),
 				).Return(domain.LLMChatResponse{Content: "You have 2 open todos, 1 overdue todo, and 1 completed todo."}, nil)
@@ -168,4 +168,42 @@ func TestInitGenerateBoardSummary_Initialize(t *testing.T) {
 	registeredGbs, err := depend.Resolve[GenerateBoardSummary]()
 	assert.NoError(t, err)
 	assert.NotNil(t, registeredGbs)
+}
+
+func TestApplySummarySafetyGuards(t *testing.T) {
+	t.Run("strips overdue qualifiers when there are no overdue tasks", func(t *testing.T) {
+		content := domain.BoardSummaryContent{
+			Overdue: []string{},
+		}
+		summary := "Great progress! Focus on the overdue chimney cleaning and late digital backups."
+
+		got := applySummarySafetyGuards(summary, content)
+
+		assert.NotContains(t, strings.ToLower(got), "overdue ")
+		assert.NotContains(t, strings.ToLower(got), "late ")
+		assert.Contains(t, got, "chimney cleaning")
+		assert.Contains(t, got, "digital backups")
+	})
+
+	t.Run("keeps overdue wording when overdue tasks exist", func(t *testing.T) {
+		content := domain.BoardSummaryContent{
+			Overdue: []string{"Schedule chimney cleaning"},
+		}
+		summary := "Focus on the overdue chimney cleaning."
+
+		got := applySummarySafetyGuards(summary, content)
+
+		assert.Equal(t, summary, got)
+	})
+
+	t.Run("preserves valid no-overdue statements", func(t *testing.T) {
+		content := domain.BoardSummaryContent{
+			Overdue: []string{},
+		}
+		summary := "Nice momentum, no overdue tasks right now."
+
+		got := applySummarySafetyGuards(summary, content)
+
+		assert.Contains(t, strings.ToLower(got), "no overdue tasks")
+	})
 }
