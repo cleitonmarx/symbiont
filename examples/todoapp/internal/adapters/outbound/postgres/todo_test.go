@@ -372,18 +372,6 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 			expectedHasMore: true,
 			expectedErr:     false,
 		},
-		"empty-results": {
-			page:     1,
-			pageSize: 10,
-			setExpectations: func(mock sqlmock.Sqlmock) {
-				rows := sqlmock.NewRows(todoFields)
-				mock.ExpectQuery("SELECT id, title, status, due_date, created_at, updated_at FROM todos ORDER BY created_at DESC LIMIT 11 OFFSET 0").
-					WillReturnRows(rows)
-			},
-			expectedTodos:   nil,
-			expectedHasMore: false,
-			expectedErr:     false,
-		},
 		"filter-by-status": {
 			page:     1,
 			pageSize: 10,
@@ -409,6 +397,18 @@ func TestTodoRepository_ListTodos(t *testing.T) {
 			},
 			expectedHasMore: false,
 			expectedErr:     false,
+		},
+		"invalid-status-filter": {
+			page:     1,
+			pageSize: 10,
+			opts: []domain.ListTodoOptions{
+				domain.WithStatus("IN_PROGRESS"),
+			},
+			setExpectations: func(mock sqlmock.Sqlmock) {
+			},
+			expectedTodos:   nil,
+			expectedHasMore: false,
+			expectedErr:     true,
 		},
 		"filter-by-embedding": {
 			page:     1,

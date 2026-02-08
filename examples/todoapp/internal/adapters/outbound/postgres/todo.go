@@ -65,6 +65,9 @@ func (tr TodoRepository) ListTodos(ctx context.Context, page int, pageSize int, 
 	}
 
 	if params.Status != nil {
+		if err := params.Status.Validate(); err != nil {
+			return nil, false, err
+		}
 		qry = qry.Where(squirrel.Eq{"status": *params.Status})
 	}
 

@@ -27,7 +27,6 @@ func TestChatMessageRepository_CreateChatMessages(t *testing.T) {
 		ToolCalls: []domain.LLMStreamEventToolCall{
 			{
 				ID:        "id",
-				Index:     0,
 				Function:  "test_func",
 				Arguments: "{\"arg1\":0}",
 			},
@@ -48,8 +47,7 @@ func TestChatMessageRepository_CreateChatMessages(t *testing.T) {
 						msg.ChatRole,
 						msg.Content,
 						msg.ToolCallID,
-						//"[{\"ID\":\"id\",\"Index\":0,\"Function\":\"test_func\",\"Arguments\":\"{\\\"arg1\\\":0}\",\"Text\":\"\"}]"
-						[]byte(`[{"ID":"id","Index":0,"Function":"test_func","Arguments":"{\"arg1\":0}","Text":""}]`),
+						[]byte(`[{"ID":"id","Function":"test_func","Arguments":"{\"arg1\":0}","Text":""}]`),
 						msg.Model,
 						msg.CreatedAt,
 					).
@@ -66,7 +64,7 @@ func TestChatMessageRepository_CreateChatMessages(t *testing.T) {
 						msg.ChatRole,
 						msg.Content,
 						msg.ToolCallID,
-						[]byte(`[{"ID":"id","Index":0,"Function":"test_func","Arguments":"{\"arg1\":0}","Text":""}]`),
+						[]byte(`[{"ID":"id","Function":"test_func","Arguments":"{\"arg1\":0}","Text":""}]`),
 						msg.Model,
 						msg.CreatedAt,
 					).
