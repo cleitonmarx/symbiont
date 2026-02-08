@@ -85,6 +85,9 @@ func (c DRMAPIClient) ChatStream(ctx context.Context, req ChatRequest, onChunk C
 	}
 
 	req.Stream = true
+	req.StreamOptions = &StreamOptions{
+		IncludeUsage: true,
+	}
 
 	httpReq, err := c.newRequest(ctx, http.MethodPost, "/engines/v1/chat/completions", req)
 	if err != nil {

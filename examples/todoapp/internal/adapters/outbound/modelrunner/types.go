@@ -28,13 +28,13 @@ type ToolFunc struct {
 	Description string             `json:"description"`
 	Name        string             `json:"name"`
 	Parameters  ToolFuncParameters `json:"parameters"`
-	Required    []string           `json:"required,omitempty"`
 }
 
 // ToolFuncParameters represents the parameters schema for a function tool (OpenAI JSON Schema)
 type ToolFuncParameters struct {
 	Type                 string                             `json:"type"`
 	Properties           map[string]ToolFuncParameterDetail `json:"properties"`
+	Required             []string                           `json:"required,omitempty"`
 	AdditionalProperties bool                               `json:"additionalProperties"`
 }
 
