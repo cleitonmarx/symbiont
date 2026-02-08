@@ -2,7 +2,6 @@ package domain
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -85,10 +84,8 @@ type LLMToolFunctionParameterDetail struct {
 
 // LLMStreamEventMeta contains metadata for a streaming chat session
 type LLMStreamEventMeta struct {
-	ConversationID     string
 	UserMessageID      uuid.UUID
 	AssistantMessageID uuid.UUID
-	StartedAt          time.Time
 }
 
 // LLMStreamEventDelta contains a text delta from the stream
@@ -99,7 +96,6 @@ type LLMStreamEventDelta struct {
 // LLMStreamEventToolCall contains a function call delta from the stream
 type LLMStreamEventToolCall struct {
 	ID        string
-	Index     int
 	Function  string
 	Arguments string
 	Text      string
