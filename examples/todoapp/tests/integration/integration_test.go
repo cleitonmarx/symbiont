@@ -1,4 +1,4 @@
-//--go:build integration
+//go:build integration
 
 package integration
 
@@ -51,7 +51,7 @@ func TestMain(m *testing.M) {
 				"PUBSUB_TOPIC_ID":             "Todo",
 				"PUBSUB_SUBSCRIPTION_ID":      "todo_summary_generator",
 				"LLM_MODEL_HOST":              "http://localhost:12434",
-				"LLM_MODEL":                   "qwen2.5:7B-Q4_0",
+				"LLM_SUMMARY_MODEL":           "qwen3:8B-Q4_0",
 				"LLM_EMBEDDING_MODEL":         "embeddinggemma:300M-Q8_0",
 			},
 		},
