@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/cleitonmarx/symbiont/depend"
@@ -97,43 +99,43 @@ func (lft TodoFetcherTool) Definition() domain.LLMToolDefinition {
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "fetch_todos",
-			Description: "Fetch todos by keyword. Use ONLY when you need to find existing items. Provide all parameters exactly as specified (integers for page/page_size, string for search_term). Do NOT include extra keys. Do NOT call repeatedly with the same parameters.",
+			Description: "List existing todos with explicit pagination. Always pass page and page_size, start with page=1, and use returned next_page to keep fetching when full coverage is needed. Send a strict JSON object using only: page, page_size, status, search_term, sort_by, due_after, due_before. page and page_size must be positive integers. status must be OPEN or DONE. sort_by must be one of: dueDateAsc, dueDateDesc, createdAtAsc, createdAtDesc, similarityAsc, similarityDesc (use similarity sort only with search_term). due_after and due_before must be provided together in YYYY-MM-DD format. Avoid repeated identical calls. Valid: {\"page\":1,\"page_size\":10,\"status\":\"OPEN\"}. Invalid: {\"page\":\"1\",\"note\":\"x\"}.",
 			Parameters: domain.LLMToolFunctionParameters{
 				Type: "object",
 				Properties: map[string]domain.LLMToolFunctionParameterDetail{
 					"page": {
 						Type:        "integer",
-						Description: "Page number (starting from 1). REQUIRED. Integer only.",
+						Description: "Page number starting from 1. REQUIRED on every fetch_todos call. Integer only.",
 						Required:    true,
 					},
 					"page_size": {
 						Type:        "integer",
-						Description: "Items per page (1–30). REQUIRED. Integer only.",
+						Description: "Items per page. REQUIRED on every fetch_todos call. Positive integer only.",
 						Required:    true,
 					},
 					"status": {
 						Type:        "string",
-						Description: "Filter by status: OPEN or DONE (optional).",
+						Description: "Optional status filter. Allowed values: OPEN or DONE.",
 						Required:    false,
 					},
 					"search_term": {
 						Type:        "string",
-						Description: "Keyword/phrase to search (e.g., 'dentist', 'shopping', 'groceries').",
+						Description: "Optional search text used to find similar todos (e.g., dentist, groceries).",
 						Required:    false,
 					},
 					"sort_by": {
 						Type:        "string",
-						Description: "Sort by 'dueDateAsc', 'dueDateDesc', 'createdAtAsc', 'createdAtDesc' (optional).",
+						Description: "Optional sort. Allowed: dueDateAsc, dueDateDesc, createdAtAsc, createdAtDesc, similarityAsc, similarityDesc. Use similarity sort only with search_term.",
 						Required:    false,
 					},
 					"due_after": {
 						Type:        "string",
-						Description: "Filter todos due after this date (ISO 8601 format, optional). Can be only used together with due_before.",
+						Description: "Optional lower due-date bound in YYYY-MM-DD. Must be provided together with due_before.",
 						Required:    false,
 					},
 					"due_before": {
 						Type:        "string",
-						Description: "Filter todos due before this date (ISO 8601 format, optional). Can be only used together with due_after.",
+						Description: "Optional upper due-date bound in YYYY-MM-DD. Must be provided together with due_after and should not be earlier than due_after.",
 						Required:    false,
 					},
 				},
@@ -157,7 +159,7 @@ func (lft TodoFetcherTool) Call(ctx context.Context, call domain.LLMStreamEventT
 		PageSize: 10, // default page size
 	}
 
-	err := json.Unmarshal([]byte(call.Arguments), &params)
+	err := unmarshalToolArguments(call.Arguments, &params)
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
@@ -288,18 +290,18 @@ func (tct TodoCreatorTool) Definition() domain.LLMToolDefinition {
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "create_todo",
-			Description: "Create ONE new todo. REQUIRED keys: title (string), due_date ISO 8601 string. Do NOT include extra keys.",
+			Description: "Create exactly one todo. Required keys: title (string) and due_date (YYYY-MM-DD). No extra keys. Valid: {\"title\":\"Pay rent\",\"due_date\":\"2026-04-30\"}. Invalid: {\"title\":\"Pay rent\",\"due\":\"tomorrow\",\"priority\":\"high\"}.",
 			Parameters: domain.LLMToolFunctionParameters{
 				Type: "object",
 				Properties: map[string]domain.LLMToolFunctionParameterDetail{
 					"title": {
 						Type:        "string",
-						Description: "Short task title. REQUIRED.",
+						Description: "Todo title. REQUIRED.",
 						Required:    true,
 					},
 					"due_date": {
 						Type:        "string",
-						Description: "ISO 8601 date string. REQUIRED.",
+						Description: "Due date. REQUIRED. Use YYYY-MM-DD.",
 						Required:    true,
 					},
 				},
@@ -315,7 +317,7 @@ func (tct TodoCreatorTool) Call(ctx context.Context, call domain.LLMStreamEventT
 		DueDate string `json:"due_date"`
 	}{}
 
-	err := json.Unmarshal([]byte(call.Arguments), &params)
+	err := unmarshalToolArguments(call.Arguments, &params)
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
@@ -379,7 +381,7 @@ func (tut TodoMetaUpdaterTool) Definition() domain.LLMToolDefinition {
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "update_todo",
-			Description: "Update ONE existing todo. REQUIRED keys: id (UUID string) Optional: title, status. Do NOT include extra keys.",
+			Description: "Update metadata for exactly one existing todo. Required key: id (UUID). Optional keys: title and status. Use this tool only for title/status changes (never due date). status must be OPEN or DONE. No extra keys. Valid: {\"id\":\"<uuid>\",\"status\":\"DONE\"}. Invalid: {\"id\":\"<uuid>\",\"due_date\":\"2026-04-30\"}.",
 			Parameters: domain.LLMToolFunctionParameters{
 				Type: "object",
 				Properties: map[string]domain.LLMToolFunctionParameterDetail{
@@ -412,7 +414,7 @@ func (tut TodoMetaUpdaterTool) Call(ctx context.Context, call domain.LLMStreamEv
 		Status *string `json:"status"`
 	}{}
 
-	err := json.Unmarshal([]byte(call.Arguments), &params)
+	err := unmarshalToolArguments(call.Arguments, &params)
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
@@ -477,7 +479,7 @@ func (tdut TodoDueDateUpdaterTool) Definition() domain.LLMToolDefinition {
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "update_todo_due_date",
-			Description: "Update the due date of ONE existing todo. REQUIRED keys: id (UUID string) and due_date (ISO8601). Do NOT include extra keys.",
+			Description: "Update due date for exactly one existing todo. Required keys: id (UUID string) and due_date (YYYY-MM-DD). Use this tool only for due-date changes. No extra keys. Valid: {\"id\":\"<uuid>\",\"due_date\":\"2026-04-30\"}. Invalid: {\"id\":\"<uuid>\",\"status\":\"DONE\"}.",
 			Parameters: domain.LLMToolFunctionParameters{
 				Type: "object",
 				Properties: map[string]domain.LLMToolFunctionParameterDetail{
@@ -488,7 +490,7 @@ func (tdut TodoDueDateUpdaterTool) Definition() domain.LLMToolDefinition {
 					},
 					"due_date": {
 						Type:        "string",
-						Description: "ISO8601 date string. REQUIRED.",
+						Description: "Due date. REQUIRED. Use YYYY-MM-DD.",
 						Required:    true,
 					},
 				},
@@ -504,7 +506,7 @@ func (tdut TodoDueDateUpdaterTool) Call(ctx context.Context, call domain.LLMStre
 		DueDate string    `json:"due_date"`
 	}{}
 
-	err := json.Unmarshal([]byte(call.Arguments), &params)
+	err := unmarshalToolArguments(call.Arguments, &params)
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
@@ -574,7 +576,7 @@ func (tdt TodoDeleterTool) Definition() domain.LLMToolDefinition {
 		Type: "function",
 		Function: domain.LLMToolFunction{
 			Name:        "delete_todo",
-			Description: "Delete ONE todo by id (UUID). REQUIRED key: id. Do NOT include extra keys. Call fetch_todos first if you don't have the UUID.",
+			Description: "Delete exactly one todo by id. Required key: id (UUID string). No extra keys. If id is unknown, call fetch_todos first. Valid: {\"id\":\"<uuid>\"}. Invalid: {\"id\":\"<uuid>\",\"confirm\":true}.",
 			Parameters: domain.LLMToolFunctionParameters{
 				Type: "object",
 				Properties: map[string]domain.LLMToolFunctionParameterDetail{
@@ -595,7 +597,7 @@ func (tdt TodoDeleterTool) Call(ctx context.Context, call domain.LLMStreamEventT
 		ID uuid.UUID `json:"id"`
 	}{}
 
-	err := json.Unmarshal([]byte(call.Arguments), &params)
+	err := unmarshalToolArguments(call.Arguments, &params)
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
@@ -638,6 +640,26 @@ func extractDateParam(param string, history []domain.LLMChatMessage, referenceDa
 		}
 	}
 	return time.Time{}, false
+}
+
+// unmarshalToolArguments unmarshals the tool arguments from a JSON string into
+// the target struct, ensuring that only a single JSON object is present and that there are no unknown fields.
+func unmarshalToolArguments(arguments string, target any) error {
+	decoder := json.NewDecoder(strings.NewReader(arguments))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+
+	// Reject trailing JSON values after the first object.
+	var extra any
+	if err := decoder.Decode(&extra); err != nil {
+		if err == io.EOF {
+			return nil
+		}
+		return err
+	}
+	return fmt.Errorf("tool arguments must contain a single JSON object")
 }
 
 type InitLLMToolRegistry struct {
