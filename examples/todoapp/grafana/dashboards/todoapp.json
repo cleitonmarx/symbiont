@@ -202,7 +202,7 @@
     },
     {
       "type": "timeseries",
-      "title": "LLM Tokens Used per Day (Embedding vs Prompt+Completion)",
+      "title": "LLM Tokens Used per Month (Embedding vs Prompt+Completion)",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
@@ -211,17 +211,72 @@
       },
       "targets": [
         {
-          "expr": "increase(llm_tokens_used_total{job=\"$job\", token_type=\"embedding\"}[1d])",
+          "expr": "sum(increase(llm_tokens_used_total{job=\"$job\", token_type=\"embedding\"}[30d]))",
           "legendFormat": "embedding",
           "refId": "A"
         },
         {
-          "expr": "sum(increase(llm_tokens_used_total{job=\"$job\", token_type=~\"prompt|completion\"}[1d]))",
+          "expr": "sum(increase(llm_tokens_used_total{job=\"$job\", token_type=~\"prompt|completion\"}[30d]))",
           "legendFormat": "prompt+completion",
           "refId": "B"
         }
       ],
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 40 }
+      "timeFrom": "now/M",
+      "timeTo": "now",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 }
+    },
+    {
+      "type": "barchart",
+      "title": "LLM Tokens Used per Day (Embedding vs Prompt+Completion)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 100,
+        "showValue": "auto",
+        "stacking": "normal"
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(llm_tokens_used_total{job=\"$job\", token_type=\"embedding\"}[1d])) or vector(0)",
+          "legendFormat": "embedding (prev days)",
+          "refId": "A",
+          "range": true,
+          "instant": false,
+          "interval": "1d",
+          "timeShift": "1d"
+        },
+        {
+          "expr": "sum(increase(llm_tokens_used_total{job=\"$job\", token_type=~\"prompt|completion\"}[1d])) or vector(0)",
+          "legendFormat": "prompt+completion (prev days)",
+          "refId": "B",
+          "range": true,
+          "instant": false,
+          "interval": "1d",
+          "timeShift": "1d"
+        },
+        {
+          "expr": "sum(increase(llm_tokens_used_total{job=\"$job\", token_type=\"embedding\"}[1d])) or vector(0)",
+          "legendFormat": "embedding (today)",
+          "refId": "C",
+          "instant": true
+        },
+        {
+
+          "expr": "sum(increase(llm_tokens_used_total{job=\"$job\", token_type=~\"prompt|completion\"}[1d])) or vector(0)",
+          "legendFormat": "prompt+completion (today)",
+          "refId": "D",
+          "instant": true
+        }
+      ],
+      "timeFrom": "now/M",
+      "timeTo": "now",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 }
     }
   ]
 }
