@@ -66,6 +66,8 @@ models:
     runtime_flags:
       - "--batch-size"
       - "1024"
+      - "--reasoning-budget"
+      - "0"
   embeddinggemma:
     model: embeddinggemma:300M-Q8_0
     
