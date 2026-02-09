@@ -1,9 +1,3 @@
-// Package llm provides a small, backend-agnostic client for a Docker-hosted
-// OpenAI-compatible chat-completions endpoint (e.g. llama.cpp server).
-//
-// It intentionally ignores any non-standard fields such as "reasoning_content"
-// and returns the assistant "content" (which may itself be JSON if you prompt
-// the model to output JSON).
 package modelrunner
 
 import (
