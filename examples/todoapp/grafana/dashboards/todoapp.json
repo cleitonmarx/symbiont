@@ -21,6 +21,12 @@
   },
   "panels": [
     {
+      "type": "row",
+      "title": "HTTP Server Metrics",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
       "type": "timeseries",
       "title": "HTTP Server RPS",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -36,7 +42,7 @@
           "refId": "A"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 }
     },
     {
       "type": "timeseries",
@@ -54,7 +60,7 @@
           "refId": "A"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 }
     },
     {
       "type": "timeseries",
@@ -72,7 +78,7 @@
           "refId": "A"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 }
     },
     {
       "type": "timeseries",
@@ -90,7 +96,13 @@
           "refId": "A"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 }
+    },
+    {
+      "type": "row",
+      "title": "HTTP Client Metrics",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 }
     },
     {
       "type": "timeseries",
@@ -108,7 +120,7 @@
           "refId": "A"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 }
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 }
     },
     {
       "type": "timeseries",
@@ -126,7 +138,13 @@
           "refId": "A"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 }
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 }
+    },
+    {
+      "type": "row",
+      "title": "Database Metrics",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 }
     },
     {
       "type": "timeseries",
@@ -144,7 +162,7 @@
           "refId": "A"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 }
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 }
     },
     {
       "type": "timeseries",
@@ -162,7 +180,7 @@
           "refId": "A"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 }
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 27 }
     },
     {
       "type": "timeseries",
@@ -180,7 +198,7 @@
           "refId": "A"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 }
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 35 }
     },
     {
       "type": "timeseries",
@@ -198,7 +216,13 @@
           "refId": "A"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 }
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 35 }
+    },
+    {
+      "type": "row",
+      "title": "LLM Token Usage",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 43 }
     },
     {
       "type": "timeseries",
@@ -223,60 +247,7 @@
       ],
       "timeFrom": "now/M",
       "timeTo": "now",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 }
-    },
-    {
-      "type": "barchart",
-      "title": "LLM Tokens Used per Day (Embedding vs Prompt+Completion)",
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        }
-      },
-      "options": {
-        "orientation": "auto",
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 100,
-        "showValue": "auto",
-        "stacking": "normal"
-      },
-      "targets": [
-        {
-          "expr": "sum(increase(llm_tokens_used_total{job=\"$job\", token_type=\"embedding\"}[1d])) or vector(0)",
-          "legendFormat": "embedding (prev days)",
-          "refId": "A",
-          "range": true,
-          "instant": false,
-          "interval": "1d",
-          "timeShift": "1d"
-        },
-        {
-          "expr": "sum(increase(llm_tokens_used_total{job=\"$job\", token_type=~\"prompt|completion\"}[1d])) or vector(0)",
-          "legendFormat": "prompt+completion (prev days)",
-          "refId": "B",
-          "range": true,
-          "instant": false,
-          "interval": "1d",
-          "timeShift": "1d"
-        },
-        {
-          "expr": "sum(increase(llm_tokens_used_total{job=\"$job\", token_type=\"embedding\"}[1d])) or vector(0)",
-          "legendFormat": "embedding (today)",
-          "refId": "C",
-          "instant": true
-        },
-        {
-
-          "expr": "sum(increase(llm_tokens_used_total{job=\"$job\", token_type=~\"prompt|completion\"}[1d])) or vector(0)",
-          "legendFormat": "prompt+completion (today)",
-          "refId": "D",
-          "instant": true
-        }
-      ],
-      "timeFrom": "now/M",
-      "timeTo": "now",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 }
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 44 }
     }
   ]
 }
