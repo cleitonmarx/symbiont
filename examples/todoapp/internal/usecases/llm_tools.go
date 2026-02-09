@@ -159,11 +159,13 @@ func (lft TodoFetcherTool) Call(ctx context.Context, call domain.LLMStreamEventT
 		PageSize: 10, // default page size
 	}
 
+	exampleArgs := `{"page":1,"page_size":50,"status":"OPEN", "search_term":"dentist appointments", "sort_by":"dueDateAsc", "due_after":"2026-04-01", "due_before":"2026-04-30"}`
+
 	err := unmarshalToolArguments(call.Arguments, &params)
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
-			Content: fmt.Sprintf(`{"error":"invalid_arguments","details":"%s"}`, err.Error()),
+			Content: fmt.Sprintf(`{"error":"invalid_arguments","details":"%s", "example":%s}`, err.Error(), exampleArgs),
 		}
 	}
 
@@ -317,11 +319,13 @@ func (tct TodoCreatorTool) Call(ctx context.Context, call domain.LLMStreamEventT
 		DueDate string `json:"due_date"`
 	}{}
 
+	exampleArgs := `{"title":"Pay rent","due_date":"2026-04-30"}`
+
 	err := unmarshalToolArguments(call.Arguments, &params)
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
-			Content: fmt.Sprintf(`{"error":"invalid_arguments","details":"%s"}`, err.Error()),
+			Content: fmt.Sprintf(`{"error":"invalid_arguments","details":"%s", "example":%s}`, err.Error(), exampleArgs),
 		}
 	}
 
@@ -330,7 +334,7 @@ func (tct TodoCreatorTool) Call(ctx context.Context, call domain.LLMStreamEventT
 	if !found {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
-			Content: `{"error":"invalid_due_date","details":"Due date cannot be empty. ISO 8601 string is required."}`,
+			Content: fmt.Sprintf(`{"error":"invalid_due_date","details":"Due date cannot be empty. ISO 8601 string is required.", "example":%s}`, exampleArgs),
 		}
 	}
 
@@ -346,7 +350,7 @@ func (tct TodoCreatorTool) Call(ctx context.Context, call domain.LLMStreamEventT
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
-			Content: fmt.Sprintf(`{"error":"create_todo_error","details":"%s"}`, err.Error()),
+			Content: fmt.Sprintf(`{"error":"create_todo_error","details":"%s", "example":%s}`, err.Error(), exampleArgs),
 		}
 	}
 
@@ -414,11 +418,13 @@ func (tut TodoMetaUpdaterTool) Call(ctx context.Context, call domain.LLMStreamEv
 		Status *string `json:"status"`
 	}{}
 
+	exampleArgs := `{"id":"<uuid>","status":"DONE", "title":"New title"}`
+
 	err := unmarshalToolArguments(call.Arguments, &params)
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
-			Content: fmt.Sprintf(`{"error":"invalid_arguments","details":"%s"}`, err.Error()),
+			Content: fmt.Sprintf(`{"error":"invalid_arguments","details":"%s", "example":%s}`, err.Error(), exampleArgs),
 		}
 	}
 
@@ -426,7 +432,7 @@ func (tut TodoMetaUpdaterTool) Call(ctx context.Context, call domain.LLMStreamEv
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
-			Content: fmt.Sprintf(`{"error":"invalid_todo_id","details":"%s"}`, err.Error()),
+			Content: fmt.Sprintf(`{"error":"invalid_todo_id","details":"%s", "example":%s}`, err.Error(), exampleArgs),
 		}
 	}
 
@@ -443,7 +449,7 @@ func (tut TodoMetaUpdaterTool) Call(ctx context.Context, call domain.LLMStreamEv
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
-			Content: fmt.Sprintf(`{"error":"update_todo_error","details":"%s"}`, err.Error()),
+			Content: fmt.Sprintf(`{"error":"update_todo_error","details":"%s", "example":%s}`, err.Error(), exampleArgs),
 		}
 	}
 
@@ -506,18 +512,20 @@ func (tdut TodoDueDateUpdaterTool) Call(ctx context.Context, call domain.LLMStre
 		DueDate string    `json:"due_date"`
 	}{}
 
+	exampleArgs := `{"id":"<uuid>","due_date":"2026-04-30"}`
+
 	err := unmarshalToolArguments(call.Arguments, &params)
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
-			Content: fmt.Sprintf(`{"error":"invalid_arguments","details":"%s"}`, err.Error()),
+			Content: fmt.Sprintf(`{"error":"invalid_arguments","details":"%s", "example":%s}`, err.Error(), exampleArgs),
 		}
 	}
 
 	if params.ID == uuid.Nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
-			Content: `{"error":"invalid_todo_id","details":"Todo ID cannot be nil."}`,
+			Content: fmt.Sprintf(`{"error":"invalid_todo_id","details":"Todo ID cannot be nil.", "example":%s}`, exampleArgs),
 		}
 	}
 
@@ -526,7 +534,7 @@ func (tdut TodoDueDateUpdaterTool) Call(ctx context.Context, call domain.LLMStre
 	if !found {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
-			Content: `{"error":"invalid_due_date","details":"Due date cannot be empty. ISO 8601 string is required."}`,
+			Content: fmt.Sprintf(`{"error":"invalid_due_date","details":"Due date cannot be empty. ISO 8601 string is required.", "example":%s}`, exampleArgs),
 		}
 	}
 
@@ -597,11 +605,13 @@ func (tdt TodoDeleterTool) Call(ctx context.Context, call domain.LLMStreamEventT
 		ID uuid.UUID `json:"id"`
 	}{}
 
+	exampleArgs := `{"id":"<uuid>"}`
+
 	err := unmarshalToolArguments(call.Arguments, &params)
 	if err != nil {
 		return domain.LLMChatMessage{
 			Role:    domain.ChatRole_Tool,
-			Content: fmt.Sprintf(`{"error":"invalid_arguments","details":"%s"}`, err.Error()),
+			Content: fmt.Sprintf(`{"error":"invalid_arguments","details":"%s", "example":%s}`, err.Error(), exampleArgs),
 		}
 	}
 
