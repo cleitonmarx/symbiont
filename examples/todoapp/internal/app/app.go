@@ -6,6 +6,7 @@ import (
 	stdlog "log"
 
 	"github.com/cleitonmarx/symbiont"
+	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/graphql"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/http"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/workers"
@@ -76,10 +77,10 @@ func (i ReportLoggerIntrospector) Introspect(ctx context.Context, r introspectio
 	if err != nil {
 		return err
 	}
+	depend.RegisterNamed(mermaid.GenerateIntrospectionGraph(r), "dependency-graph-mermaid")
+
 	i.Logger.Println("=== TODOAPP INTROSPECTION REPORT ===")
 	i.Logger.Println(string(b))
-	i.Logger.Println("=== MERMAID GRAPH ===")
-	i.Logger.Println(mermaid.GenerateIntrospectionGraph(r))
 	i.Logger.Println("=== END OF REPORT ===")
 	return nil
 }

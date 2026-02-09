@@ -54,6 +54,9 @@ func (api TodoAppServer) Run(ctx context.Context) error {
 	}
 	mux.Handle("/", http.FileServerFS(sub))
 
+	// Register introspection endpoint for debugging and testing purposes
+	mux.HandleFunc("/introspect", IntrospectHandler)
+
 	// get an `http.Handler` that we can use
 	h := gen.HandlerWithOptions(api, gen.StdHTTPServerOptions{
 		BaseRouter: mux,
