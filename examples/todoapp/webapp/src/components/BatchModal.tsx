@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { gqlListTodos, gqlBatchUpdateTodos, gqlBatchDeleteTodos } from '../services/batchGraphqlApi';
 import type { ListTodosQuery, TodoStatus, TodoSortBy } from '../types/graphql';
+import { DateRangePicker } from './ui/DateRangePicker';
 
 interface BatchModalProps {
   open: boolean;
@@ -36,7 +37,11 @@ const BatchModal: React.FC<BatchModalProps> = ({
   const selectAllHeaderRef = useRef<HTMLInputElement | null>(null);
   const selectAllMobileRef = useRef<HTMLInputElement | null>(null);
 
-  const isModernLayout = hideTrigger;
+	const isModernLayout = hideTrigger;
+	const handleFilterDateRangeChange = (startDate: string, endDate: string) => {
+		setDueAfter(startDate);
+		setDueBefore(endDate);
+	};
 
   useEffect(() => {
     setShow(open);
@@ -295,26 +300,14 @@ const BatchModal: React.FC<BatchModalProps> = ({
                 </div>
               </div>
 
-              <div className="filter-group">
-                <label>Due After:</label>
-                <input
-                  type="date"
-                  value={dueAfter}
-                  onChange={(event) => setDueAfter(event.target.value)}
-                  max={dueBefore || undefined}
-                  className="date-input"
-                  style={isModernLayout ? undefined : { marginRight: '0.5rem' }}
-                />
-              </div>
-
-              <div className="filter-group">
-                <label>Due Before:</label>
-                <input
-                  type="date"
-                  value={dueBefore}
-                  onChange={(event) => setDueBefore(event.target.value)}
-                  min={dueAfter || undefined}
-                  className="date-input"
+              <div className="filter-group ui-batch-date-range-group">
+                <label htmlFor="batch-date-range-picker">Due Range:</label>
+                <DateRangePicker
+                  id="batch-date-range-picker"
+                  startDate={dueAfter}
+                  endDate={dueBefore}
+                  onChange={handleFilterDateRangeChange}
+                  placeholder="Select date range"
                 />
               </div>
 

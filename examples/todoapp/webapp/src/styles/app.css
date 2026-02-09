@@ -320,7 +320,7 @@
   box-shadow: var(--ui-shadow-1);
   position: sticky;
   top: 4.9rem;
-  z-index: 12;
+  z-index: 52;
 }
 
 .ui-controls-size {
@@ -353,7 +353,8 @@
 .ui-controls .ui-input,
 .ui-controls .ui-select,
 .ui-controls .ui-btn,
-.ui-controls .ui-segmented {
+.ui-controls .ui-segmented,
+.ui-controls .ui-date-range-trigger {
   min-height: var(--ui-control-height);
   height: var(--ui-control-height);
 }
@@ -392,15 +393,17 @@
 .ui-controls-advanced {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 240px)) minmax(0, auto);
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
   gap: 0.85rem;
   padding-top: 0.1rem;
   border-top: 1px dashed var(--ui-border);
   margin-top: 0.1rem;
+  align-items: end;
 }
 
-.ui-controls-date {
+.ui-controls-date-range {
   min-width: 0;
+  max-width: 340px;
 }
 
 .ui-controls-advanced-actions {
@@ -456,6 +459,197 @@
 .ui-textarea:focus {
   outline: 2px solid rgba(15, 97, 215, 0.2);
   border-color: #7eb0ff;
+}
+
+.ui-date-range {
+  position: relative;
+  width: 100%;
+}
+
+.ui-date-range-trigger {
+  width: 100%;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--ui-text);
+  padding: 0.56rem 0.7rem;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+
+.ui-date-range-trigger.placeholder {
+  color: var(--ui-muted);
+}
+
+.ui-date-range-trigger:focus-visible {
+  outline: 2px solid rgba(15, 97, 215, 0.2);
+  border-color: #7eb0ff;
+}
+
+.ui-date-range-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-date-range-caret {
+  color: var(--ui-muted);
+  font-size: 0.92rem;
+  line-height: 1;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  background: var(--ui-surface-alt);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.ui-date-range-popover {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  z-index: 80;
+  width: min(46rem, calc(100vw - 1rem));
+  max-width: calc(100vw - 1rem);
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-2);
+  padding: 0.55rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.ui-date-range.right .ui-date-range-popover {
+  left: auto;
+  right: 0;
+}
+
+.ui-date-range-calendars {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+}
+
+.ui-date-range-calendar-pane {
+  min-width: 0;
+  padding: 0 0.15rem;
+}
+
+.ui-date-range-calendar-pane + .ui-date-range-calendar-pane {
+  border-left: 1px solid var(--ui-border);
+}
+
+.ui-date-range-calendar .rdp-root {
+  --rdp-accent-color: var(--ui-primary);
+  --rdp-accent-background-color: #dbe9ff;
+  --rdp-day-height: 2.3rem;
+  --rdp-day-width: 2.3rem;
+  --rdp-day_button-height: 2.15rem;
+  --rdp-day_button-width: 2.15rem;
+  --rdp-day_button-border-radius: 999px;
+  --rdp-nav_button-height: 2rem;
+  --rdp-nav_button-width: 2rem;
+  --rdp-nav-height: 2.3rem;
+  --rdp-months-gap: 0.85rem;
+  --rdp-range_middle-background-color: #dbe9ff;
+  --rdp-range_start-date-background-color: var(--ui-primary);
+  --rdp-range_end-date-background-color: var(--ui-primary);
+  color: var(--ui-text);
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+.ui-date-range-calendar .rdp-month_caption {
+  font-size: 1.02rem;
+  font-weight: 600;
+}
+
+.ui-date-range-calendar .rdp-dropdowns {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+}
+
+.ui-date-range-calendar .rdp-dropdown_root {
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  padding: 0 0.2rem;
+}
+
+.ui-date-range-calendar .rdp-dropdown {
+  border: 0;
+  background: transparent;
+  color: var(--ui-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ui-date-range-calendar .rdp-chevron {
+  fill: var(--ui-muted);
+}
+
+.ui-date-range-calendar .rdp-weekday {
+  font-size: 0.86rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.ui-date-range-calendar .rdp-month_grid {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.ui-date-range-calendar .rdp-month {
+  width: 100%;
+}
+
+.ui-date-range-calendar .rdp-selected {
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.ui-date-range-calendar .rdp-selected .rdp-day_button,
+.ui-date-range-calendar .rdp-range_start .rdp-day_button,
+.ui-date-range-calendar .rdp-range_end .rdp-day_button {
+  background: var(--ui-primary);
+  color: #ffffff;
+}
+
+.ui-date-range-calendar .rdp-day_button {
+  border: 1px solid transparent;
+}
+
+.ui-date-range-calendar .rdp-day_button:hover:not([disabled]) {
+  background: rgba(15, 97, 215, 0.12);
+}
+
+.ui-date-range-calendar .rdp-range_middle .rdp-day_button {
+  border-radius: 0;
+  color: var(--ui-primary-strong);
+  background: #dbe9ff;
+}
+
+.ui-date-range-calendar .rdp-range_middle {
+  background: #dbe9ff;
+}
+
+.ui-date-range-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  border-top: 1px solid var(--ui-border);
+  padding-top: 0.5rem;
 }
 
 .ui-state {
@@ -1064,6 +1258,7 @@
   box-shadow: var(--ui-shadow-2);
   font-family: inherit;
   font-size: 0.9rem;
+  overflow: visible;
 }
 
 .ui-app .ui-batch-dialog button,
@@ -1198,7 +1393,8 @@
 
 .ui-app .ui-batch-filter-bar .date-input,
 .ui-app .ui-batch-filter-bar .sort-select,
-.ui-app .ui-batch-filter-bar .search-input {
+.ui-app .ui-batch-filter-bar .search-input,
+.ui-app .ui-batch-filter-bar .ui-date-range-trigger {
   min-height: var(--ui-batch-control-height);
   height: var(--ui-batch-control-height);
   border: 1px solid var(--ui-border);
@@ -1211,6 +1407,20 @@
   padding-bottom: 0;
   font-size: 0.85rem;
   color: var(--ui-text);
+}
+
+.ui-app .ui-batch-filter-bar .ui-batch-date-range-group {
+  min-width: 210px;
+  flex: 1 1 240px;
+}
+
+.ui-app .ui-batch-filter-bar .ui-batch-date-range-group .ui-date-range {
+  width: 100%;
+}
+
+.ui-app .ui-batch-filter-bar .ui-batch-date-range-group .ui-date-range-popover {
+  width: min(44rem, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
 }
 
 .ui-app .ui-batch-filter-bar .ui-batch-search-group {
@@ -1520,6 +1730,38 @@
   .ui-rail {
     margin-left: -86px;
   }
+
+  .ui-date-range-popover {
+    width: min(31rem, calc(100vw - 1rem));
+  }
+
+  .ui-date-range-calendars {
+    grid-template-columns: 1fr;
+  }
+
+  .ui-date-range-calendar-pane {
+    padding: 0;
+  }
+
+  .ui-date-range-calendar-pane + .ui-date-range-calendar-pane {
+    border-left: 0;
+    border-top: 1px solid var(--ui-border);
+    padding-top: 0.45rem;
+    margin-top: 0.2rem;
+  }
+
+  .ui-date-range-calendar .rdp-root {
+    --rdp-day-height: 2.08rem;
+    --rdp-day-width: 2.08rem;
+    --rdp-day_button-height: 1.98rem;
+    --rdp-day_button-width: 1.98rem;
+    font-size: 0.84rem;
+  }
+
+  .ui-app .ui-batch-filter-bar .ui-batch-date-range-group .ui-date-range-popover {
+    width: min(31rem, calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
+  }
 }
 
 @media (max-width: 1100px) {
@@ -1559,11 +1801,11 @@
   }
 
   .ui-controls-advanced {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .ui-controls-advanced-actions {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 
   .ui-pagination {
@@ -1746,6 +1988,48 @@
     position: relative;
     z-index: 1;
     padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .ui-date-range-popover {
+    width: min(20.5rem, calc(100vw - 1rem));
+    max-width: calc(100vw - 1rem);
+    padding: 0.35rem;
+  }
+
+  .ui-date-range-calendars {
+    grid-template-columns: 1fr;
+  }
+
+  .ui-date-range-calendar-pane {
+    padding: 0;
+  }
+
+  .ui-date-range-calendar-pane + .ui-date-range-calendar-pane {
+    border-left: 0;
+    border-top: 1px solid var(--ui-border);
+    padding-top: 0.35rem;
+    margin-top: 0.15rem;
+  }
+
+  .ui-date-range-calendar .rdp-root {
+    --rdp-day-height: 1.82rem;
+    --rdp-day-width: 1.82rem;
+    --rdp-day_button-height: 1.72rem;
+    --rdp-day_button-width: 1.72rem;
+    font-size: 0.79rem;
+  }
+
+  .ui-date-range-calendar .rdp-weekday {
+    font-size: 0.74rem;
+  }
+
+  .ui-date-range-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: var(--ui-surface);
+    padding-top: 0.45rem;
+    padding-bottom: calc(0.35rem + env(safe-area-inset-bottom, 0px));
   }
 
   .ui-app .ui-batch-content {
