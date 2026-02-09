@@ -24,7 +24,7 @@
     - Compare the current summary with the previous one.
     - Treat COMPARISON HINTS as ground truth for urgency and completion.
     - The summary is not a complete list of todos, but a brief overview of the user's task status and next steps.
-    - Write 2-3 short sentences, max.
+    - Write 2-4 short sentences, max.
     - If new tasks have been completed since the last summary, celebrate that progress.
     - When celebrating completed tasks, add a tiny, tasteful touch of humor (short and subtle, never sarcastic).
     - If DONE DELTA is positive, explicitly acknowledge completion progress.
@@ -40,7 +40,7 @@
     - HIGHLIGHT overdue or near deadline tasks as priorities, OVERDUES first.
     - Guide the user to focus on their next up tasks, mentioning their title and reason.
     - If there are no open tasks, say so.
-    - Be friendly, clear, action-oriented, and natural (not robotic).
+    - Be friendly, fun, action-oriented, and natural (not robotic).
     - Vary your phrasing for each summary, especially the first clause.
     - Suggested sentence flow:
       1) progress/context,

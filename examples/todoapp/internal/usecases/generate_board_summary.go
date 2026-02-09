@@ -5,7 +5,6 @@ import (
 	"embed"
 	"fmt"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/cleitonmarx/symbiont/depend"
@@ -17,9 +16,9 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-// CompletedSummaryQueue is a channel type for sending processed domain.BoardSummary items.
+// CompletedSummaryChannel is a channel type for sending processed domain.BoardSummary items.
 // It is used in integration tests to verify summary generation.
-type CompletedSummaryQueue chan domain.BoardSummary
+type CompletedSummaryChannel chan domain.BoardSummary
 
 // GenerateBoardSummary is the use case interface for generating a summary of the todo board.
 type GenerateBoardSummary interface {
@@ -28,12 +27,11 @@ type GenerateBoardSummary interface {
 
 // GenerateBoardSummaryImpl is the implementation of the GenerateBoardSummary use case.
 type GenerateBoardSummaryImpl struct {
-	summaryRepo  domain.BoardSummaryRepository
-	timeProvider domain.CurrentTimeProvider
-	llmClient    domain.LLMClient
-	model        string
-	queue        CompletedSummaryQueue
-	// Add dependencies here if needed
+	repo               domain.BoardSummaryRepository
+	timeProvider       domain.CurrentTimeProvider
+	llmClient          domain.LLMClient
+	model              string
+	completedSummaryCh CompletedSummaryChannel
 }
 
 // NewGenerateBoardSummaryImpl creates a new instance of GenerateBoardSummaryImpl.
@@ -42,15 +40,15 @@ func NewGenerateBoardSummaryImpl(
 	tp domain.CurrentTimeProvider,
 	c domain.LLMClient,
 	m string,
-	q CompletedSummaryQueue,
+	q CompletedSummaryChannel,
 
 ) GenerateBoardSummaryImpl {
 	return GenerateBoardSummaryImpl{
-		summaryRepo:  bsr,
-		timeProvider: tp,
-		llmClient:    c,
-		model:        m,
-		queue:        q,
+		repo:               bsr,
+		timeProvider:       tp,
+		llmClient:          c,
+		model:              m,
+		completedSummaryCh: q,
 	}
 }
 
@@ -59,42 +57,52 @@ func (gs GenerateBoardSummaryImpl) Execute(ctx context.Context) error {
 	spanCtx, span := telemetry.Start(ctx)
 	defer span.End()
 
-	summary, err := gs.generateBoardSummary(spanCtx)
+	summary, hasChanges, err := gs.generateBoardSummary(spanCtx)
 	if telemetry.RecordErrorAndStatus(span, err) {
 		return err
 	}
 
-	err = gs.summaryRepo.StoreSummary(spanCtx, summary)
+	if !hasChanges {
+		return nil
+	}
+
+	err = gs.repo.StoreSummary(spanCtx, summary)
 	if telemetry.RecordErrorAndStatus(span, err) {
 		return err
 	}
 
-	if gs.queue != nil {
-		gs.queue <- summary
+	if gs.completedSummaryCh != nil {
+		gs.completedSummaryCh <- summary
 	}
 
 	return nil
 }
 
-func (gs GenerateBoardSummaryImpl) generateBoardSummary(ctx context.Context) (domain.BoardSummary, error) {
+// generateBoardSummary calculates the new board summary content, compares it with the previous summary,
+// and generates a new summary using the LLM if there are significant changes.
+func (gs GenerateBoardSummaryImpl) generateBoardSummary(ctx context.Context) (domain.BoardSummary, bool, error) {
 
-	new, err := gs.summaryRepo.CalculateSummaryContent(ctx)
+	new, err := gs.repo.CalculateSummaryContent(ctx)
 	if err != nil {
-		return domain.BoardSummary{}, fmt.Errorf("failed to calculate summary content: %w", err)
+		return domain.BoardSummary{}, false, fmt.Errorf("failed to calculate summary content: %w", err)
 	}
 
-	previous, found, err := gs.summaryRepo.GetLatestSummary(ctx)
+	previous, found, err := gs.repo.GetLatestSummary(ctx)
 	if err != nil {
-		return domain.BoardSummary{}, fmt.Errorf("failed to get latest summary: %w", err)
+		return domain.BoardSummary{}, false, fmt.Errorf("failed to get latest summary: %w", err)
 	}
 	if !found {
 		previous.Content.Summary = "no previous summary"
 	}
 
+	if hasContentChanges := new.DiffersFrom(previous.Content); !hasContentChanges {
+		return domain.BoardSummary{}, false, nil
+	}
+
 	now := gs.timeProvider.Now()
 	promptMessages, err := buildPromptMessages(new, previous.Content)
 	if err != nil {
-		return domain.BoardSummary{}, fmt.Errorf("failed to build prompt: %w", err)
+		return domain.BoardSummary{}, false, fmt.Errorf("failed to build prompt: %w", err)
 	}
 
 	req := domain.LLMChatRequest{
@@ -107,7 +115,7 @@ func (gs GenerateBoardSummaryImpl) generateBoardSummary(ctx context.Context) (do
 
 	resp, err := gs.llmClient.Chat(ctx, req)
 	if err != nil {
-		return domain.BoardSummary{}, err
+		return domain.BoardSummary{}, false, err
 	}
 
 	new.Summary = strings.TrimSpace(resp.Content)
@@ -123,7 +131,7 @@ func (gs GenerateBoardSummaryImpl) generateBoardSummary(ctx context.Context) (do
 		SourceVersion: 1,
 	}
 
-	return summary, nil
+	return summary, true, nil
 }
 
 //go:embed prompts/summary.yml
@@ -141,12 +149,11 @@ func buildPromptMessages(new domain.BoardSummaryContent, previous domain.BoardSu
 		return nil, fmt.Errorf("failed to marshal previous summary content: %w", err)
 	}
 
-	completedCandidates, doneDelta := completedProgressHints(new, previous)
+	hints := new.BuildComparisonHints(previous)
 	completedCandidatesText := "none"
-	if len(completedCandidates) > 0 {
-		completedCandidatesText = strings.Join(completedCandidates, "; ")
+	if len(hints.CompletedCandidates) > 0 {
+		completedCandidatesText = strings.Join(hints.CompletedCandidates, "; ")
 	}
-	overdueTitlesText, nearDeadlineTitlesText, nextUpOverdueText, nextUpDueSoonText, nextUpUpcomingText, nextUpFutureText := urgencyHints(new)
 
 	file, err := summaryPrompt.Open("prompts/summary.yml")
 	if err != nil {
@@ -166,81 +173,18 @@ func buildPromptMessages(new domain.BoardSummaryContent, previous domain.BoardSu
 			inputTOON,
 			previousTOON,
 			completedCandidatesText,
-			doneDelta,
-			overdueTitlesText,
-			nearDeadlineTitlesText,
-			nextUpOverdueText,
-			nextUpDueSoonText,
-			nextUpUpcomingText,
-			nextUpFutureText,
+			hints.DoneDelta,
+			hints.OverdueTitles,
+			hints.NearDeadlineTitles,
+			hints.NextUpOverdue,
+			hints.NextUpDueSoon,
+			hints.NextUpUpcoming,
+			hints.NextUpFuture,
 		)
 		messages[i] = msg
 	}
 
 	return messages, nil
-}
-
-// urgencyHints processes the BoardSummaryContent to extract and format titles of tasks based on their urgency categories for LLM hints.
-func urgencyHints(content domain.BoardSummaryContent) (string, string, string, string, string, string) {
-	overdueTitles := normalizeTitles(content.Overdue)
-	nearDeadlineTitles := normalizeTitles(content.NearDeadline)
-
-	nextUpOverdue := []string{}
-	nextUpDueSoon := []string{}
-	nextUpUpcoming := []string{}
-	nextUpFuture := []string{}
-
-	for _, item := range content.NextUp {
-		title := strings.TrimSpace(item.Title)
-		if title == "" {
-			continue
-		}
-		switch strings.ToLower(strings.TrimSpace(item.Reason)) {
-		case "overdue":
-			nextUpOverdue = append(nextUpOverdue, title)
-		case "due within 7 days":
-			nextUpDueSoon = append(nextUpDueSoon, title)
-		case "upcoming":
-			nextUpUpcoming = append(nextUpUpcoming, title)
-		case "future":
-			nextUpFuture = append(nextUpFuture, title)
-		}
-	}
-
-	return formatTitleHints(overdueTitles),
-		formatTitleHints(nearDeadlineTitles),
-		formatTitleHints(normalizeTitles(nextUpOverdue)),
-		formatTitleHints(normalizeTitles(nextUpDueSoon)),
-		formatTitleHints(normalizeTitles(nextUpUpcoming)),
-		formatTitleHints(normalizeTitles(nextUpFuture))
-}
-
-// normalizeTitles trims whitespace, removes empty titles, deduplicates, and sorts the list of titles.
-func normalizeTitles(titles []string) []string {
-	uniq := make(map[string]struct{}, len(titles))
-	for _, title := range titles {
-		trimmed := strings.TrimSpace(title)
-		if trimmed == "" {
-			continue
-		}
-		uniq[trimmed] = struct{}{}
-	}
-
-	items := make([]string, 0, len(uniq))
-	for title := range uniq {
-		items = append(items, title)
-	}
-	sort.Strings(items)
-
-	return items
-}
-
-// formatTitleHints formats a list of titles into a single string for LLM hints, or returns "none" if the list is empty.
-func formatTitleHints(titles []string) string {
-	if len(titles) == 0 {
-		return "none"
-	}
-	return strings.Join(titles, "; ")
 }
 
 var (
@@ -262,13 +206,19 @@ func applySummarySafetyGuards(summary string, content domain.BoardSummaryContent
 		return cleaned
 	}
 
+	// Basic guardrail to prevent markdown formatting from leaking into the summary,
+	// which can cause issues for some LLMs and is not needed for our use case.
+	cleaned = strings.ReplaceAll(cleaned, "**", "")
 	// Guardrail for weaker models: if there are no overdue tasks in current facts,
 	// do not allow overdue/late phrasing to leak into the final summary text.
 	if len(content.Overdue) == 0 {
+
+		// Use placeholders to prevent regexes from interfering with each other
 		cleaned = reNoOverdueTasks.ReplaceAllString(cleaned, "__NO_OVERDUE_TASKS__")
 		cleaned = reNoTasksAreOverdue.ReplaceAllString(cleaned, "__NO_TASKS_ARE_OVERDUE__")
 		cleaned = reNothingIsOverdue.ReplaceAllString(cleaned, "__NOTHING_IS_OVERDUE__")
 
+		// Remove any remaining overdue/late qualifiers that are not supported by current facts
 		cleaned = reOverdueQualifier.ReplaceAllString(cleaned, "")
 		cleaned = reLateQualifier.ReplaceAllString(cleaned, "")
 		cleaned = rePastDueQualifier.ReplaceAllString(cleaned, "")
@@ -276,60 +226,13 @@ func applySummarySafetyGuards(summary string, content domain.BoardSummaryContent
 		cleaned = reSpaceBeforePunct.ReplaceAllString(cleaned, "$1")
 		cleaned = strings.TrimSpace(cleaned)
 
+		// Restore placeholders back to user-friendly text
 		cleaned = strings.ReplaceAll(cleaned, "__NO_OVERDUE_TASKS__", "no overdue tasks")
 		cleaned = strings.ReplaceAll(cleaned, "__NO_TASKS_ARE_OVERDUE__", "no tasks are overdue")
 		cleaned = strings.ReplaceAll(cleaned, "__NOTHING_IS_OVERDUE__", "nothing is overdue")
 	}
 
 	return cleaned
-}
-
-// completedProgressHints compares the current and previous board summary content to identify
-// recently completed items and returns hints for the LLM.
-func completedProgressHints(current, previous domain.BoardSummaryContent) ([]string, int) {
-	doneDelta := current.Counts.Done - previous.Counts.Done
-
-	currentTitles := make(map[string]struct{})
-	addSummaryTitles(currentTitles, current)
-
-	previousTitles := make(map[string]struct{})
-	addSummaryTitles(previousTitles, previous)
-
-	candidates := make([]string, 0, len(previousTitles))
-	for title := range previousTitles {
-		if _, exists := currentTitles[title]; exists {
-			continue
-		}
-		candidates = append(candidates, title)
-	}
-	sort.Strings(candidates)
-
-	return candidates, doneDelta
-}
-
-// addSummaryTitles adds the titles of summary items to the provided map for easy lookup.
-func addSummaryTitles(dst map[string]struct{}, content domain.BoardSummaryContent) {
-	for _, item := range content.NextUp {
-		title := strings.TrimSpace(item.Title)
-		if title == "" {
-			continue
-		}
-		dst[title] = struct{}{}
-	}
-	for _, title := range content.Overdue {
-		trimmed := strings.TrimSpace(title)
-		if trimmed == "" {
-			continue
-		}
-		dst[trimmed] = struct{}{}
-	}
-	for _, title := range content.NearDeadline {
-		trimmed := strings.TrimSpace(title)
-		if trimmed == "" {
-			continue
-		}
-		dst[trimmed] = struct{}{}
-	}
 }
 
 // marshalSummaryContent converts the BoardSummaryContent struct into a TOON string for LLM input.
@@ -352,7 +255,7 @@ type InitGenerateBoardSummary struct {
 
 // Initialize registers the GenerateBoardSummary use case implementation.
 func (igbs InitGenerateBoardSummary) Initialize(ctx context.Context) (context.Context, error) {
-	queue, _ := depend.Resolve[CompletedSummaryQueue]()
+	queue, _ := depend.Resolve[CompletedSummaryChannel]()
 	depend.Register[GenerateBoardSummary](NewGenerateBoardSummaryImpl(
 		igbs.SummaryRepo, igbs.TimeProvider, igbs.LLMClient, igbs.Model, queue,
 	))

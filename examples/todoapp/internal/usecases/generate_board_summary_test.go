@@ -171,39 +171,38 @@ func TestInitGenerateBoardSummary_Initialize(t *testing.T) {
 }
 
 func TestApplySummarySafetyGuards(t *testing.T) {
-	t.Run("strips overdue qualifiers when there are no overdue tasks", func(t *testing.T) {
-		content := domain.BoardSummaryContent{
-			Overdue: []string{},
-		}
-		summary := "Great progress! Focus on the overdue chimney cleaning and late digital backups."
+	tests := map[string]struct {
+		content domain.BoardSummaryContent
+		summary string
+		want    string
+	}{
+		"strips-overdue-qualifiers": {
+			content: domain.BoardSummaryContent{
+				Overdue: []string{},
+			},
+			summary: "Great progress! Focus on the overdue chimney cleaning and late digital backups.",
+			want:    "Great progress! Focus on the chimney cleaning and digital backups.",
+		},
+		"keeps-overdue-wording": {
+			content: domain.BoardSummaryContent{
+				Overdue: []string{"Schedule chimney cleaning"},
+			},
+			summary: "Focus on the overdue chimney cleaning.",
+			want:    "Focus on the overdue chimney cleaning.",
+		},
+		"preserves-no-overdue-statements": {
+			content: domain.BoardSummaryContent{
+				Overdue: []string{},
+			},
+			summary: "Nice momentum, no overdue tasks right now.",
+			want:    "Nice momentum, no overdue tasks right now.",
+		},
+	}
 
-		got := applySummarySafetyGuards(summary, content)
-
-		assert.NotContains(t, strings.ToLower(got), "overdue ")
-		assert.NotContains(t, strings.ToLower(got), "late ")
-		assert.Contains(t, got, "chimney cleaning")
-		assert.Contains(t, got, "digital backups")
-	})
-
-	t.Run("keeps overdue wording when overdue tasks exist", func(t *testing.T) {
-		content := domain.BoardSummaryContent{
-			Overdue: []string{"Schedule chimney cleaning"},
-		}
-		summary := "Focus on the overdue chimney cleaning."
-
-		got := applySummarySafetyGuards(summary, content)
-
-		assert.Equal(t, summary, got)
-	})
-
-	t.Run("preserves valid no-overdue statements", func(t *testing.T) {
-		content := domain.BoardSummaryContent{
-			Overdue: []string{},
-		}
-		summary := "Nice momentum, no overdue tasks right now."
-
-		got := applySummarySafetyGuards(summary, content)
-
-		assert.Contains(t, strings.ToLower(got), "no overdue tasks")
-	})
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := applySummarySafetyGuards(tt.summary, tt.content)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
