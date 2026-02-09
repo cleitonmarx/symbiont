@@ -52,11 +52,12 @@ export const ChatPanel = ({ onChatDone, mode = 'panel', onClose }: ChatPanelProp
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim()) {
+    const message = input.trim();
+    if (!message) {
       return;
     }
-    await sendMessage(input);
     setInput('');
+    await sendMessage(message);
   };
 
   return (

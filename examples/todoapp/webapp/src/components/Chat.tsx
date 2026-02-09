@@ -56,9 +56,10 @@ const Chat: React.FC<ChatProps> = ({ onChatDone }) => {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim()) return;
-    await sendMessage(input);
+    const message = input.trim();
+    if (!message) return;
     setInput('');
+    await sendMessage(message);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
