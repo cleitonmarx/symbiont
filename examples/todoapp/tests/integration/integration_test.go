@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -30,7 +31,7 @@ import (
 
 // summaryQueue is used to receive completed board summaries for verification in tests.
 var (
-	summaryQueue usecases.CompletedSummaryQueue
+	summaryQueue usecases.CompletedSummaryChannel
 	restCli      *rest.ClientWithResponses
 )
 
@@ -58,7 +59,7 @@ func TestMain(m *testing.M) {
 		&InitDockerCompose{},
 	)
 
-	summaryQueue = make(usecases.CompletedSummaryQueue, 5)
+	summaryQueue = make(usecases.CompletedSummaryChannel, 5)
 	depend.Register(summaryQueue)
 
 	var err error
@@ -235,9 +236,9 @@ func TestTodoAPP_Chat(t *testing.T) {
 		require.NoError(t, err, "failed to call GetAvailableModels endpoint")
 		require.NotNil(t, modelsResp.JSON200, "expected non-nil response for GetAvailableModels")
 		require.Greater(t, len(modelsResp.JSON200.Models), 0, "expected at least one available model")
-
-		// Just use the first model for testing the chat endpoint
-		modelName = modelsResp.JSON200.Models[0]
+		require.Contains(t, modelsResp.JSON200.Models, "qwen3:8B-Q4_0", "expected available models to include qwen3:8B-Q4_0")
+		i := slices.Index(modelsResp.JSON200.Models, "qwen3:8B-Q4_0")
+		modelName = modelsResp.JSON200.Models[i]
 	})
 
 	t.Run("create-todo", func(t *testing.T) {
