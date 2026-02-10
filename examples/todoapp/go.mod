@@ -1,6 +1,6 @@
 module github.com/cleitonmarx/symbiont/examples/todoapp
 
-go 1.25.3
+go 1.24.9
 
 require (
 	cloud.google.com/go/pubsub/v2 v2.4.0
