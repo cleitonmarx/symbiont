@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { useChat } from '../../hooks/useChat';
 
 marked.setOptions({
@@ -31,6 +32,7 @@ export const ChatPanel = ({ onChatDone, mode = 'panel', onClose }: ChatPanelProp
     stopStream,
   } = useChat(onChatDone);
   const [input, setInput] = useState('');
+  const [renderedMessages, setRenderedMessages] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isInitialLoad = useRef(true);
@@ -49,6 +51,41 @@ export const ChatPanel = ({ onChatDone, mode = 'panel', onClose }: ChatPanelProp
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }
+  }, [messages]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const renderMessages = async () => {
+      const entries = await Promise.all(
+        messages
+          .filter((message) => message.role === 'assistant')
+          .map(async (message) => {
+            const parsed = await Promise.resolve(marked.parse(message.content));
+            return [String(message.id), DOMPurify.sanitize(parsed)] as const;
+          })
+      );
+
+      if (!isActive) {
+        return;
+      }
+
+      setRenderedMessages((current) => {
+        const next = { ...current };
+        for (const [id, html] of entries) {
+          next[id] = html;
+        }
+        return next;
+      });
+    };
+
+    if (messages.length > 0) {
+      void renderMessages();
+    }
+
+    return () => {
+      isActive = false;
+    };
   }, [messages]);
 
   const handleSend = async () => {
@@ -86,7 +123,7 @@ export const ChatPanel = ({ onChatDone, mode = 'panel', onClose }: ChatPanelProp
           <article key={message.id} className={`ui-chat-message ${message.role}`}>
             <div className="ui-chat-message-content">
               {message.role === 'assistant' ? (
-                <div dangerouslySetInnerHTML={{ __html: marked(message.content) }} />
+                <div dangerouslySetInnerHTML={{ __html: renderedMessages[String(message.id)] ?? '' }} />
               ) : (
                 message.content
               )}

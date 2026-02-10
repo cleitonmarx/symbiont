@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useChat } from '../hooks/useChat';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import '../styles/Chat.css';
 
 // Configure marked for tables and line breaks
@@ -31,6 +32,7 @@ const Chat: React.FC<ChatProps> = ({ onChatDone }) => {
     stopStream,
   } = useChat(onChatDone);
   const [input, setInput] = React.useState('');
+  const [renderedMessages, setRenderedMessages] = React.useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isInitialLoad = useRef(true);
@@ -53,6 +55,41 @@ const Chat: React.FC<ChatProps> = ({ onChatDone }) => {
         });
       }
     }
+  }, [messages]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const renderMessages = async () => {
+      const entries = await Promise.all(
+        messages
+          .filter((message) => message.role === 'assistant')
+          .map(async (message) => {
+            const parsed = await Promise.resolve(marked.parse(message.content));
+            return [String(message.id), DOMPurify.sanitize(parsed)] as const;
+          })
+      );
+
+      if (!isActive) {
+        return;
+      }
+
+      setRenderedMessages((current) => {
+        const next = { ...current };
+        for (const [id, html] of entries) {
+          next[id] = html;
+        }
+        return next;
+      });
+    };
+
+    if (messages.length > 0) {
+      void renderMessages();
+    }
+
+    return () => {
+      isActive = false;
+    };
   }, [messages]);
 
   const handleSend = async () => {
@@ -84,7 +121,7 @@ const Chat: React.FC<ChatProps> = ({ onChatDone }) => {
           <div key={msg.id} className={`chat-message chat-message-${msg.role}`}>
             <div className="chat-message-content">
               {msg.role === 'assistant' ? (
-                <div dangerouslySetInnerHTML={{ __html: marked(msg.content) }} />
+                <div dangerouslySetInnerHTML={{ __html: renderedMessages[String(msg.id)] ?? '' }} />
               ) : (
                 msg.content
               )}
@@ -145,7 +182,7 @@ const Chat: React.FC<ChatProps> = ({ onChatDone }) => {
               <button
                 className="chat-send-btn"
                 onClick={handleSend}
-                disabled={loading || !input.trim()}
+                disabled={!input.trim()}
                 title="Send message"
                 aria-label="Send message"
               >
