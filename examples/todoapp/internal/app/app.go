@@ -71,13 +71,14 @@ type ReportLoggerIntrospector struct {
 	Logger *stdlog.Logger `resolve:""`
 }
 
-// Introspect generates and logs the introspection report and a Mermaid graph.
-func (i ReportLoggerIntrospector) Introspect(ctx context.Context, r introspection.Report) error {
+// Introspect logs the introspection report in JSON format and
+// registers a Mermaid graph representation of the report as a named dependency.
+func (i ReportLoggerIntrospector) Introspect(_ context.Context, r introspection.Report) error {
 	b, err := json.Marshal(r)
 	if err != nil {
 		return err
 	}
-	depend.RegisterNamed(mermaid.GenerateIntrospectionGraph(r), "dependency-graph-mermaid")
+	depend.RegisterNamed(mermaid.GenerateIntrospectionGraph(r), "introspection-graph-mermaid")
 
 	i.Logger.Println("=== TODOAPP INTROSPECTION REPORT ===")
 	i.Logger.Println(string(b))
