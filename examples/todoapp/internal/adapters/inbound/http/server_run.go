@@ -57,7 +57,7 @@ func (api TodoAppServer) Run(ctx context.Context) error {
 	// Register introspection endpoint for debugging and testing purposes
 	mux.HandleFunc("/introspect", IntrospectHandler)
 
-	// get an `http.Handler` that we can use
+	// Create the OpenAPI handler with telemetry middleware
 	h := gen.HandlerWithOptions(api, gen.StdHTTPServerOptions{
 		BaseRouter: mux,
 		Middlewares: []gen.MiddlewareFunc{

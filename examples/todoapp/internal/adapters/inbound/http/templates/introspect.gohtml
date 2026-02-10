@@ -1,26 +1,24 @@
-package http
-
-import (
-	"fmt"
-	"net/http"
-
-	"github.com/cleitonmarx/symbiont/depend"
-)
-
-var introspectTemplate = `<!DOCTYPE html>
+`<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TodoApp Introspection Graph</title>
+    <title>{{.Title}}</title>
 	<script src="https://unpkg.com/@panzoom/panzoom@4.6.1/dist/panzoom.min.js"></script>
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
         import elkLayouts from 'https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0/dist/mermaid-layout-elk.esm.min.mjs';
 
+        // Register the ELK layout engine with Mermaid and initialize it. 
+        // This allows Mermaid to use ELK for graph layout when specified in the graph definition.
+        // renderGraph will be called once the DOM content is loaded to render the graph.
         mermaid.registerLayoutLoaders(elkLayouts);
         mermaid.initialize({ startOnLoad: false });
+        window.addEventListener('DOMContentLoaded', renderGraph);
 
+        // Mermaid's built-in viewBox handling doesn't account for all the various ways nodes and edges can be rendered, 
+        // which can result in some content being cut off when fitting to the viewport. 
+        // This function computes a more accurate bounding box by examining the actual positions of all relevant elements in the graph.
         function resolveGraphBBox(svgElement) {
             const candidates = svgElement.querySelectorAll(
                 '.nodes .node, .subgraphs > *, .clusters > *, .edgeLabels > *, .edges .flowchart-link, .edges path.path, .edges path[data-edge="true"], .edgePath path'
@@ -65,6 +63,8 @@ var introspectTemplate = `<!DOCTYPE html>
             };
         }
 
+        // This function calculates the appropriate zoom level and pan offset to fit the entire graph within the viewport of the container, 
+        // while also centering it.
         function fitGraphToViewport(svgElement, container, panzoom) {
             const viewBox = svgElement.viewBox && svgElement.viewBox.baseVal
                 ? svgElement.viewBox.baseVal
@@ -116,6 +116,10 @@ var introspectTemplate = `<!DOCTYPE html>
             panzoom.pan(panX, panY, { animate: false });
         }
 
+        // This function adds interactive hover effects to the edges in the graph. 
+        // It creates invisible hitboxes over the edges to capture pointer events, 
+        // and separate glow paths that become visible on hover or when an edge is selected. 
+        // It also manages selection state and ensures that interactions don't interfere with panning and zooming.
         function bindHoverEffects(container) {
             const edgePaths = container.querySelectorAll('.edgePath path, .flowchart-link, path.path, path[data-edge="true"]');
             let selectedEdge = null;
@@ -236,6 +240,9 @@ var introspectTemplate = `<!DOCTYPE html>
             }, true);
         }
 
+        // This function creates on-screen controls for panning and zooming the graph. 
+        // It adds buttons for panning in four directions, zooming in and out, and recentering the graph. 
+        // The controls are designed to be intuitive and accessible, with appropriate icons and hover effects.
         function createViewportControls(container, panzoom, recenterFn) {
             const controls = document.createElement('div');
             controls.className = 'graph-controls';
@@ -267,6 +274,8 @@ var introspectTemplate = `<!DOCTYPE html>
             const panAmount = 120;
             const zoomStep = 0.2;
 
+            // This function handles the logic for each control action, including calculating the new pan 
+            // and zoom values based on the current state of the graph.
             const onControlAction = (action) => {
                 const currentScale = panzoom.getScale ? panzoom.getScale() : 1;
                 const currentPan = panzoom.getPan ? panzoom.getPan() : { x: 0, y: 0 };
@@ -320,11 +329,11 @@ var introspectTemplate = `<!DOCTYPE html>
             container.appendChild(controls);
         }
 
+        // This is the main function that renders the Mermaid graph, initializes pan and zoom functionality, 
+        // fits the graph to the viewport, and sets up interactive controls and hover effects.
         async function renderGraph() {
-            const container = document.getElementById('mermaid-container');
-            const graphDefinition = document.getElementById('graph-data').value;
-            
-            const { svg } = await mermaid.render('mermaid-svg-id', graphDefinition);
+            const container = document.getElementById('mermaid-container');    
+            const { svg } = await mermaid.render('mermaid-svg-id', "{{ .Graph }}");
             container.innerHTML = svg;
 
             const svgElement = container.querySelector('svg');
@@ -352,12 +361,12 @@ var introspectTemplate = `<!DOCTYPE html>
             });
         }
 
-        window.addEventListener('DOMContentLoaded', renderGraph);
+        
     </script>
     <style>
         html, body {
-            width: 100%%;
-            height: 100%%;
+            width: 100%;
+            height: 100%;
             margin: 0;
             overflow: hidden;
             font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -369,7 +378,7 @@ var introspectTemplate = `<!DOCTYPE html>
         }
 
         .container {
-            width: 100%%;
+            width: 100%;
             height: 100vh;
             box-sizing: border-box;
             background: #ffffff;
@@ -389,7 +398,7 @@ var introspectTemplate = `<!DOCTYPE html>
         #mermaid-container {
             flex: 1 1 auto;
             min-height: 0;
-			width: 100%%;
+			width: 100%;
 			overflow: hidden;
 			border: 1px solid #d1d5db;
 			border-radius: 10px;
@@ -399,8 +408,8 @@ var introspectTemplate = `<!DOCTYPE html>
 
         #mermaid-container svg {
 			cursor: grab;
-            width: 100%%;
-            height: 100%%;
+            width: 100%;
+            height: 100%;
             display: block;
 		}
 
@@ -514,22 +523,9 @@ var introspectTemplate = `<!DOCTYPE html>
 </head>
 <body>
     <div class="container">
-        <h1>TodoApp Introspection Graph</h1>
+        <h1>{{ .Title }}</h1>
         <div id="mermaid-container"></div>
-    	<textarea id="graph-data" style="display:none">%s</textarea>
+    	<!--<textarea id="graph-data" style="display:none"></textarea>-->
     </div>
 </body>
 </html>
-`
-
-func IntrospectHandler(w http.ResponseWriter, r *http.Request) {
-	mermaidGraph, err := depend.ResolveNamed[string]("dependency-graph-mermaid")
-	if err != nil {
-		http.Error(w, "Failed to resolve dependency graph", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	_, _ = fmt.Fprintf(w, introspectTemplate, mermaidGraph)
-}
