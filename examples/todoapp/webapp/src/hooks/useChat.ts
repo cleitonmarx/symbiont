@@ -164,7 +164,7 @@ export const useChat = (onChatDone?: () => void): UseChatReturn => {
       };
       setMessages((prev) => [...prev, userMessage]);
 
-      const response = await streamChat(message, selectedModel || undefined, abortControllerRef.current.signal);
+      const response = await streamChat(message, selectedModel, abortControllerRef.current.signal);
 
       if (!response.body) {
         throw new Error('No response body');

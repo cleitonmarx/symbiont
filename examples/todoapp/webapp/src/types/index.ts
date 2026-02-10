@@ -52,7 +52,7 @@ export interface ChatHistoryResp {
 
 export interface ChatStreamRequest {
   message: string;
-  model?: string;
+  model: string;
 }
 
 export interface ModelListResponse {

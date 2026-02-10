@@ -1,12 +1,12 @@
 import { apiClient, API_BASE_URL } from './httpClient';
 
-export const streamChat = async (message: string, model?: string, signal?: AbortSignal) => {
+export const streamChat = async (message: string, model: string, signal?: AbortSignal) => {
   const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       message,
-      ...(model ? { model } : {}),
+      model,
     }),
     signal,
   });
