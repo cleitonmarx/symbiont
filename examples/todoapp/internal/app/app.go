@@ -1,12 +1,7 @@
 package app
 
 import (
-	"context"
-	"encoding/json"
-	stdlog "log"
-
 	"github.com/cleitonmarx/symbiont"
-	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/graphql"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/http"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/inbound/workers"
@@ -18,8 +13,6 @@ import (
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/adapters/outbound/time"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/telemetry"
 	"github.com/cleitonmarx/symbiont/examples/todoapp/internal/usecases"
-	"github.com/cleitonmarx/symbiont/introspection"
-	"github.com/cleitonmarx/symbiont/introspection/mermaid"
 )
 
 // NewTodoApp creates and returns a new instance of the TodoApp application.
@@ -63,25 +56,6 @@ func NewTodoApp(initializers ...symbiont.Initializer) *symbiont.App {
 			&graphql.TodoGraphQLServer{},
 			&workers.TodoEventSubscriber{},
 			&workers.MessageRelay{},
-		)
-}
-
-// ReportLoggerIntrospector is an implementation of introspection.Introspector that logs the introspection report.
-type ReportLoggerIntrospector struct {
-	Logger *stdlog.Logger `resolve:""`
-}
-
-// Introspect logs the introspection report in JSON format and
-// registers a Mermaid graph representation of the report as a named dependency.
-func (i ReportLoggerIntrospector) Introspect(_ context.Context, r introspection.Report) error {
-	b, err := json.Marshal(r)
-	if err != nil {
-		return err
-	}
-	depend.RegisterNamed(mermaid.GenerateIntrospectionGraph(r), "introspection-graph-mermaid")
-
-	i.Logger.Println("=== TODOAPP INTROSPECTION REPORT ===")
-	i.Logger.Println(string(b))
-	i.Logger.Println("=== END OF REPORT ===")
-	return nil
+		).
+		Introspect(&MermaidGraphIntrospector{})
 }
