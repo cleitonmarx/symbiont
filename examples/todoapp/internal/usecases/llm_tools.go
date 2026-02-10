@@ -56,7 +56,6 @@ func (ctr LLMToolManager) Call(ctx context.Context, call domain.LLMStreamEventTo
 	spanCtx, span := telemetry.Start(ctx,
 		trace.WithAttributes(
 			attribute.String("tool.function", call.Function),
-			attribute.String("tool.arguments", call.Arguments),
 		),
 	)
 	defer span.End()
