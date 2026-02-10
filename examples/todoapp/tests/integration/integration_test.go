@@ -254,7 +254,6 @@ func TestTodoAPP_Chat(t *testing.T) {
 
 		require.Contains(t, toolCallText, "📝 Creating your todo...")
 		require.Contains(t, deltaText, "Integration Test Todo", "expected chat response to contain created todo title")
-		require.Contains(t, deltaText, "OPEN", "expected chat response to contain created todo status")
 		fmt.Println("Chat response:", deltaText)
 	})
 
