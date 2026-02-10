@@ -657,7 +657,6 @@ components:
           type: string
           description: >
             AI model to use for generating the assistant response.
-            If omitted, the system default model is used.
           example: "gpt-oss:7B-Q4_0"
         message:
           type: string
