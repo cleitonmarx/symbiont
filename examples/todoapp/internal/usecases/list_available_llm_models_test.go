@@ -1,4 +1,3 @@
-// filepath: /Users/cleiton/projects/symbiont/examples/todoapp/internal/usecases/list_available_llm_models_test.go
 package usecases
 
 import (
