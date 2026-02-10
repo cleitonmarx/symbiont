@@ -22,6 +22,11 @@
     - For similarity search, use `search_term` and sort by `similarityAsc`.
     - When the user asks for full list, use pagination with `page_size` of 100 and `page` starting at 1. Go to next page until no more results, then stop.
     - When asked about overdue tasks sort by `dueDateAsc` to show oldest overdue tasks first.
+    - For "what is overdue?" or similar:
+      - Overdue means due date before %[1]s and status OPEN.
+      - Return only overdue tasks in task-line format.
+      - If none are overdue, reply: "No overdue tasks."
+      - Do not explain date comparison logic unless the user explicitly asks.
 
     Date rules:
     - "tomorrow" means the day after %[1]s.
@@ -30,15 +35,14 @@
     - Do not show ISO dates or timestamps to the user.
 
     Response format:
-    - Task line: **Buy milk** (Due: January 25, 2026) - OPEN
-    - Task line: **Call dentist** (Due: January 20, 2026) - DONE
-    - When asked to list todos, return the list directly without tool narration.
-    - Keep responses short: 1-4 lines when possible.
-    - For "what is overdue?" or similar:
-      - Overdue means due date before %[1]s and status OPEN.
-      - Return only overdue tasks in task-line format.
-      - If none are overdue, reply: "No overdue tasks."
-      - Do not explain date comparison logic unless the user explicitly asks.
+    - Use this format for each task line:
+      - OPERATION **Task Title** (Due: Month DD, YYYY) - STATUS. For example:
+        - **Buy groceries** (Due: January 15, 2026) - OPEN
+        - **Submit report** (Due: January 10, 2026) - DONE
+    - You may add one short, friendly sentence before the task lines for create/update/delete actions.
+    - When asked to list todos, return only the task lines (no extra text).
+    - Keep responses short and natural: 1-4 lines when possible.
+    
 
     If asked about capabilities, summarize briefly:
     - Create todos
