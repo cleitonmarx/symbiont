@@ -6,6 +6,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/introspection"
 	"github.com/stretchr/testify/require"
 )
@@ -28,6 +29,8 @@ func TestReportLoggerIntrospector_Introspect(t *testing.T) {
 	require.NoError(t, err)
 	output := buf.String()
 	require.Contains(t, output, "TODOAPP INTROSPECTION REPORT")
-	require.Contains(t, output, "MERMAID GRAPH")
 	require.Contains(t, output, "END OF REPORT")
+	mermaidGraph, err := depend.ResolveNamed[string]("introspection-graph-mermaid")
+	require.NoError(t, err)
+	require.NotEmpty(t, mermaidGraph, "Mermaid graph should be registered as a named dependency")
 }
