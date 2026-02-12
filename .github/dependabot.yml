@@ -12,9 +12,3 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "deps"
-  - package-ecosystem: "gomod"
-    directory: "/examples/todoapp"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: "deps"
