@@ -1,6 +1,5 @@
 ignore:
-  - "**/*_gen.go"
-  - "**/examples/**"
+  - "/examples/**"
 
 github_checks: false
 
