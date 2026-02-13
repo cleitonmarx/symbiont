@@ -118,15 +118,16 @@ Detailed documentation is available in the [`docs`](docs) directory:
 ## Example
 
 Want to see Symbiont in action?  
-Check out the complete example app at [`examples/todoapp`](examples/todoapp)!
+Start with local minimal examples:
+- [`examples/single-hosting`](examples/single-hosting)
+- [`examples/multiple-hosting`](examples/multiple-hosting)
+- [`examples/config-dependency-injection`](examples/config-dependency-injection)
 
-You'll find:
+Need a full application reference?
+The Todo app now lives in its own repository:
+[`cleitonmarx/symbiont-ai-todoapp`](https://github.com/cleitonmarx/symbiont-ai-todoapp).
 
-- Real-world setup for config, logging, database, HTTP, and background workers
-- Clear use of initializers and runnables
-- Dependency graph visualization and full-system tests
-
-Curious? Dive into [`examples/todoapp/README.md`](examples/todoapp/README.md) for details, setup, and a code tour.
+You'll find real-world setup for config, logging, database, HTTP, workers, and end-to-end tests.
 
 ---
 
