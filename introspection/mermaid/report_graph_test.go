@@ -81,13 +81,13 @@ func TestGenerateIntrospectionGraph_DistinctDepsForSameImpl(t *testing.T) {
 
 	deps := make([]introspection.DepEvent, 0, len(types))
 	for _, depType := range types {
-			deps = append(deps, introspection.DepEvent{
-				Kind:   introspection.DepRegistered,
-				Type:   depType,
-				Impl:   impl,
-				Caller: introspection.Caller{Func: initCaller, File: "shared_client.go", Line: 120},
-			})
-		}
+		deps = append(deps, introspection.DepEvent{
+			Kind:   introspection.DepRegistered,
+			Type:   depType,
+			Impl:   impl,
+			Caller: introspection.Caller{Func: initCaller, File: "shared_client.go", Line: 120},
+		})
+	}
 
 	out := GenerateIntrospectionGraph(introspection.Report{
 		Deps: deps,
