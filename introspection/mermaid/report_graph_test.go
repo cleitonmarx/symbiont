@@ -44,12 +44,12 @@ func TestGenerateIntrospectionGraph_Coverage(t *testing.T) {
 	out := GenerateIntrospectionGraph(report)
 
 	// Initializer to dep
-	assert.Contains(t, out, sanitizeID("initLogger")+" --o DepImpldepName")
-	assert.Contains(t, out, sanitizeID("initOther")+" --o UnusedDepImplunused")
+	assert.Contains(t, out, sanitizeID("initLogger")+" --o "+sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "Dep", Name: "depName", Impl: "DepImpl"})))
+	assert.Contains(t, out, sanitizeID("initOther")+" --o "+sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "UnusedDep", Name: "unused", Impl: "UnusedDepImpl"})))
 
 	// Dep to runner
-	assert.Contains(t, out, "DepImpldepName -.-> run1")
-	assert.Contains(t, out, "GhostDepImplghost -.-> run2")
+	assert.Contains(t, out, sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "Dep", Name: "depName", Impl: "DepImpl"}))+" -.-> run1")
+	assert.Contains(t, out, sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "GhostDep", Name: "ghost", Impl: "GhostDepImpl"}))+" -.-> run2")
 
 	// Config to initializer/caller
 	assert.Contains(t, out, "cfg -.-> "+sanitizeID("initLogger"))
@@ -64,6 +64,40 @@ func TestGenerateIntrospectionGraph_Coverage(t *testing.T) {
 	assert.Contains(t, out, "graph TD")
 
 	// No duplicate edges for duplicate runners/initializers
-	assert.Equal(t, 1, strings.Count(out, sanitizeID("initLogger")+" --o DepImpldepName"))
-	assert.Equal(t, 1, strings.Count(out, "DepImpldepName -.-> run1"))
+	assert.Equal(t, 1, strings.Count(out, sanitizeID("initLogger")+" --o "+sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "Dep", Name: "depName", Impl: "DepImpl"}))))
+	assert.Equal(t, 1, strings.Count(out, sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "Dep", Name: "depName", Impl: "DepImpl"}))+" -.-> run1"))
+}
+
+func TestGenerateIntrospectionGraph_DistinctDepsForSameImpl(t *testing.T) {
+	initType := "*infra.InitSharedClient"
+	initCaller := "infra.InitSharedClient.Initialize"
+	impl := "infra.SharedClient"
+	types := []string{
+		"contracts.Client",
+		"contracts.Reader",
+		"contracts.Writer",
+		"contracts.HealthChecker",
+	}
+
+	deps := make([]introspection.DepEvent, 0, len(types))
+	for _, depType := range types {
+		deps = append(deps, introspection.DepEvent{
+			Kind:   introspection.DepRegistered,
+			Type:   depType,
+			Impl:   impl,
+			Caller: introspection.Caller{Func: initCaller, File: "shared_client.go", Line: 120},
+		})
+	}
+
+	out := GenerateIntrospectionGraph(introspection.Report{
+		Deps: deps,
+		Initializers: []introspection.InitializerInfo{
+			{Type: initType},
+		},
+	})
+
+	for _, depType := range types {
+		depID := sanitizeID(dependencyNodeID(introspection.DepEvent{Type: depType, Impl: impl}))
+		assert.Contains(t, out, sanitizeID(initType)+" --o "+depID)
+	}
 }

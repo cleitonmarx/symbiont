@@ -94,7 +94,7 @@ func GenerateIntrospectionGraph(r introspection.Report) string {
 // buildDependencyGraph constructs the dependency graph from introspection data.
 func buildDependencyGraph(nodeMap map[string]Node, depHasCaller map[string]bool, initializerTypes map[string]struct{}, deps []introspection.DepEvent, edges *[]Edge) {
 	for _, ev := range deps {
-		dependency := ev.Impl + ev.Name
+		dependency := dependencyNodeID(ev)
 		if ev.Kind == introspection.DepRegistered {
 			var sublines []string
 			if ev.Name != "" {
@@ -196,6 +196,11 @@ func buildDependencyGraph(nodeMap map[string]Node, depHasCaller map[string]bool,
 			}
 		}
 	}
+}
+
+// dependencyNodeID generates a unique node ID for a dependency event.
+func dependencyNodeID(ev introspection.DepEvent) string {
+	return fmt.Sprintf("%s::%s::%s", ev.Type, ev.Name, ev.Impl)
 }
 
 // buildConfigGraph constructs the configuration graph from introspection data.
