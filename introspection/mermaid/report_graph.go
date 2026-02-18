@@ -198,6 +198,7 @@ func buildDependencyGraph(nodeMap map[string]Node, depHasCaller map[string]bool,
 	}
 }
 
+// dependencyNodeID generates a unique node ID for a dependency event.
 func dependencyNodeID(ev introspection.DepEvent) string {
 	return fmt.Sprintf("%s::%s::%s", ev.Type, ev.Name, ev.Impl)
 }
