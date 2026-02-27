@@ -124,7 +124,7 @@ import (
 
 func registerIntrospectionRoute(mux *http.ServeMux, report introspection.Report) {
 	mux.Handle(
-		"/introspection",
+		"/introspection/",
 		mermaid.NewGraphHandler(
 			"My App",
 			report,
@@ -135,6 +135,8 @@ func registerIntrospectionRoute(mux *http.ServeMux, report introspection.Report)
 ```
 
 If `WithMaxTextSize(...)` is not provided, `100000` is used by default.
+Mount the handler on a trailing-slash path so its local `assets/...` files are
+served from the same origin under the same route subtree.
 
 ## Visualization (Mermaid)
 
