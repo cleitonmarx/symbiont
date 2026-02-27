@@ -3,10 +3,10 @@ package config
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/cleitonmarx/symbiont/introspection"
-	"github.com/stretchr/testify/assert"
 )
 
 type simpleProvider struct {
@@ -61,7 +61,7 @@ func Test_providerInspector_get(t *testing.T) {
 		providerValues map[string]string
 		getKey         string
 		wantValue      string
-		wantErr        error
+		wantErr        string
 		wantKeys       []introspection.ConfigAccess
 		repeatGet      bool
 		wantHits       int
@@ -79,7 +79,7 @@ func Test_providerInspector_get(t *testing.T) {
 			providerValues: map[string]string{},
 			getKey:         "missing",
 			wantValue:      "",
-			wantErr:        errors.New("not found"),
+			wantErr:        "not found",
 			wantKeys:       []introspection.ConfigAccess{},
 		},
 		"records_cache_hits": {
@@ -96,7 +96,7 @@ func Test_providerInspector_get(t *testing.T) {
 			providerValues: map[string]string{},
 			getKey:         "defaulted",
 			wantValue:      "",
-			wantErr:        errors.New("not found"),
+			wantErr:        "not found",
 			wantKeys: []introspection.ConfigAccess{
 				{UsedDefault: true, Key: "defaulted", Provider: "", Caller: introspection.Caller{Func: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go"}},
 			},
@@ -106,7 +106,7 @@ func Test_providerInspector_get(t *testing.T) {
 			providerValues: map[string]string{},
 			getKey:         "defaulted2",
 			wantValue:      "",
-			wantErr:        errors.New("not found"),
+			wantErr:        "not found",
 			wantKeys: []introspection.ConfigAccess{
 				{UsedDefault: true, Key: "defaulted2", Provider: "", Caller: introspection.Caller{Func: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go"}},
 				{UsedDefault: true, Key: "defaulted2", Provider: "", Caller: introspection.Caller{Func: "config.Test_providerInspector_get.func1", File: "config/introspect_test.go"}},
@@ -122,20 +122,32 @@ func Test_providerInspector_get(t *testing.T) {
 			ip := newProviderInspector(sp)
 
 			val, err := ip.get(context.Background(), tt.getKey, tt.withDefault, nil, 2)
-			assert.Equal(t, tt.wantErr, err)
-			assert.Equal(t, tt.wantValue, val)
+			assertErrorMessage(t, err, tt.wantErr)
+			if val != tt.wantValue {
+				t.Fatalf("expected value %q, got %q", tt.wantValue, val)
+			}
 
 			if tt.repeatGet {
 				val2, err2 := ip.get(context.Background(), tt.getKey, tt.withDefault, nil, 2)
-				assert.Equal(t, tt.wantValue, val2)
-				assert.NoError(t, err2)
+				if val2 != tt.wantValue {
+					t.Fatalf("expected repeated value %q, got %q", tt.wantValue, val2)
+				}
+				if err2 != nil {
+					t.Fatalf("expected no error on repeated get, got %v", err2)
+				}
 			}
 
 			keys := ip.getKeysAccessInfo()
-			assert.Equal(t, stripLineAndOrderInfo(tt.wantKeys), stripLineAndOrderInfo(keys))
+			if !reflect.DeepEqual(stripLineAndOrderInfo(tt.wantKeys), stripLineAndOrderInfo(keys)) {
+				t.Fatalf("expected keys %#v, got %#v", stripLineAndOrderInfo(tt.wantKeys), stripLineAndOrderInfo(keys))
+			}
 			for _, k := range keys {
-				assert.Greater(t, k.Caller.Line, 0)
-				assert.Greater(t, k.Order, 0)
+				if k.Caller.Line <= 0 {
+					t.Fatalf("expected caller line > 0, got %d", k.Caller.Line)
+				}
+				if k.Order <= 0 {
+					t.Fatalf("expected order > 0, got %d", k.Order)
+				}
 			}
 		})
 	}
@@ -147,7 +159,7 @@ func Test_providerInspector_get_usingGetWithSource(t *testing.T) {
 		providerTag    string
 		getKey         string
 		wantValue      string
-		wantErr        error
+		wantErr        string
 		wantKeys       []introspection.ConfigAccess
 		repeatGet      bool
 		defaultValue   bool
@@ -166,7 +178,7 @@ func Test_providerInspector_get_usingGetWithSource(t *testing.T) {
 			providerTag:    "*config.providerWithName",
 			getKey:         "missing",
 			wantValue:      "",
-			wantErr:        errors.New("not found"),
+			wantErr:        "not found",
 			wantKeys:       []introspection.ConfigAccess{},
 		},
 		"records_cache_hits_with_provider": {
@@ -194,7 +206,7 @@ func Test_providerInspector_get_usingGetWithSource(t *testing.T) {
 			providerTag:    "*config.providerWithName",
 			getKey:         "defaulted",
 			wantValue:      "",
-			wantErr:        errors.New("not found"),
+			wantErr:        "not found",
 			wantKeys: []introspection.ConfigAccess{
 				{UsedDefault: false, Key: "defaulted", Provider: "", Caller: introspection.Caller{Func: "config.(*providerInspector).get", File: "config/introspect.go"}},
 				{UsedDefault: true, Key: "defaulted", Provider: "", Caller: introspection.Caller{Func: "config.(*providerInspector).get", File: "config/introspect.go"}},
@@ -210,20 +222,32 @@ func Test_providerInspector_get_usingGetWithSource(t *testing.T) {
 			ip := newProviderInspector(p)
 
 			val, err := ip.get(context.Background(), tt.getKey, tt.defaultValue, nil, 1)
-			assert.Equal(t, tt.wantErr, err)
-			assert.Equal(t, tt.wantValue, val)
+			assertErrorMessage(t, err, tt.wantErr)
+			if val != tt.wantValue {
+				t.Fatalf("expected value %q, got %q", tt.wantValue, val)
+			}
 
 			if tt.repeatGet {
 				val, err := ip.get(context.Background(), tt.getKey, false, nil, 1)
-				assert.Equal(t, tt.wantValue, val)
-				assert.NoError(t, err)
+				if val != tt.wantValue {
+					t.Fatalf("expected repeated value %q, got %q", tt.wantValue, val)
+				}
+				if err != nil {
+					t.Fatalf("expected no error on repeated get, got %v", err)
+				}
 			}
 
 			keys := ip.getKeysAccessInfo()
-			assert.Equal(t, stripLineAndOrderInfo(tt.wantKeys), stripLineAndOrderInfo(keys))
+			if !reflect.DeepEqual(stripLineAndOrderInfo(tt.wantKeys), stripLineAndOrderInfo(keys)) {
+				t.Fatalf("expected keys %#v, got %#v", stripLineAndOrderInfo(tt.wantKeys), stripLineAndOrderInfo(keys))
+			}
 			for _, k := range keys {
-				assert.Greater(t, k.Caller.Line, 0)
-				assert.Greater(t, k.Order, 0)
+				if k.Caller.Line <= 0 {
+					t.Fatalf("expected caller line > 0, got %d", k.Caller.Line)
+				}
+				if k.Order <= 0 {
+					t.Fatalf("expected order > 0, got %d", k.Order)
+				}
 			}
 		})
 	}
@@ -237,6 +261,10 @@ func Test_providerInspector_getKeysAccessInfo_sorted(t *testing.T) {
 	_, _ = ip.get(context.Background(), "a", false, nil, 1)
 
 	keys := ip.getKeysAccessInfo()
-	assert.Equal(t, "a", keys[0].Key)
-	assert.Equal(t, "b", keys[1].Key)
+	if keys[0].Key != "a" {
+		t.Fatalf("expected first key %q, got %q", "a", keys[0].Key)
+	}
+	if keys[1].Key != "b" {
+		t.Fatalf("expected second key %q, got %q", "b", keys[1].Key)
+	}
 }

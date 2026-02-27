@@ -2,11 +2,8 @@ package config
 
 import (
 	"context"
-	"errors"
 	"os"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestEnvVarProvider_Get(t *testing.T) {
@@ -19,17 +16,16 @@ func TestEnvVarProvider_Get(t *testing.T) {
 	tests := map[string]struct {
 		envKey      string
 		want        string
-		expectedErr error
+		expectedErr string
 	}{
 		"existing_key": {
-			envKey:      "EXISTING_KEY",
-			want:        "some_value",
-			expectedErr: nil,
+			envKey: "EXISTING_KEY",
+			want:   "some_value",
 		},
 		"missing_key": {
 			envKey:      "MISSING_KEY",
 			want:        "",
-			expectedErr: errors.New("environment variable 'MISSING_KEY' is not set"),
+			expectedErr: "environment variable 'MISSING_KEY' is not set",
 		},
 	}
 
@@ -37,8 +33,10 @@ func TestEnvVarProvider_Get(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			p := NewEnvVarProvider()
 			got, err := p.Get(context.Background(), tt.envKey)
-			assert.Equal(t, tt.expectedErr, err)
-			assert.Equal(t, tt.want, got)
+			assertErrorMessage(t, err, tt.expectedErr)
+			if got != tt.want {
+				t.Fatalf("expected value %q, got %q", tt.want, got)
+			}
 		})
 	}
 }
