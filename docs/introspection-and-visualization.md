@@ -23,11 +23,11 @@ At runtime, Symbiont tracks:
 - caller information (function and file location)
 
 This information is aggregated into an introspection report once the application
-lifecycle completes.
+lifecycle reaches the boundary between **wiring** and **execution**.
 
 ## Enabling Introspection
 
-To enable introspection, register an introspector on the application.
+To enable introspection, register one or more introspectors on the application.
 
 An introspector implements the following interface:
 
@@ -37,12 +37,41 @@ type Introspector interface {
 }
 ```
 
-The introspector is invoked **after initialization and wiring complete** — meaning all
+Introspectors are invoked **after initialization and wiring complete** — meaning all
 initializers have executed and all dependency and configuration injection has been
 resolved — **but before any runnables start executing**.
 
 This places introspection at the boundary between **wiring** and **execution**, allowing
 you to inspect the fully constructed application graph without affecting runtime behavior.
+
+Each call to `Introspect(...)` appends a new introspector.
+
+```go
+app := symbiont.NewApp().
+	Initialize(&LoggerInitializer{}).
+	Introspect(&GraphLogger{}).
+	Introspect(&AuditIntrospector{})
+```
+
+In addition, any hosted runnable that also implements `Introspector` is automatically
+included in introspection.
+
+```go
+type WorkerWithIntrospection struct{}
+
+func (w *WorkerWithIntrospection) Run(ctx context.Context) error { return nil }
+
+func (w *WorkerWithIntrospection) Introspect(
+	ctx context.Context,
+	r introspection.Report,
+) error {
+	// inspect report
+	return nil
+}
+
+app := symbiont.NewApp().
+	Host(&WorkerWithIntrospection{})
+```
 
 ## Generating Dependency Graphs (Mermaid)
 
@@ -50,7 +79,7 @@ Symbiont includes built-in support for generating **Mermaid diagrams** directly
 from the introspection report.
 
 A common and idiomatic pattern is to use an introspector with an **injected logger**
-and log the generated Mermaid graph when the application shuts down.
+and log the generated Mermaid graph during startup introspection.
 
 ```go
 type GraphLogger struct {
@@ -67,7 +96,7 @@ func (g *GraphLogger) Introspect(
 }
 ```
 
-Register the introspector like any other component:
+Register introspectors like any other component:
 
 ```go
 app := symbiont.NewApp().
@@ -75,8 +104,37 @@ app := symbiont.NewApp().
 	Introspect(&GraphLogger{})
 ```
 
-When the application lifecycle completes, the Mermaid graph is emitted to logs and
+When introspection runs, the Mermaid graph is emitted to logs and
 can be copied directly into Markdown, documentation, or review tools.
+
+## Serving Mermaid Over HTTP
+
+You can also serve an interactive Mermaid page using `mermaid.NewGraphHandler`.
+The handler renders a snapshot of the provided report and serves pre-rendered HTML.
+
+```go
+package main
+
+import (
+	"net/http"
+
+	"github.com/cleitonmarx/symbiont/introspection"
+	"github.com/cleitonmarx/symbiont/introspection/mermaid"
+)
+
+func registerIntrospectionRoute(mux *http.ServeMux, report introspection.Report) {
+	mux.Handle(
+		"/introspection",
+		mermaid.NewGraphHandler(
+			"My App",
+			report,
+			mermaid.WithMaxTextSize(100000), // optional, default is 100000
+		),
+	)
+}
+```
+
+If `WithMaxTextSize(...)` is not provided, `100000` is used by default.
 
 ## Visualization (Mermaid)
 
