@@ -35,7 +35,7 @@ type closerFunc func()
 type App struct {
 	initializers      []Initializer
 	runnableSpecsList []runnableSpecs
-	introspector      Introspector
+	introspectors     []Introspector
 	errCh             chan error
 	isRunning         atomic.Bool
 }
@@ -69,6 +69,11 @@ func (a *App) Host(runnable ...Runnable) *App {
 			}
 			executor = rc
 			readyChecker = rc
+		}
+
+		if _, ok := r.(Introspector); ok {
+			// If the runnable is also an introspector, add it to the introspectors list
+			a.introspectors = append(a.introspectors, r.(Introspector))
 		}
 
 		a.runnableSpecsList = append(a.runnableSpecsList, runnableSpecs{
@@ -152,9 +157,12 @@ func (a *App) runWithContext(ctx context.Context) error {
 	}
 
 	// Call introspector if configured
-	if a.introspector != nil {
-		if err := wireStructFields(ctx, a.introspector); err != nil {
-			return err
+	for _, i := range a.introspectors {
+		// If the introspector is not also a Runnable, don't wire struct fields again
+		if _, ok := i.(Runnable); !ok {
+			if err := wireStructFields(ctx, i); err != nil {
+				return err
+			}
 		}
 		report := introspection.Report{
 			Configs:      config.IntrospectConfigAccesses(),
@@ -162,7 +170,7 @@ func (a *App) runWithContext(ctx context.Context) error {
 			Runners:      a.runnerInfos(),
 			Initializers: a.initializerInfos(),
 		}
-		err := introspectSafe(ctx, a.introspector, report)
+		err := introspectSafe(ctx, i, report)
 		if err != nil {
 			return err
 		}

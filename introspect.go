@@ -17,7 +17,7 @@ type Introspector interface {
 // The provided Introspector's Introspect method will be called after initialization
 // and before starting runnables.
 func (a *App) Introspect(i Introspector) *App {
-	a.introspector = i
+	a.introspectors = append(a.introspectors, i)
 	return a
 }
 
