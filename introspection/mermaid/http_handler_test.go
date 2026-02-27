@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/cleitonmarx/symbiont/introspection"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNewGraphHandler(t *testing.T) {
@@ -27,11 +26,21 @@ func TestNewGraphHandler(t *testing.T) {
 			report:  introspection.Report{},
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
 				body := rec.Body.String()
-				assert.Equal(t, http.StatusOK, rec.Code)
-				assert.Equal(t, "text/html; charset=utf-8", rec.Header().Get("Content-Type"))
-				assert.Contains(t, body, "<title>MyApp Introspection Graph</title>")
-				assert.Contains(t, body, "mermaid.render('mermaid-svg-id',")
-				assert.Regexp(t, regexp.MustCompile(`maxTextSize:\s*100000`), body)
+				if rec.Code != http.StatusOK {
+					t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+				}
+				if rec.Header().Get("Content-Type") != "text/html; charset=utf-8" {
+					t.Fatalf("unexpected content type: %q", rec.Header().Get("Content-Type"))
+				}
+				if !strings.Contains(body, "<title>MyApp Introspection Graph</title>") {
+					t.Fatalf("expected title in body")
+				}
+				if !strings.Contains(body, "mermaid.render('mermaid-svg-id',") {
+					t.Fatalf("expected mermaid render call in body")
+				}
+				if !regexp.MustCompile(`maxTextSize:\s*100000`).MatchString(body) {
+					t.Fatalf("expected default maxTextSize in body")
+				}
 			},
 		},
 		{
@@ -40,11 +49,21 @@ func TestNewGraphHandler(t *testing.T) {
 			report:  introspection.Report{},
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
 				body := rec.Body.String()
-				assert.Equal(t, http.StatusOK, rec.Code)
-				assert.Contains(t, body, "&lt;title&gt; Introspection Graph")
-				assert.Contains(t, body, `mermaid.render('mermaid-svg-id', "---\n  config:\n    layout: elk\n---\ngraph TD\n`)
-				assert.NotContains(t, body, "mermaid.render('mermaid-svg-id', \"---\n  config:\n")
-				assert.Equal(t, 1, strings.Count(body, "mermaid.render('mermaid-svg-id',"))
+				if rec.Code != http.StatusOK {
+					t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+				}
+				if !strings.Contains(body, "&lt;title&gt; Introspection Graph") {
+					t.Fatalf("expected escaped title in body")
+				}
+				if !strings.Contains(body, `mermaid.render('mermaid-svg-id', "---\n  config:\n    layout: elk\n---\ngraph TD\n`) {
+					t.Fatalf("expected escaped graph string in body")
+				}
+				if strings.Contains(body, "mermaid.render('mermaid-svg-id', \"---\n  config:\n") {
+					t.Fatalf("unexpected raw multiline graph string in body")
+				}
+				if strings.Count(body, "mermaid.render('mermaid-svg-id',") != 1 {
+					t.Fatalf("expected one mermaid render call")
+				}
 			},
 		},
 		{
@@ -53,8 +72,12 @@ func TestNewGraphHandler(t *testing.T) {
 			report:  introspection.Report{},
 			opts:    []GraphHandlerOption{WithMaxTextSize(2048)},
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				assert.Equal(t, http.StatusOK, rec.Code)
-				assert.Regexp(t, regexp.MustCompile(`maxTextSize:\s*2048`), rec.Body.String())
+				if rec.Code != http.StatusOK {
+					t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+				}
+				if !regexp.MustCompile(`maxTextSize:\s*2048`).MatchString(rec.Body.String()) {
+					t.Fatalf("expected custom maxTextSize in body")
+				}
 			},
 		},
 		{
@@ -63,8 +86,12 @@ func TestNewGraphHandler(t *testing.T) {
 			report:  introspection.Report{},
 			opts:    []GraphHandlerOption{WithMaxTextSize(0)},
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				assert.Equal(t, http.StatusOK, rec.Code)
-				assert.Regexp(t, regexp.MustCompile(`maxTextSize:\s*100000`), rec.Body.String())
+				if rec.Code != http.StatusOK {
+					t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+				}
+				if !regexp.MustCompile(`maxTextSize:\s*100000`).MatchString(rec.Body.String()) {
+					t.Fatalf("expected default maxTextSize in body")
+				}
 			},
 		},
 	}

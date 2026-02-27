@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/cleitonmarx/symbiont/introspection"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGenerateIntrospectionGraph_Coverage(t *testing.T) {
@@ -44,28 +43,45 @@ func TestGenerateIntrospectionGraph_Coverage(t *testing.T) {
 	out := GenerateIntrospectionGraph(report)
 
 	// Initializer to dep
-	assert.Contains(t, out, sanitizeID("initLogger")+" --o "+sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "Dep", Name: "depName", Impl: "DepImpl"})))
-	assert.Contains(t, out, sanitizeID("initOther")+" --o "+sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "UnusedDep", Name: "unused", Impl: "UnusedDepImpl"})))
+	if !strings.Contains(out, sanitizeID("initLogger")+" --o "+sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "Dep", Name: "depName", Impl: "DepImpl"}))) {
+		t.Fatal("expected initializer to dependency edge for initLogger")
+	}
+	if !strings.Contains(out, sanitizeID("initOther")+" --o "+sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "UnusedDep", Name: "unused", Impl: "UnusedDepImpl"}))) {
+		t.Fatal("expected initializer to dependency edge for initOther")
+	}
 
 	// Dep to runner
-	assert.Contains(t, out, sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "Dep", Name: "depName", Impl: "DepImpl"}))+" -.-> run1")
-	assert.Contains(t, out, sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "GhostDep", Name: "ghost", Impl: "GhostDepImpl"}))+" -.-> run2")
+	if !strings.Contains(out, sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "Dep", Name: "depName", Impl: "DepImpl"}))+" -.-> run1") {
+		t.Fatal("expected dependency to run1 edge")
+	}
+	if !strings.Contains(out, sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "GhostDep", Name: "ghost", Impl: "GhostDepImpl"}))+" -.-> run2") {
+		t.Fatal("expected ghost dependency to run2 edge")
+	}
 
 	// Config to initializer/caller
-	assert.Contains(t, out, "cfg -.-> "+sanitizeID("initLogger"))
-	assert.Contains(t, out, "cfgDefault -.-> "+sanitizeID("initOther"))
-	assert.Contains(t, out, "cfgOrphan -.-> orphanInit")
+	if !strings.Contains(out, "cfg -.-> "+sanitizeID("initLogger")) ||
+		!strings.Contains(out, "cfgDefault -.-> "+sanitizeID("initOther")) ||
+		!strings.Contains(out, "cfgOrphan -.-> orphanInit") {
+		t.Fatal("expected config edges in graph output")
+	}
 
 	// Runner to Symbiont
-	assert.Contains(t, out, "run1 --- SymbiontApp")
-	assert.Contains(t, out, "run2 --- SymbiontApp")
+	if !strings.Contains(out, "run1 --- SymbiontApp") || !strings.Contains(out, "run2 --- SymbiontApp") {
+		t.Fatal("expected runnable edges to app")
+	}
 
 	// graph type
-	assert.Contains(t, out, "graph TD")
+	if !strings.Contains(out, "graph TD") {
+		t.Fatal("expected graph TD header")
+	}
 
 	// No duplicate edges for duplicate runners/initializers
-	assert.Equal(t, 1, strings.Count(out, sanitizeID("initLogger")+" --o "+sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "Dep", Name: "depName", Impl: "DepImpl"}))))
-	assert.Equal(t, 1, strings.Count(out, sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "Dep", Name: "depName", Impl: "DepImpl"}))+" -.-> run1"))
+	if strings.Count(out, sanitizeID("initLogger")+" --o "+sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "Dep", Name: "depName", Impl: "DepImpl"}))) != 1 {
+		t.Fatal("expected one initLogger edge")
+	}
+	if strings.Count(out, sanitizeID(dependencyNodeID(introspection.DepEvent{Type: "Dep", Name: "depName", Impl: "DepImpl"}))+" -.-> run1") != 1 {
+		t.Fatal("expected one dependency to run1 edge")
+	}
 }
 
 func TestGenerateIntrospectionGraph_DistinctDepsForSameImpl(t *testing.T) {
@@ -98,6 +114,8 @@ func TestGenerateIntrospectionGraph_DistinctDepsForSameImpl(t *testing.T) {
 
 	for _, depType := range types {
 		depID := sanitizeID(dependencyNodeID(introspection.DepEvent{Type: depType, Impl: impl}))
-		assert.Contains(t, out, sanitizeID(initType)+" --o "+depID)
+		if !strings.Contains(out, sanitizeID(initType)+" --o "+depID) {
+			t.Fatalf("expected edge for dependency type %q", depType)
+		}
 	}
 }
