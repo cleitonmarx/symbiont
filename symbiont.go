@@ -71,11 +71,6 @@ func (a *App) Host(runnable ...Runnable) *App {
 			readyChecker = rc
 		}
 
-		if _, ok := r.(Introspector); ok {
-			// If the runnable is also an introspector, add it to the introspectors list
-			a.introspectors = append(a.introspectors, r.(Introspector))
-		}
-
 		a.runnableSpecsList = append(a.runnableSpecsList, runnableSpecs{
 			original:     r,
 			executor:     executor,
@@ -156,20 +151,30 @@ func (a *App) runWithContext(ctx context.Context) error {
 		}
 	}
 
+	report := introspection.Report{
+		Configs:      config.IntrospectConfigAccesses(),
+		Deps:         depend.GetEvents(),
+		Runners:      a.runnerInfos(),
+		Initializers: a.initializerInfos(),
+	}
+
 	// Call introspector if configured
 	for _, i := range a.introspectors {
-		// If the introspector is not also a Runnable, don't wire struct fields again
-		if _, ok := i.(Runnable); !ok {
-			if err := wireStructFields(ctx, i); err != nil {
-				return err
-			}
+		if err := wireStructFields(ctx, i); err != nil {
+			return err
 		}
-		report := introspection.Report{
-			Configs:      config.IntrospectConfigAccesses(),
-			Deps:         depend.GetEvents(),
-			Runners:      a.runnerInfos(),
-			Initializers: a.initializerInfos(),
+		err := introspectSafe(ctx, i, report)
+		if err != nil {
+			return err
 		}
+	}
+	// Call Introspect on all runnables that implement it
+	for _, rs := range a.runnableSpecsList {
+		i, ok := rs.original.(Introspector)
+		if !ok {
+			continue
+		}
+
 		err := introspectSafe(ctx, i, report)
 		if err != nil {
 			return err

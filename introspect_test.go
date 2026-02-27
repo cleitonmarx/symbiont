@@ -56,6 +56,25 @@ func (r *runnableIntrospector) Introspect(_ context.Context, rep introspection.R
 	return nil
 }
 
+type runnableOnlyIntrospector struct {
+	Dep              string `resolve:""`
+	Cfg              string `config:"cfgKey"`
+	report           introspection.Report
+	introspectCalled bool
+	runCalled        bool
+}
+
+func (r *runnableOnlyIntrospector) Run(_ context.Context) error {
+	r.runCalled = true
+	return nil
+}
+
+func (r *runnableOnlyIntrospector) Introspect(_ context.Context, rep introspection.Report) error {
+	r.report = rep
+	r.introspectCalled = true
+	return nil
+}
+
 type recorderIntrospector struct {
 	report    introspection.Report
 	called    bool
@@ -78,11 +97,11 @@ func (r *recorderIntrospector) Introspect(_ context.Context, rep introspection.R
 func TestApp_IntrospectProvidesReport(t *testing.T) {
 	type tc struct {
 		name      string
-		intro     *recorderIntrospector
+		intro     Introspector
 		host      Runnable
 		expectErr bool
 		expectPan bool
-		validate  func(t *testing.T, hosted Runnable)
+		validate  func(t *testing.T, intro Introspector, hosted Runnable)
 	}
 
 	cases := []tc{
@@ -112,7 +131,7 @@ func TestApp_IntrospectProvidesReport(t *testing.T) {
 			host:      &runnableIntrospector{},
 			expectErr: false,
 			expectPan: false,
-			validate: func(t *testing.T, hosted Runnable) {
+			validate: func(t *testing.T, _ Introspector, hosted Runnable) {
 				ri, ok := hosted.(*runnableIntrospector)
 				if !ok {
 					t.Fatalf("expected hosted runnable to be *runnableIntrospector")
@@ -134,6 +153,31 @@ func TestApp_IntrospectProvidesReport(t *testing.T) {
 				}
 				if !strings.Contains(ri.report.Initializers[0].Type, "initForIntrospect") {
 					t.Fatalf("expected initializer type to contain initForIntrospect, got %q", ri.report.Initializers[0].Type)
+				}
+			},
+		},
+		{
+			name:      "introspect-only-runnable-is-wired",
+			intro:     &runnableOnlyIntrospector{},
+			host:      &runForIntrospect{},
+			expectErr: false,
+			expectPan: false,
+			validate: func(t *testing.T, intro Introspector, _ Runnable) {
+				ri, ok := intro.(*runnableOnlyIntrospector)
+				if !ok {
+					t.Fatalf("expected introspector to be *runnableOnlyIntrospector")
+				}
+				if !ri.introspectCalled {
+					t.Fatal("introspector should be invoked")
+				}
+				if ri.runCalled {
+					t.Fatal("introspector should not run when only registered via Introspect")
+				}
+				if ri.Dep != "depVal" {
+					t.Fatalf("expected resolved dependency %q, got %q", "depVal", ri.Dep)
+				}
+				if ri.Cfg != "val" {
+					t.Fatalf("expected config value %q, got %q", "val", ri.Cfg)
 				}
 			},
 		},
@@ -172,19 +216,19 @@ func TestApp_IntrospectProvidesReport(t *testing.T) {
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
 				}
-				if c.intro != nil {
-					if !c.intro.called {
+				if intro, ok := c.intro.(*recorderIntrospector); ok {
+					if !intro.called {
 						t.Fatal("introspector should be invoked")
 					}
-					if len(c.intro.report.Initializers) != 1 {
-						t.Fatalf("expected 1 initializer, got %d", len(c.intro.report.Initializers))
+					if len(intro.report.Initializers) != 1 {
+						t.Fatalf("expected 1 initializer, got %d", len(intro.report.Initializers))
 					}
-					if !strings.Contains(c.intro.report.Initializers[0].Type, "initForIntrospect") {
-						t.Fatalf("expected initializer type to contain initForIntrospect, got %q", c.intro.report.Initializers[0].Type)
+					if !strings.Contains(intro.report.Initializers[0].Type, "initForIntrospect") {
+						t.Fatalf("expected initializer type to contain initForIntrospect, got %q", intro.report.Initializers[0].Type)
 					}
 				}
 				if c.validate != nil {
-					c.validate(t, hosted)
+					c.validate(t, c.intro, hosted)
 				}
 			}
 		})
