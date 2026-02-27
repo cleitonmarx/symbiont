@@ -41,6 +41,15 @@ func TestNewGraphHandler(t *testing.T) {
 				if !regexp.MustCompile(`maxTextSize:\s*100000`).MatchString(body) {
 					t.Fatalf("expected default maxTextSize in body")
 				}
+				if !strings.Contains(body, `src="assets/panzoom.min.js"`) {
+					t.Fatalf("expected local panzoom asset in body")
+				}
+				if !strings.Contains(body, `import mermaid from './assets/mermaid.esm.min.mjs';`) {
+					t.Fatalf("expected local mermaid asset import in body")
+				}
+				if !strings.Contains(body, `import elkLayouts from './assets/mermaid-layout-elk.esm.min.mjs';`) {
+					t.Fatalf("expected local elk asset import in body")
+				}
 			},
 		},
 		{
@@ -63,6 +72,37 @@ func TestNewGraphHandler(t *testing.T) {
 				}
 				if strings.Count(body, "mermaid.render('mermaid-svg-id',") != 1 {
 					t.Fatalf("expected one mermaid render call")
+				}
+			},
+		},
+		{
+			name:    "redirects-page-path-to-trailing-slash",
+			appName: "MyApp",
+			report:  introspection.Report{},
+			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				if rec.Code != http.StatusMovedPermanently {
+					t.Fatalf("expected status %d, got %d", http.StatusMovedPermanently, rec.Code)
+				}
+				if rec.Header().Get("Location") != "/introspection/" {
+					t.Fatalf("expected redirect to /introspection/, got %q", rec.Header().Get("Location"))
+				}
+			},
+		},
+		{
+			name:    "serves-local-assets",
+			appName: "MyApp",
+			report:  introspection.Report{},
+			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				body := rec.Body.String()
+				if rec.Code != http.StatusOK {
+					t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+				}
+				if !strings.Contains(body, "Panzoom") {
+					t.Fatalf("expected panzoom asset body")
+				}
+				contentType := rec.Header().Get("Content-Type")
+				if contentType == "" {
+					t.Fatalf("expected content type for asset response")
 				}
 			},
 		},
@@ -99,7 +139,14 @@ func TestNewGraphHandler(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			handler := NewGraphHandler(c.appName, c.report, c.opts...)
-			req := httptest.NewRequest(http.MethodGet, "/introspection", nil)
+			requestPath := "/introspection/"
+			if c.name == "redirects-page-path-to-trailing-slash" {
+				requestPath = "/introspection"
+			}
+			if c.name == "serves-local-assets" {
+				requestPath = "/introspection/assets/panzoom.min.js"
+			}
+			req := httptest.NewRequest(http.MethodGet, requestPath, nil)
 			rec := httptest.NewRecorder()
 
 			handler.ServeHTTP(rec, req)

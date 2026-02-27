@@ -5,13 +5,17 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+	"io/fs"
+	"mime"
 	"net/http"
+	"path"
+	"strings"
 
 	"github.com/cleitonmarx/symbiont/introspection"
 )
 
 var (
-	//go:embed introspect.gohtml
+	//go:embed introspect.gohtml assets
 	templateFS embed.FS
 	tmpl       = template.Must(template.ParseFS(templateFS, "introspect.gohtml"))
 )
@@ -46,7 +50,8 @@ type graphPageData struct {
 	MaxTextSize int
 }
 
-// NewGraphHandler creates an HTTP handler that serves an introspection graph of the application's configuration and dependencies.
+// NewGraphHandler creates an HTTP handler that serves an introspection graph page
+// and its local JavaScript assets from the same origin.
 func NewGraphHandler(appName string, report introspection.Report, opts ...GraphHandlerOption) http.Handler {
 	cfg := graphHandlerConfig{
 		maxTextSize: defaultMaxTextSize,
@@ -69,10 +74,45 @@ func NewGraphHandler(appName string, report introspection.Report, opts ...GraphH
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		})
 	}
-	page := append([]byte(nil), out.Bytes()...)
 
-	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	page := append([]byte(nil), out.Bytes()...)
+	assetsFS := mustSubFS(templateFS, "assets")
+	_ = mime.AddExtensionType(".mjs", "text/javascript; charset=utf-8")
+	assetHandler := http.FileServer(http.FS(assetsFS))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if assetPath, ok := assetRequestPath(r.URL.Path); ok {
+			req := r.Clone(r.Context())
+			req.URL.Path = "/" + assetPath
+			assetHandler.ServeHTTP(w, req)
+			return
+		}
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(page)
 	})
+}
+
+// mustSubFS is a helper function that returns a subdirectory of an fs.FS or panics if it fails.
+func mustSubFS(root fs.FS, dir string) fs.FS {
+	sub, err := fs.Sub(root, dir)
+	if err != nil {
+		panic(err)
+	}
+	return sub
+}
+
+// assetRequestPath checks if the request path is for an asset and returns the cleaned asset path if so.
+func assetRequestPath(requestPath string) (string, bool) {
+	_, after, ok := strings.Cut(requestPath, "/assets/")
+	if !ok {
+		return "", false
+	}
+
+	assetPath := path.Clean(after)
+	if assetPath == "." || assetPath == "" || strings.HasPrefix(assetPath, "../") {
+		return "", false
+	}
+
+	return assetPath, true
 }
