@@ -2,9 +2,8 @@ package introspection
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestReport_MarshalJSON(t *testing.T) {
@@ -41,12 +40,24 @@ func TestReport_MarshalJSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			data, err := json.Marshal(tt.report)
-			assert.NoError(t, err)
-			// Should be valid JSON
+			if err != nil {
+				t.Fatalf("unexpected marshal error: %v", err)
+			}
 			var js map[string]any
-			assert.NoError(t, json.Unmarshal(data, &js))
-			// Check for expected substrings
-			assert.JSONEq(t, tt.expectedJson, string(data))
+			if err := json.Unmarshal(data, &js); err != nil {
+				t.Fatalf("unexpected unmarshal error: %v", err)
+			}
+			var expected any
+			var actual any
+			if err := json.Unmarshal([]byte(tt.expectedJson), &expected); err != nil {
+				t.Fatalf("invalid expected JSON: %v", err)
+			}
+			if err := json.Unmarshal(data, &actual); err != nil {
+				t.Fatalf("invalid actual JSON: %v", err)
+			}
+			if !reflect.DeepEqual(expected, actual) {
+				t.Fatalf("expected JSON %s, got %s", tt.expectedJson, string(data))
+			}
 		})
 	}
 }
