@@ -19,7 +19,7 @@ Initializers and runnables may optionally implement `Closer` to participate in s
 
 ```go
 type Closer interface {
-	Close(ctx context.Context)
+	Close()
 }
 ```
 
@@ -36,7 +36,7 @@ When shutdown begins:
 
 1. The application context is canceled
 2. Runnables are expected to observe the cancellation and return
-3. `Close(ctx)` is invoked for components that implement `Closer`
+3. After execution exits, `Close()` is invoked for components that implement `Closer`
 4. The application terminates with a final error (if any)
 
 This ensures shutdown behavior is predictable and does not depend on how termination
@@ -44,7 +44,7 @@ was initiated.
 
 ## Close Ordering
 
-`Close` is executed in **reverse order of registration and hosting**.
+`Close()` is executed in **reverse order of registration and hosting**.
 
 This allows dependencies to be torn down safely, mirroring how they were created
 during initialization.
