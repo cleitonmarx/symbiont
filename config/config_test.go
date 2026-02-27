@@ -306,6 +306,7 @@ func TestLoadStruct(t *testing.T) {
 			DurationValue  time.Duration `config:"durationKey"`
 			SliceValue     []string      `config:"sliceKey"`
 			DefaultValue   bool          `config:"defaultKey" default:"true"`
+			OptionalValue  string        `config:"optionalKey" default:""`
 			NotLoadedValue string
 		}
 		configNotFound struct {
@@ -339,6 +340,7 @@ func TestLoadStruct(t *testing.T) {
 				p.set("durationKey", "1h", nil)
 				p.set("sliceKey", "1,2,3", nil)
 				p.set("defaultKey", "", errors.New("key not found"))
+				p.set("optionalKey", "", errors.New("key not found"))
 			},
 			expected: &validConfig{
 				BoolValue:      true,
@@ -347,6 +349,7 @@ func TestLoadStruct(t *testing.T) {
 				FloatValue:     3.14,
 				DurationValue:  time.Hour,
 				SliceValue:     []string{"1", "2", "3"},
+				OptionalValue:  "",
 				NotLoadedValue: "",
 				DefaultValue:   true,
 			},
