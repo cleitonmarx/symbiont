@@ -118,8 +118,9 @@ Configuration can also be loaded directly into structs using tags:
 
 ```go
 type AppConfig struct {
-	Port int    `config:"APP_PORT" default:"8080"`
-	DSN  string `config:"DB_DSN"`
+	Port                 int    `config:"APP_PORT" default:"8080"`
+	DSN                  string `config:"DB_DSN"`
+	ExternalServiceToken string `config:"EXTERNAL_SERVICE_TOKEN" default:""`
 }
 
 var cfg AppConfig
@@ -127,6 +128,10 @@ if err := config.LoadStruct(ctx, &cfg); err != nil {
 	return err
 }
 ```
+
+An explicit empty default is useful for optional configuration fields. For
+example, `default:""` means "use the empty string if the provider does not
+return a value", instead of failing startup.
 
 This allows configuration to be validated and injected before any runtime
 logic begins.
