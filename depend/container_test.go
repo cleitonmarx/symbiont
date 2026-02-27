@@ -1,11 +1,8 @@
 package depend
 
 import (
-	"errors"
+	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type Greeter interface {
@@ -37,7 +34,7 @@ func TestResolveNamed(t *testing.T) {
 	tests := map[string]struct {
 		resolveFunc   func() (any, error)
 		expectedValue any
-		expectedErr   error
+		expectedErr   string
 	}{
 		"resolve_spanish_greeter": {
 			resolveFunc: func() (any, error) {
@@ -68,15 +65,17 @@ func TestResolveNamed(t *testing.T) {
 				return ResolveNamed[Greeter]("nonexistent")
 			},
 			expectedValue: nil,
-			expectedErr:   errors.New("depend: the dependency 'nonexistent' of type 'depend.Greeter' was not registered"),
+			expectedErr:   "depend: the dependency 'nonexistent' of type 'depend.Greeter' was not registered",
 		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			result, err := tc.resolveFunc()
-			require.Equal(t, tc.expectedErr, err)
-			require.Equal(t, tc.expectedValue, result)
+			assertErrorMessage(t, err, tc.expectedErr)
+			if !reflect.DeepEqual(tc.expectedValue, result) {
+				t.Fatalf("expected value %#v, got %#v", tc.expectedValue, result)
+			}
 		})
 	}
 }
@@ -92,7 +91,7 @@ func TestResolve(t *testing.T) {
 	tests := map[string]struct {
 		resolveFunc   func() (any, error)
 		expectedValue any
-		expectedErr   error
+		expectedErr   string
 	}{
 		"resolve_string_dependency": {
 			resolveFunc: func() (any, error) {
@@ -121,15 +120,17 @@ func TestResolve(t *testing.T) {
 				return Resolve[float64]()
 			},
 			expectedValue: float64(0),
-			expectedErr:   errors.New("depend: the dependency type 'float64' was not registered"),
+			expectedErr:   "depend: the dependency type 'float64' was not registered",
 		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			result, err := tc.resolveFunc()
-			require.Equal(t, tc.expectedErr, err)
-			require.Equal(t, tc.expectedValue, result)
+			assertErrorMessage(t, err, tc.expectedErr)
+			if !reflect.DeepEqual(tc.expectedValue, result) {
+				t.Fatalf("expected value %#v, got %#v", tc.expectedValue, result)
+			}
 		})
 	}
 }
@@ -138,35 +139,57 @@ func TestRegisterNamedOnce_Greeter(t *testing.T) {
 	ClearContainer()
 
 	err := RegisterNamedOnce[Greeter](EnglishGreeter{}, "english")
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
 
 	err = RegisterNamedOnce[Greeter](PortugueseGreeter{}, "english")
-	require.EqualError(t, err, `depend: dependency already registered for type depend.Greeter and name "english"`)
+	if err == nil || err.Error() != `depend: dependency already registered for type depend.Greeter and name "english"` {
+		t.Fatalf("expected duplicate registration error, got %v", err)
+	}
 
 	err = RegisterNamedOnce[Greeter](PortugueseGreeter{}, "portuguese")
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
 
 	g, err := ResolveNamed[Greeter]("english")
-	require.NoError(t, err)
-	require.Equal(t, "Hello!", g.Greet())
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if g.Greet() != "Hello!" {
+		t.Fatalf("expected greeting %q, got %q", "Hello!", g.Greet())
+	}
 
 	g, err = ResolveNamed[Greeter]("portuguese")
-	require.NoError(t, err)
-	require.Equal(t, "Olá!", g.Greet())
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if g.Greet() != "Olá!" {
+		t.Fatalf("expected greeting %q, got %q", "Olá!", g.Greet())
+	}
 }
 
 func TestRegisterOnce_Greeter(t *testing.T) {
 	ClearContainer()
 
 	err := RegisterOnce[Greeter](EnglishGreeter{})
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
 
 	err = RegisterOnce[Greeter](PortugueseGreeter{})
-	require.EqualError(t, err, "depend: dependency already registered for type depend.Greeter")
+	if err == nil || err.Error() != "depend: dependency already registered for type depend.Greeter" {
+		t.Fatalf("expected duplicate registration error, got %v", err)
+	}
 
 	g, err := Resolve[Greeter]()
-	require.NoError(t, err)
-	require.Equal(t, "Hello!", g.Greet())
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if g.Greet() != "Hello!" {
+		t.Fatalf("expected greeting %q, got %q", "Hello!", g.Greet())
+	}
 }
 
 func TestResolveStruct(t *testing.T) {
@@ -199,7 +222,7 @@ func TestResolveStruct(t *testing.T) {
 	tests := map[string]struct {
 		target      any
 		expected    any
-		expectedErr error
+		expectedErr string
 	}{
 		"resolve_all_dependencies": {
 			target: &test{},
@@ -212,22 +235,22 @@ func TestResolveStruct(t *testing.T) {
 		"error_resolving_missing_dependency": {
 			target:      &testMissingType{},
 			expected:    testMissingType{},
-			expectedErr: errors.New("depend: the dependency '' of type 'depend.Greeter' was not registered"),
+			expectedErr: "depend: the dependency '' of type 'depend.Greeter' was not registered",
 		},
 		"error_resolving_missing_named_dependency": {
 			target:      &testMissingNamed{},
 			expected:    testMissingNamed{},
-			expectedErr: errors.New("depend: the dependency type 'string' was not registered"),
+			expectedErr: "depend: the dependency type 'string' was not registered",
 		},
 		"error_resolving_non_struct": {
 			target:      &[]string{"not a struct"},
 			expected:    []string{"not a struct"},
-			expectedErr: errors.New("target must be a struct pointer, got '*[]string'"),
+			expectedErr: "target must be a struct pointer, got '*[]string'",
 		},
 		"error_resolving_field_not_settable": {
 			target:      &testNotSettable{},
 			expected:    testNotSettable{},
-			expectedErr: errors.New("depend: field 'notSettableField' is not settable"),
+			expectedErr: "depend: field 'notSettableField' is not settable",
 		},
 	}
 
@@ -252,8 +275,26 @@ func TestResolveStruct(t *testing.T) {
 	}
 }
 
-func resolveStructAndAssert[T any](t *testing.T, target *T, expected T, expectedErr error) {
+func assertErrorMessage(t *testing.T, err error, want string) {
+	t.Helper()
+	if want == "" {
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		return
+	}
+	if err == nil {
+		t.Fatalf("expected error %q, got nil", want)
+	}
+	if err.Error() != want {
+		t.Fatalf("expected error %q, got %q", want, err.Error())
+	}
+}
+
+func resolveStructAndAssert[T any](t *testing.T, target *T, expected T, expectedErr string) {
 	err := ResolveStruct(target)
-	assert.Equal(t, expectedErr, err)
-	assert.Equal(t, expected, *target)
+	assertErrorMessage(t, err, expectedErr)
+	if !reflect.DeepEqual(expected, *target) {
+		t.Fatalf("expected value %#v, got %#v", expected, *target)
+	}
 }

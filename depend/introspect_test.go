@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/cleitonmarx/symbiont/introspection"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGetEvents(t *testing.T) {
@@ -43,15 +42,21 @@ func TestGetEvents(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setup()
 			got := GetEvents()
-			assert.Len(t, got, tt.wantLen)
+			if len(got) != tt.wantLen {
+				t.Fatalf("expected %d events, got %d", tt.wantLen, len(got))
+			}
 			if tt.wantLen > 0 {
 				for i, kind := range tt.wantKinds {
-					assert.Equal(t, kind, got[i].Kind)
+					if got[i].Kind != kind {
+						t.Fatalf("expected event kind %v at index %d, got %v", kind, i, got[i].Kind)
+					}
 				}
 				// Ensure returned slice is a copy
 				got[0].Name = "changed"
 				got2 := GetEvents()
-				assert.NotEqual(t, "changed", got2[0].Name)
+				if got2[0].Name == "changed" {
+					t.Fatal("expected GetEvents to return a copy")
+				}
 			}
 		})
 	}
