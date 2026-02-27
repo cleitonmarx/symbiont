@@ -17,8 +17,12 @@ var (
 	tmpl       = template.Must(template.ParseFS(templateFS, "introspect.gohtml"))
 )
 
+// defaultMaxTextSize is the default value for Mermaid's maxTextSize,
+// which limits the size of text in nodes and edges.
+// See https://mermaid.js.org/config/schema-docs/config-properties-maxtextsize.html#maxtextsize-type for details.
 const defaultMaxTextSize = 100000
 
+// graphHandlerConfig holds configuration options for the graph HTTP handler.
 type graphHandlerConfig struct {
 	maxTextSize int
 }
@@ -36,6 +40,7 @@ func WithMaxTextSize(maxTextSize int) GraphHandlerOption {
 	}
 }
 
+// graphPageData holds the data passed to the HTML template for rendering the graph page.
 type graphPageData struct {
 	GraphJSON   template.JS
 	Title       string
