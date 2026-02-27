@@ -2,13 +2,16 @@ package symbiont
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/cleitonmarx/symbiont/config"
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/introspection"
-	"github.com/stretchr/testify/assert"
 )
+
+var errTest = errors.New("test error")
 
 type mapProvider struct {
 	values map[string]string
@@ -18,7 +21,7 @@ func (m mapProvider) Get(ctx context.Context, name string) (string, error) {
 	if v, ok := m.values[name]; ok {
 		return v, nil
 	}
-	return "", assert.AnError
+	return "", errTest
 }
 
 type initForIntrospect struct{}
@@ -67,7 +70,7 @@ func (r *recorderIntrospector) Introspect(_ context.Context, rep introspection.R
 	r.report = rep
 	r.called = true
 	if r.willErr {
-		return assert.AnError
+		return errTest
 	}
 	return nil
 }
@@ -111,13 +114,27 @@ func TestApp_IntrospectProvidesReport(t *testing.T) {
 			expectPan: false,
 			validate: func(t *testing.T, hosted Runnable) {
 				ri, ok := hosted.(*runnableIntrospector)
-				assert.True(t, ok)
-				assert.True(t, ri.introspectCalled, "hosted runnable introspector should be invoked")
-				assert.True(t, ri.runCalled, "hosted runnable should still run")
-				assert.Len(t, ri.report.Runners, 1)
-				assert.Contains(t, ri.report.Runners[0].Type, "runnableIntrospector")
-				assert.Len(t, ri.report.Initializers, 1)
-				assert.Contains(t, ri.report.Initializers[0].Type, "initForIntrospect")
+				if !ok {
+					t.Fatalf("expected hosted runnable to be *runnableIntrospector")
+				}
+				if !ri.introspectCalled {
+					t.Fatal("hosted runnable introspector should be invoked")
+				}
+				if !ri.runCalled {
+					t.Fatal("hosted runnable should still run")
+				}
+				if len(ri.report.Runners) != 1 {
+					t.Fatalf("expected 1 runner, got %d", len(ri.report.Runners))
+				}
+				if !strings.Contains(ri.report.Runners[0].Type, "runnableIntrospector") {
+					t.Fatalf("expected runner type to contain runnableIntrospector, got %q", ri.report.Runners[0].Type)
+				}
+				if len(ri.report.Initializers) != 1 {
+					t.Fatalf("expected 1 initializer, got %d", len(ri.report.Initializers))
+				}
+				if !strings.Contains(ri.report.Initializers[0].Type, "initForIntrospect") {
+					t.Fatalf("expected initializer type to contain initForIntrospect, got %q", ri.report.Initializers[0].Type)
+				}
 			},
 		},
 	}
@@ -142,17 +159,29 @@ func TestApp_IntrospectProvidesReport(t *testing.T) {
 
 			err := app.RunWithContext(context.Background())
 			if c.expectPan {
-				assert.Error(t, err, "expected error when introspector panics")
+				if err == nil {
+					t.Fatal("expected error when introspector panics")
+				}
 				return
 			}
 			if c.expectErr {
-				assert.Error(t, err)
+				if err == nil {
+					t.Fatal("expected error")
+				}
 			} else {
-				assert.NoError(t, err)
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
 				if c.intro != nil {
-					assert.True(t, c.intro.called, "introspector should be invoked")
-					assert.Len(t, c.intro.report.Initializers, 1)
-					assert.Contains(t, c.intro.report.Initializers[0].Type, "initForIntrospect")
+					if !c.intro.called {
+						t.Fatal("introspector should be invoked")
+					}
+					if len(c.intro.report.Initializers) != 1 {
+						t.Fatalf("expected 1 initializer, got %d", len(c.intro.report.Initializers))
+					}
+					if !strings.Contains(c.intro.report.Initializers[0].Type, "initForIntrospect") {
+						t.Fatalf("expected initializer type to contain initForIntrospect, got %q", c.intro.report.Initializers[0].Type)
+					}
 				}
 				if c.validate != nil {
 					c.validate(t, hosted)

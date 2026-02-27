@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"os"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/cleitonmarx/symbiont/config"
 	"github.com/cleitonmarx/symbiont/depend"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // helper types used in tests
@@ -153,7 +153,9 @@ func TestApp_RunWithContext(t *testing.T) {
 				&runCloser{name: "run2", log: &[]string{}, ctxKey: testContextKey, gotVal: new(string)},
 			},
 			validate: func(t *testing.T, tt *testCase, err error) {
-				assert.NoError(t, err)
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
 				// Extract close log from first closer
 				var closeLog []string
 				for _, in := range tt.inits {
@@ -162,7 +164,10 @@ func TestApp_RunWithContext(t *testing.T) {
 						break
 					}
 				}
-				assert.Equal(t, []string{"run2", "run1", "initB", "initA"}, closeLog)
+				wantCloseLog := []string{"run2", "run1", "initB", "initA"}
+				if !reflect.DeepEqual(wantCloseLog, closeLog) {
+					t.Fatalf("expected close log %v, got %v", wantCloseLog, closeLog)
+				}
 				// Verify at least one runnable observed the context value
 				found := false
 				for _, r := range tt.runs {
@@ -171,7 +176,9 @@ func TestApp_RunWithContext(t *testing.T) {
 						break
 					}
 				}
-				assert.True(t, found, "no runnable received context value")
+				if !found {
+					t.Fatal("no runnable received context value")
+				}
 			},
 		},
 		"initializer_error": {
@@ -179,9 +186,15 @@ func TestApp_RunWithContext(t *testing.T) {
 			expectErr: "error: init error, component: symbiont.errInitializer",
 			validate: func(t *testing.T, _ *testCase, err error) {
 				var se Error
-				require.Error(t, err)
-				require.True(t, errors.As(err, &se))
-				assert.Contains(t, se.Error(), "init error")
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !errors.As(err, &se) {
+					t.Fatalf("expected symbiont.Error, got %T", err)
+				}
+				if !strings.Contains(se.Error(), "init error") {
+					t.Fatalf("expected error to contain %q, got %q", "init error", se.Error())
+				}
 			},
 		},
 		"initializer_panic": {
@@ -189,9 +202,15 @@ func TestApp_RunWithContext(t *testing.T) {
 			expectErr: "panic in setup func",
 			validate: func(t *testing.T, _ *testCase, err error) {
 				var se Error
-				require.Error(t, err)
-				require.True(t, errors.As(err, &se))
-				assert.Contains(t, se.Error(), "panic in Initialize func: boom")
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !errors.As(err, &se) {
+					t.Fatalf("expected symbiont.Error, got %T", err)
+				}
+				if !strings.Contains(se.Error(), "panic in Initialize func: boom") {
+					t.Fatalf("expected error to contain %q, got %q", "panic in Initialize func: boom", se.Error())
+				}
 			},
 		},
 		"runnable_error": {
@@ -199,9 +218,15 @@ func TestApp_RunWithContext(t *testing.T) {
 			validate: func(t *testing.T, _ *testCase, err error) {
 				// runnable error propagates through errgroup
 				var se Error
-				require.Error(t, err)
-				require.True(t, errors.As(err, &se))
-				assert.Contains(t, se.Error(), "run error")
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !errors.As(err, &se) {
+					t.Fatalf("expected symbiont.Error, got %T", err)
+				}
+				if !strings.Contains(se.Error(), "run error") {
+					t.Fatalf("expected error to contain %q, got %q", "run error", se.Error())
+				}
 			},
 		},
 		"runnable_panic": {
@@ -209,18 +234,28 @@ func TestApp_RunWithContext(t *testing.T) {
 			expectErr: "panic in Run func",
 			validate: func(t *testing.T, _ *testCase, err error) {
 				var se Error
-				require.Error(t, err)
-				require.True(t, errors.As(err, &se))
-				assert.Contains(t, se.Error(), "panic in Run func: boom")
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !errors.As(err, &se) {
+					t.Fatalf("expected symbiont.Error, got %T", err)
+				}
+				if !strings.Contains(se.Error(), "panic in Run func: boom") {
+					t.Fatalf("expected error to contain %q, got %q", "panic in Run func: boom", se.Error())
+				}
 			},
 		},
 		"init_registers_dependency_and_runner_resolves": {
 			inits: []Initializer{&depRegisterInitializer{value: "dep-val"}},
 			runs:  []Runnable{&resolveDepRun{gotVal: new(string)}},
 			validate: func(t *testing.T, tt *testCase, err error) {
-				assert.NoError(t, err)
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
 				if rr, ok := tt.runs[0].(*resolveDepRun); ok {
-					assert.Equal(t, "dep-val", *rr.gotVal)
+					if *rr.gotVal != "dep-val" {
+						t.Fatalf("expected resolved dependency %q, got %q", "dep-val", *rr.gotVal)
+					}
 				}
 			},
 		},
@@ -228,9 +263,13 @@ func TestApp_RunWithContext(t *testing.T) {
 			inits: []Initializer{&setProviderInitializer{key: "cfgKey", val: "cfgVal"}},
 			runs:  []Runnable{&configRun{gotVal: new(string)}},
 			validate: func(t *testing.T, tt *testCase, err error) {
-				assert.NoError(t, err)
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
 				if cr, ok := tt.runs[0].(*configRun); ok {
-					assert.Equal(t, "cfgVal", *cr.gotVal)
+					if *cr.gotVal != "cfgVal" {
+						t.Fatalf("expected config value %q, got %q", "cfgVal", *cr.gotVal)
+					}
 				}
 			},
 		},
@@ -239,9 +278,15 @@ func TestApp_RunWithContext(t *testing.T) {
 			expectErr: "the dependency type 'string' was not registered",
 			validate: func(t *testing.T, _ *testCase, err error) {
 				var se Error
-				require.Error(t, err)
-				require.True(t, errors.As(err, &se))
-				assert.Contains(t, se.Error(), "not registered")
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !errors.As(err, &se) {
+					t.Fatalf("expected symbiont.Error, got %T", err)
+				}
+				if !strings.Contains(se.Error(), "not registered") {
+					t.Fatalf("expected error to contain %q, got %q", "not registered", se.Error())
+				}
 			},
 		},
 		"config_missing_key": {
@@ -250,9 +295,15 @@ func TestApp_RunWithContext(t *testing.T) {
 			expectErr: "error getting value for field",
 			validate: func(t *testing.T, _ *testCase, err error) {
 				var se Error
-				require.Error(t, err)
-				require.True(t, errors.As(err, &se))
-				assert.Contains(t, se.Error(), "not found")
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !errors.As(err, &se) {
+					t.Fatalf("expected symbiont.Error, got %T", err)
+				}
+				if !strings.Contains(se.Error(), "not found") {
+					t.Fatalf("expected error to contain %q, got %q", "not found", se.Error())
+				}
 			},
 		},
 	}
@@ -326,7 +377,9 @@ func TestApp_Run_StopsOnInterrupt(t *testing.T) {
 
 	select {
 	case err := <-errCh:
-		require.NoError(t, err)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("Run did not return after interrupt")
 	}
@@ -346,13 +399,17 @@ func TestApp_RunAsync_ContextCancel(t *testing.T) {
 	errCh := a.RunAsync(ctx)
 	// allow goroutine to start
 	err := a.WaitForReadiness(ctx, 500*time.Millisecond)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
 	// cancel the context to stop the app
 	cancel()
 
 	select {
 	case err := <-errCh:
-		require.NoError(t, err)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("RunAsync did not return after context cancel")
 	}

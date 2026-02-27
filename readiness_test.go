@@ -3,11 +3,9 @@ package symbiont
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // eventuallyReady is a runnable that becomes ready after N calls
@@ -141,21 +139,33 @@ func TestWaitForReadiness(t *testing.T) {
 			err := a.WaitForReadiness(ctx, tt.timeout)
 
 			if tt.expectErr {
-				require.Error(t, err)
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
 				if tt.expectErrIs != nil {
-					assert.ErrorIs(t, err, tt.expectErrIs)
+					if !errors.Is(err, tt.expectErrIs) {
+						t.Fatalf("expected error to match %v, got %v", tt.expectErrIs, err)
+					}
 				}
 				if tt.expectMsg != "" {
 					var se Error
-					assert.True(t, errors.As(err, &se))
-					assert.Contains(t, se.Error(), tt.expectMsg)
+					if !errors.As(err, &se) {
+						t.Fatalf("expected symbiont.Error, got %T", err)
+					}
+					if !strings.Contains(se.Error(), tt.expectMsg) {
+						t.Fatalf("expected error to contain %q, got %q", tt.expectMsg, se.Error())
+					}
 				}
 				if tt.expectSymErr {
 					var se Error
-					assert.True(t, errors.As(err, &se), "should wrap with symbiont.Error")
+					if !errors.As(err, &se) {
+						t.Fatalf("expected symbiont.Error wrapper, got %T", err)
+					}
 				}
 			} else {
-				require.NoError(t, err)
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
 			}
 
 			// cancel to stop the app and wait for it to complete
