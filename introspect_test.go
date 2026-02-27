@@ -40,9 +40,9 @@ type runForIntrospect struct {
 func (r *runForIntrospect) Run(ctx context.Context) error { return nil }
 
 type runnableIntrospector struct {
-	report            introspection.Report
-	introspectCalled  bool
-	runCalled         bool
+	report           introspection.Report
+	introspectCalled bool
+	runCalled        bool
 }
 
 func (r *runnableIntrospector) Run(_ context.Context) error {
