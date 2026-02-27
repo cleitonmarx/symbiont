@@ -12,18 +12,21 @@ import (
 
 func TestNewGraphHandler(t *testing.T) {
 	type tc struct {
-		name     string
-		appName  string
-		report   introspection.Report
-		opts     []GraphHandlerOption
-		validate func(t *testing.T, rec *httptest.ResponseRecorder)
+		name        string
+		appName     string
+		report      introspection.Report
+		opts        []GraphHandlerOption
+		requestPath string
+		mountPath   string
+		validate    func(t *testing.T, rec *httptest.ResponseRecorder)
 	}
 
 	cases := []tc{
 		{
-			name:    "serves-html",
-			appName: "MyApp",
-			report:  introspection.Report{},
+			name:        "serves-html",
+			appName:     "MyApp",
+			report:      introspection.Report{},
+			requestPath: "/introspection/",
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
 				body := rec.Body.String()
 				if rec.Code != http.StatusOK {
@@ -53,9 +56,10 @@ func TestNewGraphHandler(t *testing.T) {
 			},
 		},
 		{
-			name:    "embeds-graph-as-escaped-js-string",
-			appName: "App<title>",
-			report:  introspection.Report{},
+			name:        "embeds-graph-as-escaped-js-string",
+			appName:     "App<title>",
+			report:      introspection.Report{},
+			requestPath: "/introspection/",
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
 				body := rec.Body.String()
 				if rec.Code != http.StatusOK {
@@ -76,9 +80,11 @@ func TestNewGraphHandler(t *testing.T) {
 			},
 		},
 		{
-			name:    "redirects-page-path-to-trailing-slash",
-			appName: "MyApp",
-			report:  introspection.Report{},
+			name:        "redirects-page-path-to-trailing-slash",
+			appName:     "MyApp",
+			report:      introspection.Report{},
+			requestPath: "/introspection",
+			mountPath:   "/introspection/",
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
 				if rec.Code != http.StatusMovedPermanently {
 					t.Fatalf("expected status %d, got %d", http.StatusMovedPermanently, rec.Code)
@@ -89,9 +95,10 @@ func TestNewGraphHandler(t *testing.T) {
 			},
 		},
 		{
-			name:    "serves-local-assets",
-			appName: "MyApp",
-			report:  introspection.Report{},
+			name:        "serves-local-assets",
+			appName:     "MyApp",
+			report:      introspection.Report{},
+			requestPath: "/introspection/assets/panzoom.min.js",
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
 				body := rec.Body.String()
 				if rec.Code != http.StatusOK {
@@ -107,10 +114,11 @@ func TestNewGraphHandler(t *testing.T) {
 			},
 		},
 		{
-			name:    "overrides-max-text-size",
-			appName: "MyApp",
-			report:  introspection.Report{},
-			opts:    []GraphHandlerOption{WithMaxTextSize(2048)},
+			name:        "overrides-max-text-size",
+			appName:     "MyApp",
+			report:      introspection.Report{},
+			opts:        []GraphHandlerOption{WithMaxTextSize(2048)},
+			requestPath: "/introspection/",
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
 				if rec.Code != http.StatusOK {
 					t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
@@ -121,10 +129,11 @@ func TestNewGraphHandler(t *testing.T) {
 			},
 		},
 		{
-			name:    "invalid-max-text-size-uses-default",
-			appName: "MyApp",
-			report:  introspection.Report{},
-			opts:    []GraphHandlerOption{WithMaxTextSize(0)},
+			name:        "invalid-max-text-size-uses-default",
+			appName:     "MyApp",
+			report:      introspection.Report{},
+			opts:        []GraphHandlerOption{WithMaxTextSize(0)},
+			requestPath: "/introspection/",
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
 				if rec.Code != http.StatusOK {
 					t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
@@ -139,17 +148,16 @@ func TestNewGraphHandler(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			handler := NewGraphHandler(c.appName, c.report, c.opts...)
-			requestPath := "/introspection/"
-			if c.name == "redirects-page-path-to-trailing-slash" {
-				requestPath = "/introspection"
+			target := handler
+			if c.mountPath != "" {
+				mux := http.NewServeMux()
+				mux.Handle(c.mountPath, handler)
+				target = mux
 			}
-			if c.name == "serves-local-assets" {
-				requestPath = "/introspection/assets/panzoom.min.js"
-			}
-			req := httptest.NewRequest(http.MethodGet, requestPath, nil)
+			req := httptest.NewRequest(http.MethodGet, c.requestPath, nil)
 			rec := httptest.NewRecorder()
 
-			handler.ServeHTTP(rec, req)
+			target.ServeHTTP(rec, req)
 			c.validate(t, rec)
 		})
 	}
