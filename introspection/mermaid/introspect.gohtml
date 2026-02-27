@@ -876,7 +876,7 @@
         // fits the graph to the viewport, and sets up interactive controls and hover effects.
         async function renderGraph() {
             const container = document.getElementById('mermaid-container');    
-            const { svg } = await mermaid.render('mermaid-svg-id', {{ .GraphJSON }});
+            const { svg } = await mermaid.render('mermaid-svg-id', {{ .Graph }});
             container.innerHTML = svg;
 
             const svgElement = container.querySelector('svg');

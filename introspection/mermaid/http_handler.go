@@ -3,7 +3,6 @@ package mermaid
 import (
 	"bytes"
 	"embed"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -42,7 +41,7 @@ func WithMaxTextSize(maxTextSize int) GraphHandlerOption {
 
 // graphPageData holds the data passed to the HTML template for rendering the graph page.
 type graphPageData struct {
-	GraphJSON   template.JS
+	Graph       string
 	Title       string
 	MaxTextSize int
 }
@@ -58,19 +57,13 @@ func NewGraphHandler(appName string, report introspection.Report, opts ...GraphH
 		}
 	}
 
-	graphJSON, err := json.Marshal(GenerateIntrospectionGraph(report))
-	if err != nil {
-		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		})
-	}
+	graph := GenerateIntrospectionGraph(report)
 
 	var out bytes.Buffer
 	if err := tmpl.Execute(&out, graphPageData{
 		Title:       fmt.Sprintf("%s Introspection Graph", appName),
 		MaxTextSize: cfg.maxTextSize,
-		// json.Marshal returns a valid JavaScript string literal for the graph source.
-		GraphJSON: template.JS(string(graphJSON)),
+		Graph:       graph,
 	}); err != nil {
 		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
