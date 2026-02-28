@@ -159,6 +159,13 @@ func (a *App) runWithContext(ctx context.Context) error {
 		}
 	}
 
+	// Wire struct fields of all registered introspectors
+	for _, i := range a.introspectors {
+		if err := wireStructFields(ctx, i); err != nil {
+			return err
+		}
+	}
+
 	report := introspection.Report{
 		Configs:      config.IntrospectConfigAccesses(),
 		Deps:         depend.GetEvents(),
@@ -166,12 +173,7 @@ func (a *App) runWithContext(ctx context.Context) error {
 		Initializers: a.initializerInfos(),
 	}
 
-	// Call all explicitly registered introspectors, then any hosted runnables
-	// that also implement Introspector.
 	for _, i := range a.introspectors {
-		if err := wireStructFields(ctx, i); err != nil {
-			return err
-		}
 		err := introspectSafe(ctx, i, report)
 		if err != nil {
 			return err

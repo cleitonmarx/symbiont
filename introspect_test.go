@@ -180,6 +180,24 @@ func TestApp_IntrospectProvidesReport(t *testing.T) {
 				if ri.Cfg != "val" {
 					t.Fatalf("expected config value %q, got %q", "val", ri.Cfg)
 				}
+				configAccesses := 0
+				for _, access := range ri.report.Configs {
+					if access.Key == "cfgKey" {
+						configAccesses++
+					}
+				}
+				if configAccesses != 2 {
+					t.Fatalf("expected report to include 2 cfgKey accesses after wiring, got %d", configAccesses)
+				}
+				resolveEvents := 0
+				for _, event := range ri.report.Deps {
+					if event.Kind == introspection.DepResolved && event.Type == "string" {
+						resolveEvents++
+					}
+				}
+				if resolveEvents != 2 {
+					t.Fatalf("expected report to include 2 string resolve events after wiring, got %d", resolveEvents)
+				}
 			},
 		},
 		{
