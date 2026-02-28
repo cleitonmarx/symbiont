@@ -114,6 +114,34 @@ func TestNewGraphHandler(t *testing.T) {
 			},
 		},
 		{
+			name:        "rejects-dot-dot-asset-path",
+			appName:     "MyApp",
+			report:      introspection.Report{},
+			requestPath: "/introspection/assets/..",
+			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				if rec.Code != http.StatusOK {
+					t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+				}
+				if !strings.Contains(rec.Body.String(), "<title>MyApp Introspection Graph</title>") {
+					t.Fatalf("expected page response for rejected asset path")
+				}
+			},
+		},
+		{
+			name:        "rejects-nested-dot-dot-asset-path",
+			appName:     "MyApp",
+			report:      introspection.Report{},
+			requestPath: "/introspection/assets/chunks/../panzoom.min.js",
+			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				if rec.Code != http.StatusOK {
+					t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+				}
+				if !strings.Contains(rec.Body.String(), "<title>MyApp Introspection Graph</title>") {
+					t.Fatalf("expected page response for rejected asset path")
+				}
+			},
+		},
+		{
 			name:        "overrides-max-text-size",
 			appName:     "MyApp",
 			report:      introspection.Report{},

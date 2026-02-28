@@ -108,11 +108,23 @@ func assetRequestPath(requestPath string) (string, bool) {
 	if !ok {
 		return "", false
 	}
+	if hasDotDotSegment(after) {
+		return "", false
+	}
 
 	assetPath := path.Clean(after)
-	if assetPath == "." || assetPath == "" || strings.HasPrefix(assetPath, "../") {
+	if assetPath == "." || assetPath == ".." || assetPath == "" || strings.HasPrefix(assetPath, "../") {
 		return "", false
 	}
 
 	return assetPath, true
+}
+
+func hasDotDotSegment(rawPath string) bool {
+	for _, segment := range strings.Split(rawPath, "/") {
+		if segment == ".." {
+			return true
+		}
+	}
+	return false
 }
