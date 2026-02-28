@@ -12,11 +12,14 @@ type Introspector interface {
 	Introspect(context.Context, introspection.Report) error
 }
 
-// Introspect allows introspection of configuration keys used and dependency events
-// during the application's lifecycle.
+// Introspect registers an introspector for the application's lifecycle.
+// Multiple calls append introspectors in registration order.
 // The provided Introspector's Introspect method will be called after initialization
 // and before starting runnables.
 func (a *App) Introspect(i Introspector) *App {
+	if i == nil {
+		return a
+	}
 	a.introspectors = append(a.introspectors, i)
 	return a
 }
@@ -31,7 +34,7 @@ func introspectSafe(ctx context.Context, i Introspector, r introspection.Report)
 	}()
 	err = i.Introspect(ctx, r)
 	if err != nil {
-		err = NewError(err, i.Introspect)
+		err = NewError(err, i)
 	}
 	return err
 }

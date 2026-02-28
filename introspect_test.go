@@ -98,6 +98,7 @@ func TestApp_IntrospectProvidesReport(t *testing.T) {
 	type tc struct {
 		name      string
 		intro     Introspector
+		register  func(*App)
 		host      Runnable
 		expectErr bool
 		expectPan bool
@@ -181,6 +182,15 @@ func TestApp_IntrospectProvidesReport(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "nil-introspector-is-ignored",
+			register: func(app *App) {
+				app.Introspect(nil)
+			},
+			host:      &runForIntrospect{},
+			expectErr: false,
+			expectPan: false,
+		},
 	}
 
 	for _, c := range cases {
@@ -197,7 +207,9 @@ func TestApp_IntrospectProvidesReport(t *testing.T) {
 			app := NewApp().
 				Initialize(&initForIntrospect{}).
 				Host(hosted)
-			if c.intro != nil {
+			if c.register != nil {
+				c.register(app)
+			} else if c.intro != nil {
 				app.Introspect(c.intro)
 			}
 

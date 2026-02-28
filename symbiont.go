@@ -48,7 +48,12 @@ func NewApp() *App {
 // Initialize adds initializers to the app (fluent method).
 // Initializers run sequentially before runnables; use this to set up resources and register dependencies.
 func (a *App) Initialize(init ...Initializer) *App {
-	a.initializers = append(a.initializers, init...)
+	for _, init := range init {
+		if init == nil {
+			continue
+		}
+		a.initializers = append(a.initializers, init)
+	}
 	return a
 }
 
@@ -56,6 +61,9 @@ func (a *App) Initialize(init ...Initializer) *App {
 // Runnables execute concurrently after all initializers complete.
 func (a *App) Host(runnable ...Runnable) *App {
 	for _, r := range runnable {
+		if r == nil {
+			continue
+		}
 		var (
 			readyChecker ReadyChecker
 			executor     Runnable
@@ -158,7 +166,8 @@ func (a *App) runWithContext(ctx context.Context) error {
 		Initializers: a.initializerInfos(),
 	}
 
-	// Call introspector if configured
+	// Call all explicitly registered introspectors, then any hosted runnables
+	// that also implement Introspector.
 	for _, i := range a.introspectors {
 		if err := wireStructFields(ctx, i); err != nil {
 			return err
@@ -168,7 +177,6 @@ func (a *App) runWithContext(ctx context.Context) error {
 			return err
 		}
 	}
-	// Call Introspect on all runnables that implement it
 	for _, rs := range a.runnableSpecsList {
 		i, ok := rs.original.(Introspector)
 		if !ok {

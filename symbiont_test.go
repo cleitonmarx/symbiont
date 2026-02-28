@@ -306,6 +306,15 @@ func TestApp_RunWithContext(t *testing.T) {
 				}
 			},
 		},
+		"nil-initializer-and-nil-runnable-are-ignored": {
+			inits: []Initializer{nil},
+			runs:  []Runnable{nil},
+			validate: func(t *testing.T, _ *testCase, err error) {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+			},
+		},
 	}
 
 	for name, test := range tests {
