@@ -35,7 +35,7 @@ type closerFunc func()
 type App struct {
 	initializers      []Initializer
 	runnableSpecsList []runnableSpecs
-	introspector      Introspector
+	introspectors     []Introspector
 	errCh             chan error
 	isRunning         atomic.Bool
 }
@@ -48,7 +48,12 @@ func NewApp() *App {
 // Initialize adds initializers to the app (fluent method).
 // Initializers run sequentially before runnables; use this to set up resources and register dependencies.
 func (a *App) Initialize(init ...Initializer) *App {
-	a.initializers = append(a.initializers, init...)
+	for _, init := range init {
+		if init == nil {
+			continue
+		}
+		a.initializers = append(a.initializers, init)
+	}
 	return a
 }
 
@@ -56,6 +61,9 @@ func (a *App) Initialize(init ...Initializer) *App {
 // Runnables execute concurrently after all initializers complete.
 func (a *App) Host(runnable ...Runnable) *App {
 	for _, r := range runnable {
+		if r == nil {
+			continue
+		}
 		var (
 			readyChecker ReadyChecker
 			executor     Runnable
@@ -151,18 +159,33 @@ func (a *App) runWithContext(ctx context.Context) error {
 		}
 	}
 
-	// Call introspector if configured
-	if a.introspector != nil {
-		if err := wireStructFields(ctx, a.introspector); err != nil {
+	// Wire struct fields of all registered introspectors
+	for _, i := range a.introspectors {
+		if err := wireStructFields(ctx, i); err != nil {
 			return err
 		}
-		report := introspection.Report{
-			Configs:      config.IntrospectConfigAccesses(),
-			Deps:         depend.GetEvents(),
-			Runners:      a.runnerInfos(),
-			Initializers: a.initializerInfos(),
+	}
+
+	report := introspection.Report{
+		Configs:      config.IntrospectConfigAccesses(),
+		Deps:         depend.GetEvents(),
+		Runners:      a.runnerInfos(),
+		Initializers: a.initializerInfos(),
+	}
+
+	for _, i := range a.introspectors {
+		err := introspectSafe(ctx, i, report)
+		if err != nil {
+			return err
 		}
-		err := introspectSafe(ctx, a.introspector, report)
+	}
+	for _, rs := range a.runnableSpecsList {
+		i, ok := rs.original.(Introspector)
+		if !ok {
+			continue
+		}
+
+		err := introspectSafe(ctx, i, report)
 		if err != nil {
 			return err
 		}

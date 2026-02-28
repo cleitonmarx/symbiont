@@ -111,7 +111,7 @@ func loadStructFieldValue(ctx context.Context) reflectx.StructFieldIteratorFunc 
 			return nil
 		}
 
-		defaultValue := structField.Tag.Get(defaultTagName)
+		defaultValue, hasDefault := structField.Tag.Lookup(defaultTagName)
 		parser, exists := parserRegistry[structField.Type]
 		if !exists {
 			return fmt.Errorf("config: parser for type '%s' does not exist", reflectx.GetTypeName(structField.Type))
@@ -121,7 +121,7 @@ func loadStructFieldValue(ctx context.Context) reflectx.StructFieldIteratorFunc 
 			valueStr string
 			err      error
 		)
-		if defaultValue != "" {
+		if hasDefault {
 			valueStr, err = globalProvider.get(ctx, configName, true, targetType, 5)
 			if err != nil {
 				valueStr = defaultValue

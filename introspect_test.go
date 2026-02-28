@@ -2,13 +2,16 @@ package symbiont
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/cleitonmarx/symbiont/config"
 	"github.com/cleitonmarx/symbiont/depend"
 	"github.com/cleitonmarx/symbiont/introspection"
-	"github.com/stretchr/testify/assert"
 )
+
+var errTest = errors.New("test error")
 
 type mapProvider struct {
 	values map[string]string
@@ -18,7 +21,7 @@ func (m mapProvider) Get(ctx context.Context, name string) (string, error) {
 	if v, ok := m.values[name]; ok {
 		return v, nil
 	}
-	return "", assert.AnError
+	return "", errTest
 }
 
 type initForIntrospect struct{}
@@ -36,6 +39,42 @@ type runForIntrospect struct {
 
 func (r *runForIntrospect) Run(ctx context.Context) error { return nil }
 
+type runnableIntrospector struct {
+	report           introspection.Report
+	introspectCalled bool
+	runCalled        bool
+}
+
+func (r *runnableIntrospector) Run(_ context.Context) error {
+	r.runCalled = true
+	return nil
+}
+
+func (r *runnableIntrospector) Introspect(_ context.Context, rep introspection.Report) error {
+	r.report = rep
+	r.introspectCalled = true
+	return nil
+}
+
+type runnableOnlyIntrospector struct {
+	Dep              string `resolve:""`
+	Cfg              string `config:"cfgKey"`
+	report           introspection.Report
+	introspectCalled bool
+	runCalled        bool
+}
+
+func (r *runnableOnlyIntrospector) Run(_ context.Context) error {
+	r.runCalled = true
+	return nil
+}
+
+func (r *runnableOnlyIntrospector) Introspect(_ context.Context, rep introspection.Report) error {
+	r.report = rep
+	r.introspectCalled = true
+	return nil
+}
+
 type recorderIntrospector struct {
 	report    introspection.Report
 	called    bool
@@ -50,7 +89,7 @@ func (r *recorderIntrospector) Introspect(_ context.Context, rep introspection.R
 	r.report = rep
 	r.called = true
 	if r.willErr {
-		return assert.AnError
+		return errTest
 	}
 	return nil
 }
@@ -58,29 +97,117 @@ func (r *recorderIntrospector) Introspect(_ context.Context, rep introspection.R
 func TestApp_IntrospectProvidesReport(t *testing.T) {
 	type tc struct {
 		name      string
-		intro     *recorderIntrospector
+		intro     Introspector
+		register  func(*App)
+		host      Runnable
 		expectErr bool
 		expectPan bool
+		validate  func(t *testing.T, intro Introspector, hosted Runnable)
 	}
 
 	cases := []tc{
 		{
 			name:      "success",
 			intro:     &recorderIntrospector{},
+			host:      &runForIntrospect{},
 			expectErr: false,
 			expectPan: false,
 		},
 		{
 			name:      "introspector-returns-error",
 			intro:     &recorderIntrospector{willErr: true},
+			host:      &runForIntrospect{},
 			expectErr: true,
 			expectPan: false,
 		},
 		{
 			name:      "introspector-panics",
 			intro:     &recorderIntrospector{willPanic: true},
+			host:      &runForIntrospect{},
 			expectErr: false,
 			expectPan: true,
+		},
+		{
+			name:      "hosted-runnable-also-introspector",
+			host:      &runnableIntrospector{},
+			expectErr: false,
+			expectPan: false,
+			validate: func(t *testing.T, _ Introspector, hosted Runnable) {
+				ri, ok := hosted.(*runnableIntrospector)
+				if !ok {
+					t.Fatalf("expected hosted runnable to be *runnableIntrospector")
+				}
+				if !ri.introspectCalled {
+					t.Fatal("hosted runnable introspector should be invoked")
+				}
+				if !ri.runCalled {
+					t.Fatal("hosted runnable should still run")
+				}
+				if len(ri.report.Runners) != 1 {
+					t.Fatalf("expected 1 runner, got %d", len(ri.report.Runners))
+				}
+				if !strings.Contains(ri.report.Runners[0].Type, "runnableIntrospector") {
+					t.Fatalf("expected runner type to contain runnableIntrospector, got %q", ri.report.Runners[0].Type)
+				}
+				if len(ri.report.Initializers) != 1 {
+					t.Fatalf("expected 1 initializer, got %d", len(ri.report.Initializers))
+				}
+				if !strings.Contains(ri.report.Initializers[0].Type, "initForIntrospect") {
+					t.Fatalf("expected initializer type to contain initForIntrospect, got %q", ri.report.Initializers[0].Type)
+				}
+			},
+		},
+		{
+			name:      "introspect-only-runnable-is-wired",
+			intro:     &runnableOnlyIntrospector{},
+			host:      &runForIntrospect{},
+			expectErr: false,
+			expectPan: false,
+			validate: func(t *testing.T, intro Introspector, _ Runnable) {
+				ri, ok := intro.(*runnableOnlyIntrospector)
+				if !ok {
+					t.Fatalf("expected introspector to be *runnableOnlyIntrospector")
+				}
+				if !ri.introspectCalled {
+					t.Fatal("introspector should be invoked")
+				}
+				if ri.runCalled {
+					t.Fatal("introspector should not run when only registered via Introspect")
+				}
+				if ri.Dep != "depVal" {
+					t.Fatalf("expected resolved dependency %q, got %q", "depVal", ri.Dep)
+				}
+				if ri.Cfg != "val" {
+					t.Fatalf("expected config value %q, got %q", "val", ri.Cfg)
+				}
+				configAccesses := 0
+				for _, access := range ri.report.Configs {
+					if access.Key == "cfgKey" {
+						configAccesses++
+					}
+				}
+				if configAccesses != 2 {
+					t.Fatalf("expected report to include 2 cfgKey accesses after wiring, got %d", configAccesses)
+				}
+				resolveEvents := 0
+				for _, event := range ri.report.Deps {
+					if event.Kind == introspection.DepResolved && event.Type == "string" {
+						resolveEvents++
+					}
+				}
+				if resolveEvents != 2 {
+					t.Fatalf("expected report to include 2 string resolve events after wiring, got %d", resolveEvents)
+				}
+			},
+		},
+		{
+			name: "nil-introspector-is-ignored",
+			register: func(app *App) {
+				app.Introspect(nil)
+			},
+			host:      &runForIntrospect{},
+			expectErr: false,
+			expectPan: false,
 		},
 	}
 
@@ -90,23 +217,49 @@ func TestApp_IntrospectProvidesReport(t *testing.T) {
 			defer config.ResetGlobalProvider()
 			config.SetGlobalProvider(mapProvider{values: map[string]string{"cfgKey": "val"}})
 
+			hosted := c.host
+			if hosted == nil {
+				hosted = &runForIntrospect{}
+			}
+
 			app := NewApp().
 				Initialize(&initForIntrospect{}).
-				Host(&runForIntrospect{}).
-				Introspect(c.intro)
+				Host(hosted)
+			if c.register != nil {
+				c.register(app)
+			} else if c.intro != nil {
+				app.Introspect(c.intro)
+			}
 
 			err := app.RunWithContext(context.Background())
 			if c.expectPan {
-				assert.Error(t, err, "expected error when introspector panics")
+				if err == nil {
+					t.Fatal("expected error when introspector panics")
+				}
 				return
 			}
 			if c.expectErr {
-				assert.Error(t, err)
+				if err == nil {
+					t.Fatal("expected error")
+				}
 			} else {
-				assert.NoError(t, err)
-				assert.True(t, c.intro.called, "introspector should be invoked")
-				assert.Len(t, c.intro.report.Initializers, 1)
-				assert.Contains(t, c.intro.report.Initializers[0].Type, "initForIntrospect")
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if intro, ok := c.intro.(*recorderIntrospector); ok {
+					if !intro.called {
+						t.Fatal("introspector should be invoked")
+					}
+					if len(intro.report.Initializers) != 1 {
+						t.Fatalf("expected 1 initializer, got %d", len(intro.report.Initializers))
+					}
+					if !strings.Contains(intro.report.Initializers[0].Type, "initForIntrospect") {
+						t.Fatalf("expected initializer type to contain initForIntrospect, got %q", intro.report.Initializers[0].Type)
+					}
+				}
+				if c.validate != nil {
+					c.validate(t, c.intro, hosted)
+				}
 			}
 		})
 	}

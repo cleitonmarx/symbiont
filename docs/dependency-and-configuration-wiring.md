@@ -8,19 +8,21 @@ not runtime lookups.
 
 ## Declaring Dependencies and Configuration
 
-Dependencies and con are declared as struct fields using tags.
+Dependencies and configuration are declared as struct fields using tags.
 
 ```go
 type APIServer struct {
 	Logger   *log.Logger `resolve:""`
-    HttpPort int         `config:"HTTP_PORT" default:"80"`
+	HttpPort int         `config:"HTTP_PORT" default:"80"`
 }
 ```
 
-At startup, Symbiont resolves the dependency from the container, get configurations from the configuration provider, and injects it into
-the component before execution begins.
+At startup, Symbiont resolves dependencies from the container, reads configuration
+values from the active provider, and injects them into the component before
+execution begins.
 
-If a dependency cannot be resolved, application startup fails.
+If a dependency or required configuration value cannot be resolved, application
+startup fails.
 
 ## Registering Dependencies
 

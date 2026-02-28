@@ -46,7 +46,7 @@ canceling the context used to start the application.
 
 ```go
 ctx, cancel := context.WithCancel(context.Background())
-shutdownCh, err := app.RunAsync(ctx)
+shutdownCh := app.RunAsync(ctx)
 
 // later
 cancel()

@@ -29,7 +29,7 @@ When `Run` is called:
 `RunAsync` starts the application without blocking the caller.
 
 ```go
-shutdownCh, err := app.RunAsync(ctx)
+shutdownCh := app.RunAsync(ctx)
 ```
 
 This method is primarily intended for **integration tests** and advanced embedding

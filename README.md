@@ -67,8 +67,8 @@ import (
 	"github.com/cleitonmarx/symbiont/depend"
 )
 
-type LoggerInitializer struct{
-	LogPrefix `config:"LOG_PREFIX" default:"app"`
+type LoggerInitializer struct {
+	LogPrefix string `config:"LOG_PREFIX" default:"app"`
 }
 
 func (i *LoggerInitializer) Initialize(ctx context.Context) (context.Context, error) {

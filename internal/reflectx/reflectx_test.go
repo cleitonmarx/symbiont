@@ -2,39 +2,67 @@ package reflectx
 
 import (
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestEmptyValue(t *testing.T) {
-	assert.Equal(t, 0, EmptyValue[int]())
-	assert.Equal(t, "", EmptyValue[string]())
-	assert.Nil(t, EmptyValue[*int]())
-	assert.Nil(t, EmptyValue[[]string]())
-	assert.Nil(t, EmptyValue[map[string]int]())
+	if EmptyValue[int]() != 0 {
+		t.Fatalf("expected zero int value")
+	}
+	if EmptyValue[string]() != "" {
+		t.Fatalf("expected zero string value")
+	}
+	if EmptyValue[*int]() != nil {
+		t.Fatalf("expected nil pointer value")
+	}
+	if EmptyValue[[]string]() != nil {
+		t.Fatalf("expected nil slice value")
+	}
+	if EmptyValue[map[string]int]() != nil {
+		t.Fatalf("expected nil map value")
+	}
 }
 
 func TestGetTypeName(t *testing.T) {
-	assert.Equal(t, "int", GetTypeName(reflect.TypeFor[int]()))
-	assert.Equal(t, "string", GetTypeName(reflect.TypeFor[string]()))
+	if GetTypeName(reflect.TypeFor[int]()) != "int" {
+		t.Fatalf("expected type name %q, got %q", "int", GetTypeName(reflect.TypeFor[int]()))
+	}
+	if GetTypeName(reflect.TypeFor[string]()) != "string" {
+		t.Fatalf("expected type name %q, got %q", "string", GetTypeName(reflect.TypeFor[string]()))
+	}
 	type myStruct struct{}
-	assert.Contains(t, GetTypeName(reflect.TypeFor[myStruct]()), "myStruct")
-	assert.Contains(t, GetTypeName(reflect.TypeFor[*myStruct]()), "myStruct")
+	if !strings.Contains(GetTypeName(reflect.TypeFor[myStruct]()), "myStruct") {
+		t.Fatalf("expected type name to contain %q", "myStruct")
+	}
+	if !strings.Contains(GetTypeName(reflect.TypeFor[*myStruct]()), "myStruct") {
+		t.Fatalf("expected pointer type name to contain %q", "myStruct")
+	}
 }
 
 func TestTypeNameOf(t *testing.T) {
-	assert.Equal(t, "int", TypeNameOf(1))
-	assert.Equal(t, "string", TypeNameOf("abc"))
+	if TypeNameOf(1) != "int" {
+		t.Fatalf("expected type name %q, got %q", "int", TypeNameOf(1))
+	}
+	if TypeNameOf("abc") != "string" {
+		t.Fatalf("expected type name %q, got %q", "string", TypeNameOf("abc"))
+	}
 	type foo struct{}
-	assert.Equal(t, "reflectx.foo", TypeNameOf(foo{}))
+	if TypeNameOf(foo{}) != "reflectx.foo" {
+		t.Fatalf("expected type name %q, got %q", "reflectx.foo", TypeNameOf(foo{}))
+	}
 }
 
 func TestGetFunctionNameAndFileLine(t *testing.T) {
 	fn := func() {}
 	name, fileLine := GetFunctionNameAndFileLine(fn)
-	assert.Contains(t, name, "TestGetFunctionNameAndFileLine")
-	assert.Contains(t, fileLine, ".go:")
+	if !strings.Contains(name, "TestGetFunctionNameAndFileLine") {
+		t.Fatalf("expected function name to contain test name, got %q", name)
+	}
+	if !strings.Contains(fileLine, ".go:") {
+		t.Fatalf("expected file line to contain .go:, got %q", fileLine)
+	}
 }
 
 func TestIterateStructFields(t *testing.T) {
@@ -48,14 +76,21 @@ func TestIterateStructFields(t *testing.T) {
 		fields = append(fields, structField.Name)
 		return nil
 	})
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, []string{"A", "B"}, fields)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	slices.Sort(fields)
+	if !reflect.DeepEqual([]string{"A", "B"}, fields) {
+		t.Fatalf("expected fields %v, got %v", []string{"A", "B"}, fields)
+	}
 
 	// Not a struct pointer
 	err = IterateStructFields(testStruct{}, func(fieldValue reflect.Value, structField reflect.StructField, targetType reflect.Type) error {
 		return nil
 	})
-	assert.Error(t, err)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
 }
 
 func TestSetFieldValue(t *testing.T) {
@@ -68,8 +103,12 @@ func TestSetFieldValue(t *testing.T) {
 	field := val.FieldByName("A")
 	structField, _ := val.Type().FieldByName("A")
 	err := SetFieldValue(field, structField, 42)
-	assert.NoError(t, err)
-	assert.Equal(t, 42, s.A)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if s.A != 42 {
+		t.Fatalf("expected field value %d, got %d", 42, s.A)
+	}
 
 	// Unexported field
 	type testStruct2 struct {
@@ -80,35 +119,59 @@ func TestSetFieldValue(t *testing.T) {
 	field2 := val2.FieldByName("a")
 	structField2, _ := val2.Type().FieldByName("a")
 	err = SetFieldValue(field2, structField2, 99)
-	assert.Error(t, err)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
 }
 
 func TestGetCallerName(t *testing.T) {
 	fn, file, line := GetCallerName(0)
-	assert.NotEmpty(t, fn)
-	assert.NotEmpty(t, file)
-	assert.True(t, line > 0)
+	if fn == "" {
+		t.Fatal("expected function name, got empty string")
+	}
+	if file == "" {
+		t.Fatal("expected file path, got empty string")
+	}
+	if line <= 0 {
+		t.Fatalf("expected positive line number, got %d", line)
+	}
 }
 
 func TestFormatFunctionName(t *testing.T) {
 	full := "github.com/cleitonmarx/symbiont/internal/reflectx.TestFormatFunctionName"
-	assert.Equal(t, "reflectx.TestFormatFunctionName", FormatFunctionName(full))
+	if FormatFunctionName(full) != "reflectx.TestFormatFunctionName" {
+		t.Fatalf("expected formatted name %q, got %q", "reflectx.TestFormatFunctionName", FormatFunctionName(full))
+	}
 }
 
 func TestFormatFileName(t *testing.T) {
 	path := "/foo/bar/baz.go"
-	assert.Equal(t, "bar/baz.go", FormatFileName(path))
+	if FormatFileName(path) != "bar/baz.go" {
+		t.Fatalf("expected formatted path %q, got %q", "bar/baz.go", FormatFileName(path))
+	}
 }
 
 func TestIsPointerStruct(t *testing.T) {
 	type foo struct{}
-	assert.True(t, IsPointerStruct(reflect.ValueOf(&foo{})))
-	assert.False(t, IsPointerStruct(reflect.ValueOf(foo{})))
-	assert.False(t, IsPointerStruct(reflect.ValueOf(42)))
+	if !IsPointerStruct(reflect.ValueOf(&foo{})) {
+		t.Fatal("expected pointer struct to be true")
+	}
+	if IsPointerStruct(reflect.ValueOf(foo{})) {
+		t.Fatal("expected non-pointer struct to be false")
+	}
+	if IsPointerStruct(reflect.ValueOf(42)) {
+		t.Fatal("expected non-struct to be false")
+	}
 }
 
 func Test_isTypeNullable(t *testing.T) {
-	assert.True(t, isTypeNullable(reflect.TypeFor[*int]()))
-	assert.False(t, isTypeNullable(reflect.TypeFor[int]()))
-	assert.False(t, isTypeNullable(reflect.TypeFor[struct{}]()))
+	if !isTypeNullable(reflect.TypeFor[*int]()) {
+		t.Fatal("expected pointer type to be nullable")
+	}
+	if isTypeNullable(reflect.TypeFor[int]()) {
+		t.Fatal("expected int type to be non-nullable")
+	}
+	if isTypeNullable(reflect.TypeFor[struct{}]()) {
+		t.Fatal("expected struct type to be non-nullable")
+	}
 }
