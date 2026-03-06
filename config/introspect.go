@@ -139,6 +139,15 @@ func (i *providerInspector) getKeysAccessInfo() []introspection.ConfigAccess {
 	return out
 }
 
+// setProvider updates the wrapped provider and resets the cache and access tracking.
+func (i *providerInspector) setProvider(p Provider) {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	i.provider = p
+	i.providerName = reflectx.TypeNameOf(p)
+	i.cache = make(map[string]string)
+}
+
 // sortConfigAccesses orders config accesses by key, then file, then line, then order.
 func sortConfigAccesses(accesses []introspection.ConfigAccess) {
 	sort.Slice(accesses, func(a, b int) bool {
