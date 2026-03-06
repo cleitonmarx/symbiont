@@ -30,9 +30,6 @@ var (
 // SetGlobalProvider sets the active provider for all configuration lookups.
 // The provider should be set during application initialization before runnables start.
 func SetGlobalProvider(provider Provider) {
-	if globalProvider == nil {
-		globalProvider = newProviderInspector(provider)
-	}
 	globalProvider.setProvider(provider)
 }
 
