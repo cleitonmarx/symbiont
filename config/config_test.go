@@ -487,3 +487,44 @@ func TestIntrospectConfigAccesses(t *testing.T) {
 		})
 	}
 }
+
+func TestSetGlobalProvider_keepsPreviousIntrospectionData(t *testing.T) {
+	ResetGlobalProvider()
+	t.Cleanup(ResetGlobalProvider)
+
+	firstProvider := &stubProvider{}
+	firstProvider.set("first-key", "first-value", nil)
+	SetGlobalProvider(firstProvider)
+
+	ctx := context.Background()
+	if _, err := Get[string](ctx, "first-key"); err != nil {
+		t.Fatalf("unexpected error getting first key: %v", err)
+	}
+
+	secondProvider := &stubProvider{}
+	secondProvider.set("second-key", "second-value", nil)
+	SetGlobalProvider(secondProvider)
+
+	if _, err := Get[string](ctx, "second-key"); err != nil {
+		t.Fatalf("unexpected error getting second key: %v", err)
+	}
+
+	keys := IntrospectConfigAccesses()
+	foundFirst := false
+	foundSecond := false
+	for _, key := range keys {
+		if key.Key == "first-key" {
+			foundFirst = true
+		}
+		if key.Key == "second-key" {
+			foundSecond = true
+		}
+	}
+
+	if !foundFirst {
+		t.Fatalf("expected previous introspection data for key %q to be preserved", "first-key")
+	}
+	if !foundSecond {
+		t.Fatalf("expected introspection data for key %q to exist", "second-key")
+	}
+}
