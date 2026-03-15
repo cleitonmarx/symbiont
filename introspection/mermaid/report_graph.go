@@ -310,13 +310,12 @@ func buildInitializerGraph(initializers []introspection.InitializerInfo, nodeMap
 
 // canonicalCaller resolves a caller function string to either a caller ID or an initializer ID.
 func canonicalCaller(caller string, initializerTypes map[string]struct{}) (string, NodeType) {
+	normalizedCaller := strings.ReplaceAll(caller, ".(*", ".")
+	normalizedCaller = strings.ReplaceAll(normalizedCaller, ")", "")
+
 	for initType := range initializerTypes {
 		base := strings.TrimPrefix(initType, "*")
-		short := base
-		if idx := strings.LastIndex(base, "."); idx != -1 {
-			short = base[idx+1:]
-		}
-		if strings.Contains(caller, initType) || strings.Contains(caller, base) || strings.Contains(caller, short) {
+		if normalizedCaller == initType || normalizedCaller == base || strings.HasPrefix(normalizedCaller, base+".") {
 			return initType, NodeInitializer
 		}
 	}
