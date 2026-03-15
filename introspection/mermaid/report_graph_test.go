@@ -119,3 +119,45 @@ func TestGenerateIntrospectionGraph_DistinctDepsForSameImpl(t *testing.T) {
 		}
 	}
 }
+
+func TestGenerateIntrospectionGraph_DistinctInitializersWithSameNameAcrossPackages(t *testing.T) {
+	alphaInit := "*alpha.InitSharedClient"
+	betaInit := "*beta.InitSharedClient"
+
+	alphaDep := introspection.DepEvent{
+		Kind:   introspection.DepRegistered,
+		Type:   "contracts.AlphaClient",
+		Impl:   "alpha.SharedClient",
+		Caller: introspection.Caller{Func: "alpha.(*InitSharedClient).Initialize", File: "alpha.go", Line: 10},
+	}
+	betaDep := introspection.DepEvent{
+		Kind:   introspection.DepRegistered,
+		Type:   "contracts.BetaClient",
+		Impl:   "beta.SharedClient",
+		Caller: introspection.Caller{Func: "beta.(*InitSharedClient).Initialize", File: "beta.go", Line: 20},
+	}
+
+	out := GenerateIntrospectionGraph(introspection.Report{
+		Deps: []introspection.DepEvent{alphaDep, betaDep},
+		Initializers: []introspection.InitializerInfo{
+			{Type: alphaInit},
+			{Type: betaInit},
+		},
+	})
+
+	alphaDepID := sanitizeID(dependencyNodeID(alphaDep))
+	betaDepID := sanitizeID(dependencyNodeID(betaDep))
+
+	if !strings.Contains(out, sanitizeID(alphaInit)+" --o "+alphaDepID) {
+		t.Fatalf("expected alpha initializer edge for %q", alphaDep.Type)
+	}
+	if !strings.Contains(out, sanitizeID(betaInit)+" --o "+betaDepID) {
+		t.Fatalf("expected beta initializer edge for %q", betaDep.Type)
+	}
+	if strings.Contains(out, sanitizeID(alphaInit)+" --o "+betaDepID) {
+		t.Fatalf("did not expect alpha initializer to be linked to %q", betaDep.Type)
+	}
+	if strings.Contains(out, sanitizeID(betaInit)+" --o "+alphaDepID) {
+		t.Fatalf("did not expect beta initializer to be linked to %q", alphaDep.Type)
+	}
+}
